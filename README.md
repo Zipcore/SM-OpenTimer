@@ -24,7 +24,7 @@ I was kind of in the middle of working on the plugin when suddenly I was contact
 
 **Creating a .nav file for maps:** (Required for record bots. Tell Valve how much you hate it.)
 - Local server and the map you want to generate the .nav file for.
-- *sv_cheats 1; nav_mark_walkable** and aim at the floor. This should generate .nav file in your maps folder.
+- *sv_cheats 1; nav_mark_walkable* and aim at the floor. This should generate .nav file in your maps folder.
 - Move that into your server's maps folder. Potentially put it in your fast-dl. ;)
 
 **Features:**
