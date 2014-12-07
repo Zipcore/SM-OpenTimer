@@ -1,10 +1,11 @@
 public Action:Timer_RestartMap( Handle:hTimer )
 {
 	PrintToServer( "%s Attempting to restart map!", CONSOLE_PREFIX );
+	
 	for ( new i = 1; i <= MaxClients; i++ )
 		if ( IsClientInGame( i ) && !IsFakeClient( i ) )
 			return Plugin_Continue;
-
+	
 	ServerCommand( "changelevel %s", CurrentMap );
 	
 	return Plugin_Handled;
@@ -88,7 +89,7 @@ public Action:Timer_ShowClientInfo( Handle:hTimer, any:client )
 		if ( flMapBestTime[ iClientMode[target] ] != 0.0 )
 			FormatSeconds( flBestSeconds, FormattedBestTime, false );
 		
-		// 00:00:00.0\n(+00:00:00.0)\n\nVel - 1000.0\nStrafes - 1000
+		// 00:00:00.0\n(+00:00:00.0)Vel - 1000.0\nStrafes - 1000
 		if ( flMapBestTime[ iClientMode[target] ] > 0.0 )
 			Format( TextBuffer, sizeof( TextBuffer ), "%s\n(%c%s)\n \nSpeed: %.1f", FormattedMyTime, char, FormattedBestTime, GetClientVelocity( target ) );
 		else
@@ -100,6 +101,7 @@ public Action:Timer_ShowClientInfo( Handle:hTimer, any:client )
 	return Plugin_Continue;
 }
 
+#if defined DELETE_ENTS
 public Action:Timer_DoMapStuff( Handle:hTimer )
 {
 	new ent = -1;
@@ -121,26 +123,8 @@ public Action:Timer_DoMapStuff( Handle:hTimer )
 		
 	while ( ( ent = FindEntityByClassname( ent, "func_brush" ) ) != -1 )
 		AcceptEntityInput( ent, "enable" );
-	
-	ent = FindEntityByClassname( -1, "info_player_terrorist" );
-	
-	if ( ent == -1 )
-	{
-		ent = FindEntityByClassname( -1, "info_player_counterterrorist" );
-		
-		if ( ent == -1 )
-		{
-			new spawn = CreateEntityByName( "info_player_terrorist" );
-			
-			DispatchKeyValueVector( spawn, "origin", vecSpawnPos );
-			DispatchKeyValueVector( spawn, "angles", angSpawnAngles );
-			
-			DispatchSpawn( spawn );
-			
-			iPreferedTeam = CS_TEAM_T;
-		}
-	}
 }
+#endif
 
 static const BeamColor[MAX_BOUNDS][] = {
 	{ 0, 255, 0, 255 },
@@ -278,8 +262,9 @@ public Action:Timer_DrawBuildZoneBeams( Handle:timer, any:client )
 	
 	return Plugin_Continue;
 }
-
-// RECORDING
+///////////////
+// RECORDING //
+///////////////
 #if defined RECORD
 public Action:Timer_Rec_Start( Handle:hTimer, any:mimic )
 {
@@ -318,9 +303,10 @@ public Action:Timer_Rec_Stop( Handle:hTimer, any:mimic )
 	return Plugin_Handled;
 }
 #endif
-
+#if defined VOTING
 public Action:Timer_Vote( Handle:hTimer )
 {
 	ServerCommand( "changelevel %s", NextMap );
 	return Plugin_Handled;
 }
+#endif

@@ -1,3 +1,4 @@
+// Doesn't work?
 public Action:Event_ClientTransmit( ent, client ) // Hide other players
 	return ( client != ent && ent > 0 && ent <= MaxClients ) ? Plugin_Handled : Plugin_Continue;
 
@@ -28,12 +29,13 @@ public Event_ClientSpawn( Handle:event, const String:name[], bool:dontBroadcast 
 		}
 		else
 		{
+#if defined RECORD
 			// Hide those silly bots that do not have a record :^)
 			if ( iClientTickMax[client] == 0 )
 				SetEntityRenderMode( client, RENDER_NONE );
 			else
 				SetEntityRenderMode( client, RENDER_TRANSALPHA );
-				
+#endif
 			SetEntProp( client, Prop_Data, "m_CollisionGroup", 1 ); // No trigger collision for bots.
 		}
 		
@@ -52,15 +54,16 @@ public Action:Timer_ClientSpawn( Handle:timer, any:client )
 	
 	if ( IsFakeClient( client ) )
 	{
-		//SetEntityMoveType( client, MOVETYPE_NOCLIP );
-		SetEntityGravity( client, 0.0 );
+#if defined RECORD
+		//SetEntityGravity( client, 0.0 );
 		
-		// Also, delete their guns so they are not just floating around
+		// Also, hide their guns so they are not just floating around
 		new wep;
 		for ( new i; i < 4; i++ )
 			if ( ( wep = GetPlayerWeaponSlot( client, i ) ) > 0 )
 				SetEntityRenderMode( wep, RENDER_NONE );
-		
+#endif
+
 		return Plugin_Handled;
 	}
 	
@@ -102,6 +105,7 @@ public Event_ClientDeath( Handle:event, const String:name[], bool:dontBroadcast 
 //////////
 // CHAT //
 //////////
+#if defined CHAT
 public Action:Listener_Say( client, const String:command[], argc )
 {
 	if ( client == 0 ) return Plugin_Continue; // No team messages
@@ -123,11 +127,14 @@ public Action:Listener_Say( client, const String:command[], argc )
 	
 	return Plugin_Handled;
 }
-
+#endif
 //////////////////////////////////////
 // AUTOBHOP, MODES, SYNC, RECORDING //
 //////////////////////////////////////
+
+#if defined RECORD
 static bool:bClientTeleported[MAXPLAYERS_BHOP];
+
 public Event_Teleport( const String:output[], caller, activator, Float:delay )
 {
 	// This is a really bad way to do this, lol.
@@ -137,6 +144,7 @@ public Event_Teleport( const String:output[], caller, activator, Float:delay )
 	if ( bIsClientRecording[activator] )
 		bClientTeleported[activator] = true;
 }
+#endif
 
 static iClientSync[MAXPLAYERS_BHOP];
 static Float:flClientLastVel[MAXPLAYERS_BHOP];

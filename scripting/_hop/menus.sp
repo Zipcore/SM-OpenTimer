@@ -179,6 +179,7 @@ public Handler_Hud( Handle:hHudMenu, MenuAction:action, client, item )
 	}
 }
 
+#if defined VOTING
 public Action:Command_VoteMap( client, args )
 {
 	if ( client < 1 ) return Plugin_Handled;
@@ -259,6 +260,7 @@ public Handler_Vote( Handle:hVoteMenu, MenuAction:action, client, index )
 		}
 	}
 }
+#endif
 
 public Action:Command_Admin_ZoneMenu( client, args )
 {

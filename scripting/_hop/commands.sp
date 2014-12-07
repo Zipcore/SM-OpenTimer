@@ -2,7 +2,7 @@ public Action:Command_Help( client, args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	PrintToConsole( client, "\n\nCommands:\n!respawn/!spawn/!restart/!start/!r/!re - Respawn\n!normal/!sideways/!w - Changes your mode accordingly.\n!spectate/!spec <name> - Spectate a player. Or, go spectator.\n!fov/!fieldofview <number> - Change your field of view.\n!hud/!showhud/!hidehud - Toggle HUD elements.\n!commands - This ;)\n!wr/!records/!times - Show top 5 times.\n!printrecords <type> - Shows a detailed version. Max. 16 times.\n!practise/!practice/!prac - Use practice mode.\n!saveloc/!save - Save point for practice mode.\n!gotocp/!cp - Teleport into the saved point.\n!choosemap - Vote for a map! (All players required.)\n\n" );
+	PrintToConsole( client, "Commands:\n!respawn/!spawn/!restart/!start/!r/!re - Respawn\n!normal/!sideways/!w - Changes your mode accordingly.\n!spectate/!spec <name> - Spectate a player. Or, go spectator.\n!fov/!fieldofview <number> - Change your field of view.\n!hud/!showhud/!hidehud - Toggle HUD elements.\n!commands - This ;)\n!wr/!records/!times - Show top 5 times.\n!printrecords <type> - Shows a detailed version. Max. 16 times.\n!practise/!practice/!prac - Use practice mode.\n!saveloc/!save - Save point for practice mode.\n!gotocp/!cp - Teleport into the saved point.\n!choosemap - Vote for a map! (All players required.)" );
 	
 	PrintColorChat( client, client, "%s Printed all used commands to your console!\nShort version:\x05 !restart/!respawn, !fov <number>, !hud, !viewmodel, !prac, !spec <name>, !wr, !printrecords <type>, !choosemap", CHAT_PREFIX );
 	
@@ -219,7 +219,10 @@ public Action:Command_Practise( client, args )
 	
 	iClientState[client] = STATE_START;
 	flClientStartTime[client] = 0.0;
+	
+#if defined RECORD
 	bIsClientRecording[client] = false;
+#endif
 	
 	TeleportEntity( client, vecSpawnPos, angSpawnAngles, vecNull );
 	

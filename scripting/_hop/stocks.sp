@@ -81,6 +81,7 @@ stock GetActivePlayers()
 	return clients++;
 }
 
+#if defined VOTING
 stock CalcVotes()
 {
 	new _iClients = GetActivePlayers();
@@ -121,7 +122,7 @@ stock GetMapVotes( index )
 	
 	return amt;
 }
-
+#endif
 stock bool:IsInsideBounds( ent, bounds )
 {
 	decl Float:vecPos[3];
@@ -278,7 +279,9 @@ stock DoMapStuff()
 	
 	ArrayCopy( vecAngle, angSpawnAngles, 2 );
 	
+#if defined DELETE_ENTS
 	CreateTimer( 3.0, Timer_DoMapStuff );
+#endif
 }
 
 #if defined RECORD

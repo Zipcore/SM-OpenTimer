@@ -8,15 +8,30 @@
 #include <sdkhooks>
 
 #define RECORD // Comment out for no recording.
+#define VOTING // Comment out for no voting.
+#define CHAT // Comment out for no chat processing.
+//#define DELETE_ENTS // Comment out to keep some entities. (func_doors, func_movelinears, etc.)
+// This was originally used for surf maps. If you want old bhop maps with platforms don't uncomment.
+
 #define MAXPLAYERS_BHOP 16 + 1 // Change according to your player count. ( slots + 1 )
 
-#define CHAT_PREFIX "\x072F2F2F[\x07D01265long\x07FFFFFFJump\x072F2F2F]\x07FFFFFF"
-#define CONSOLE_PREFIX "[longJump]"
-#define PLUGIN_NAME "longJump"
+// HEX color codes
+//
+// You have to put \x07{HEX COLOR}
+// E.g \x07FFFFFF for white
+//
+// You can then put your own text after it:
+// \x07FFFFFFThis text is white!
+#define CHAT_PREFIX "\x072F2F2F[\x07D01265OpenTimer\x072F2F2F]\x07FFFFFF" // Used only for chat
+#define CONSOLE_PREFIX "[OpenTimer]" // Used only for console/server.
+#define PLUGIN_NAME "OpenTimer" // Name of the plugin. Please don't change this.
 
 ////////////////////////////////
 // All shared variables here. //
 ////////////////////////////////
+///////////////
+// RECORDING //
+///////////////
 #if defined RECORD
 /*
 	Huge thanks to Peace-Maker. A lot was learned from his movement recorder plugin.
@@ -51,9 +66,16 @@ enum HeaderInfo {
 #define BINARY_FORMAT 0x01
 #endif
 
+////////////
+// VOTING //
+////////////
+#if defined VOTING
 #define MAX_MAP_NAME_LENGTH 32
 enum MapInfo { String:MAP_NAME[MAX_MAP_NAME_LENGTH] };
-
+#endif
+////////////////////////
+// BOUNDS/MODES ENUMS //
+////////////////////////
 enum {
 	BOUNDS_START = 0,
 	BOUNDS_END,
@@ -75,7 +97,9 @@ enum {
 	
 	MAX_MODES // 3
 };
-
+/////////////////
+// MISC. ENUMS //
+/////////////////
 #define HIDEHUD_HUD			( 1 << 0 )
 #define HIDEHUD_VM			( 1 << 1 )
 #define HIDEHUD_PLAYERS		( 1 << 2 )
@@ -101,7 +125,7 @@ enum {
 
 // Zones
 new bool:bIsLoaded = true; // Is the plugin going to work? :(
-new bool:bZoneExists[MAX_BOUNDS];
+new bool:bZoneExists[MAX_BOUNDS]; // Are we going to check if the player is inside the bounds?
 new Float:vecMapBoundsMin[MAX_BOUNDS][3];
 new Float:vecMapBoundsMax[MAX_BOUNDS][3];
 
@@ -113,11 +137,12 @@ new const String:ZoneNames[MAX_BOUNDS][] = {
 	"Block #3"
 };
 
+// Building
 new iBuilderIndex;
 new iBuilderZone = -1;
 new iBuilderGridSize = BUILDER_DEF_GRIDSIZE;
 
-// Settings
+// Settings (Convars)
 new bool:bPreSpeed;
 new bool:bForbiddenCommands;
 new bool:bClientAutoHop[MAXPLAYERS_BHOP] = { true, ... };
@@ -137,7 +162,7 @@ new iClientGoodSync[MAXPLAYERS_BHOP][SYNC_MAX_SAMPLES];
 new iClientLastStrafe[MAXPLAYERS_BHOP]; // Which direction did the client strafe to last time?
 
 // Practice
-// to-do: Add multiple save points.
+// To-Do: Add multiple save points.
 new bool:bIsClientPractising[MAXPLAYERS_BHOP];
 new Float:vecClientSavePos[MAXPLAYERS_BHOP][3];
 new Float:vecClientSaveAng[MAXPLAYERS_BHOP][3];
@@ -175,9 +200,11 @@ new bool:bNoBlock = true;
 new iBeam;
 new iPreferedTeam = CS_TEAM_T;
 
+#if defined VOTING
 new Handle:hMapList;
 new String:NextMap[MAX_MAP_NAME_LENGTH];
 new iClientVote[MAXPLAYERS_BHOP] = { -1, ... };
+#endif
 
 new const String:ModeName[][][] = { { "Normal", "Sideways", "W-Only" } , { "N", "SW", "W" } };
 new const Float:vecNull[] = { 0.0, 0.0, 0.0 };
@@ -226,14 +253,18 @@ public OnPluginStart()
 	HookEvent( "player_jump", Event_ClientJump );
 	HookEvent( "player_hurt", Event_ClientHurt );
 	HookEvent( "player_death", Event_ClientDeath );
-	HookEvent( "player_changename", Event_ClientName, EventHookMode_Pre );
+	HookEvent( "player_changename", Event_ClientName, EventHookMode_Pre ); // Doesn't work?
 	
+#if defined RECORD
 	HookEntityOutput( "trigger_teleport", "OnEndTouch", Event_Teleport );
+#endif
 	//HookEvent( "teamplay_round_start", Event_RoundStart, EventHookMode_PostNoCopy );
 	
 	// LISTENERS
+#if defined CHAT
 	AddCommandListener( Listener_Say, "say" );
 	AddCommandListener( Listener_Say, "say_team" );
+#endif
 	
 	// SPAWNING
 	RegConsoleCmd( "sm_respawn", Command_Spawn );
@@ -311,10 +342,12 @@ public OnPluginStart()
 	RegConsoleCmd( "sm_help", Command_Help );
 	
 	// VOTING
+#if defined VOTING
 	RegConsoleCmd( "sm_choosemap", Command_VoteMap );
 	RegConsoleCmd( "sm_rtv", Command_VoteMap );
 	RegConsoleCmd( "sm_rockthevote", Command_VoteMap );
 	RegConsoleCmd( "sm_nominate", Command_VoteMap );
+#endif
 	
 	// ADMIN STUFF
 	RegAdminCmd( "sm_noblock", Command_Admin_Block, ADMFLAG_ROOT, "Toggles player collisions." );
@@ -365,7 +398,8 @@ public OnMapStart()
 	iBuilderIndex = 0;
 	iBuilderZone = -1;
 	iBuilderGridSize = BUILDER_DEF_GRIDSIZE;
-	
+
+#if defined RECORD
 	for ( new i; i < MAX_MODES; i++ )
 	{
 		if ( hMimicRecording[i] != INVALID_HANDLE )
@@ -373,6 +407,7 @@ public OnMapStart()
 			
 		flMapBestTime[i] = 0.0;
 	}
+#endif
 	
 	if ( !InitializeMapBounds() )
 	{
@@ -405,26 +440,31 @@ public OnMapStart()
 	
 	CreateTimer( 1.0, Timer_DrawZoneBeams, 1.0, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE );
 	
+#if defined RECORD
 	ServerCommand( "bot_quota %i", MAX_MODES );
+#endif
 	
 	// We want to restart the map if it has been going on for too long without any players.
 	// This prevents performance issues.
 	CreateTimer( 3600.0, Timer_RestartMap, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE );
 }
 
-#if defined RECORD
+
 public OnClientDisconnect( client )
 {
+#if defined RECORD
 	if ( IsFakeClient( client ) && iMimic[ iClientMode[client] ] == client )
 	{
 		iMimic[ iClientMode[client] ] = 0;
 		return;
 	}
-	
+#endif
+
+#if defined VOTING
 	iClientVote[client] = -1;
 	CalcVotes();
-}
 #endif
+}
 
 public OnClientConnected( client )
 {
@@ -461,6 +501,7 @@ public OnClientConnected( client )
 
 public OnClientPostAdminCheck( client )
 {
+#if defined RECORD
 	if ( IsFakeClient( client ) )
 	{
 		for ( new i; i < MAX_MODES; i++ )
@@ -496,6 +537,7 @@ public OnClientPostAdminCheck( client )
 		
 		return;
 	}
+#endif
 	
 	if ( !RetrieveClientInfo( client ) )
 		PrintToConsole( client, "%s There was a problem creating/retrieving your profile from database. :(", CONSOLE_PREFIX );

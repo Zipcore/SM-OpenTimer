@@ -19,7 +19,7 @@ stock PrintRecords( client, bool:bInConsole, iReqMode=-1 )
 	if ( TimeQuery == INVALID_HANDLE )
 	{
 		SQL_GetError( Database, Error, sizeof( Error ) );
-		LogError( "\n\n\n%s Error occured when trying to print times to client.\nError: %s\n\n", CONSOLE_PREFIX, Error );
+		LogError( "%s Error occured when trying to print times to client.\nError: %s", CONSOLE_PREFIX, Error );
 	
 		PrintColorChat( client, client, "%s Sorry, something went wrong.", CHAT_PREFIX );
 		return;
@@ -65,7 +65,7 @@ stock PrintRecords( client, bool:bInConsole, iReqMode=-1 )
 			
 			for ( new i; i < ply; i++ )
 			{
-				Format( Text, sizeof( Text ), "%s\n\n%i. %s - %s - %s", Text, index, Name[i], FormattedTime[i], ModeName[MODENAME_SHORT][ iMode[i] ] );
+				Format( Text, sizeof( Text ), "%s%i. %s - %s - %s", Text, index, Name[i], FormattedTime[i], ModeName[MODENAME_SHORT][ iMode[i] ] );
 				index++;
 			}
 		}
@@ -75,7 +75,7 @@ stock PrintRecords( client, bool:bInConsole, iReqMode=-1 )
 	}
 	else
 	{
-		PrintToConsole( client, "\nRecords (Max. 16):\n!printrecord <mode> for specific modes. (\"normal\", \"sideways\", \"w\")\n\n----------------" );
+		PrintToConsole( client, "\nRecords (Max. 16):\n!printrecord <mode> for specific modes. (\"normal\", \"sideways\", \"w\")----------------" );
 		
 		if ( ply > 0 )
 		{
@@ -99,7 +99,7 @@ stock bool:SaveClientRecord( client, Float:flNewTime, iMode, iJumpCount, iStrafe
 	
 	if ( !GetClientAuthString( client, SteamId, sizeof( SteamId ) ) )
 	{
-		LogError( "\n\n\n%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.\n\n", CONSOLE_PREFIX, client );
+		LogError( "%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.", CONSOLE_PREFIX, client );
 		
 		return false;
 	}
@@ -112,7 +112,7 @@ stock bool:SaveClientRecord( client, Float:flNewTime, iMode, iJumpCount, iStrafe
 	if ( TimeBuffer == INVALID_HANDLE )
 	{
 		SQL_GetError( Database, Error, sizeof( Error ) );
-		LogError( "\n\n\n%s Couldn't retrieve player's old time when saving record!\nError: %s\n\n", CONSOLE_PREFIX, Error );
+		LogError( "%s Couldn't retrieve player's old time when saving record!\nError: %s", CONSOLE_PREFIX, Error );
 		
 		return false;
 	}
@@ -204,7 +204,7 @@ stock bool:SaveClientRecord( client, Float:flNewTime, iMode, iJumpCount, iStrafe
 		if ( !SQL_FastQuery( Database, Buffer ) )
 		{
 			SQL_GetError( Database, Error, sizeof( Error ) );
-			LogError( "\n\n\n%s Couldn't save player's record!\nError: %s\n\n", CONSOLE_PREFIX, Error );
+			LogError( "%s Couldn't save player's record!\nError: %s", CONSOLE_PREFIX, Error );
 			
 			return false;
 		}
@@ -215,6 +215,7 @@ stock bool:SaveClientRecord( client, Float:flNewTime, iMode, iJumpCount, iStrafe
 	{
 		flMapBestTime[iMode] = flNewTime;
 		
+#if defined RECORD
 		if ( bIsClientRecording[client] && hClientRecording[client] != INVALID_HANDLE )
 		{
 			new len = GetArraySize( hClientRecording[client] );
@@ -246,6 +247,7 @@ stock bool:SaveClientRecord( client, Float:flNewTime, iMode, iJumpCount, iStrafe
 				}
 			}
 		}
+#endif
 	}
 	
 	decl String:NewTime[13];
@@ -262,7 +264,7 @@ stock bool:SaveClientInfo( client )
 	decl String:SteamId[32];
 	
 	if ( !GetClientAuthString( client, SteamId, sizeof( SteamId ) ) ) {
-		LogError( "\n\n\n%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.\n\n", CONSOLE_PREFIX, client );
+		LogError( "%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.", CONSOLE_PREFIX, client );
 	
 		return false;
 	}
@@ -273,7 +275,7 @@ stock bool:SaveClientInfo( client )
 		
 	if ( !SQL_FastQuery( Database, Buffer ) ) {
 		SQL_GetError( Database, Error, sizeof( Error ) );
-		LogError( "\n\n\n%s Couldn't save player's \"%N\" profile!\nError: %s\n\n", CONSOLE_PREFIX, client, Error );
+		LogError( "%s Couldn't save player's \"%N\" profile!\nError: %s", CONSOLE_PREFIX, client, Error );
 	
 		return false;
 	}
@@ -287,7 +289,7 @@ stock bool:RetrieveClientInfo( client )
 	
 	if ( !GetClientAuthString( client, SteamId, sizeof( SteamId ) ) )
 	{
-		LogError( "\n\n\n%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.\n\n", CONSOLE_PREFIX, client );
+		LogError( "%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.", CONSOLE_PREFIX, client );
 		
 		return false;
 	}
@@ -300,7 +302,7 @@ stock bool:RetrieveClientInfo( client )
 	if ( ClientQuery == INVALID_HANDLE )
 	{
 		SQL_GetError( Database, Error, sizeof( Error ) );
-		LogError( "\n\n\n%s Couldn't retrieve player data!\n Error: %s\n\n", CONSOLE_PREFIX, Error );
+		LogError( "%s Couldn't retrieve player data!\n Error: %s", CONSOLE_PREFIX, Error );
 		
 		return false;
 	}
@@ -311,7 +313,7 @@ stock bool:RetrieveClientInfo( client )
 		
 		if ( !SQL_FastQuery( Database, Buffer ) )
 		{
-			LogError( "\n\n\n%s Error! Couldn't add a row for new profile!! Steam ID: %s\n\n", CONSOLE_PREFIX, SteamId );
+			LogError( "%s Error! Couldn't add a row for new profile!! Steam ID: %s", CONSOLE_PREFIX, SteamId );
 			return false;
 		}
 		
@@ -352,24 +354,27 @@ stock InitializeDatabase()
 	Database = SQL_DefConnect( Error, sizeof( Error ) );
 	
 	if ( Database == INVALID_HANDLE )
-		SetFailState( "\n\n\n%s Unable to establish connection to database!\n Error: %s\n\n", CONSOLE_PREFIX, Error );
+		SetFailState( "%s Unable to establish connection to database!\n Error: %s", CONSOLE_PREFIX, Error );
 	
 	if ( !SQL_FastQuery( Database, "CREATE TABLE IF NOT EXISTS player_data ( steamid VARCHAR( 32 ), fov INTEGER, hideflags INTEGER );" ) )
 	{
 		SQL_GetError( Database, Error, sizeof( Error ) );
-		SetFailState( "\n\n\n%s Plugin was unable to create table for player profiles!\nError: %s\n\n", CONSOLE_PREFIX, Error );
+		SetFailState( "%s Plugin was unable to create table for player profiles!\nError: %s", CONSOLE_PREFIX, Error );
 	}
 	
-	PrintToServer( "\n\n%s Established connection with database!\n", CONSOLE_PREFIX );
+	PrintToServer( "%s Established connection with database!", CONSOLE_PREFIX );
 	
+#if defined VOTING
+	// Get maps from database.
+	// This is a very hacky way of doing things.
 	new Handle:Query = SQL_Query( Database, "SELECT name FROM sqlite_master WHERE type='table' ORDER BY NAME;" );
 	
 	if ( Query == INVALID_HANDLE )
 	{
 		SQL_GetError( Database, Error, sizeof( Error ) );
-		SetFailState( "\n\n\n%s Plugin was unable to recieve tables (map names) from database!!\nError: %s\n\n", CONSOLE_PREFIX, Error );
+		SetFailState( "%s Plugin was unable to recieve tables (map names) from database!!\nError: %s", CONSOLE_PREFIX, Error );
 	}
-	
+
 	decl String:MapName[32];
 	hMapList = CreateArray( MAX_MAP_NAME_LENGTH );
 	
@@ -385,12 +390,13 @@ stock InitializeDatabase()
 			PushArrayArray( hMapList, iMap, _:MapInfo );
 		}
 	}
+#endif
 }
 
 stock bool:InitializeMapBounds()
 {
 	if ( Database == INVALID_HANDLE )
-		SetFailState( "\n\n\n%s No connection to database. Unable to retrieve map data!\n\n", CONSOLE_PREFIX );
+		SetFailState( "%s No connection to database. Unable to retrieve map data!", CONSOLE_PREFIX );
 	
 	if ( !SQL_FastQuery( Database, "CREATE TABLE IF NOT EXISTS _mapbounds ( map VARCHAR( 32 ), smin0 REAL, smin1 REAL, smin2 REAL, smax0 REAL, smax1 REAL, smax2 REAL, emin0 REAL, emin1 REAL, emin2 REAL, emax0 REAL, emax1 REAL, emax2 REAL, bl1min0 REAL, bl1min1 REAL, bl1min2 REAL, bl1max0 REAL, bl1max1 REAL, bl1max2 REAL, bl2min0 REAL, bl2min1 REAL, bl2min2 REAL, bl2max0 REAL, bl2max1 REAL, bl2max2 REAL, bl3min0 REAL, bl3min1 REAL, bl3min2 REAL, bl3max0 REAL, bl3max1 REAL, bl3max2 REAL );" ) )
 	{
@@ -415,7 +421,7 @@ stock bool:InitializeMapBounds()
 	if ( TempQuery == INVALID_HANDLE )
 	{
 		SQL_GetError( Database, Error, sizeof( Error ) );
-		SetFailState( "\n\n%s Unable to retrieve map bounds!\nError: %s\n\n", CONSOLE_PREFIX, Error );
+		SetFailState( "%s Unable to retrieve map bounds!\nError: %s", CONSOLE_PREFIX, Error );
 	}
 	
 	new field;
@@ -427,7 +433,7 @@ stock bool:InitializeMapBounds()
 		if ( !SQL_FastQuery( Database, Buffer ) ) {
 			SQL_GetError( Database, Error, sizeof( Error ) );
 			
-			SetFailState( "\n\n\n%s Couldn't create map bounds table!\nError: %s\n\n", CONSOLE_PREFIX, Error );
+			SetFailState( "%s Couldn't create map bounds table!\nError: %s", CONSOLE_PREFIX, Error );
 		}
 		
 		return false;
@@ -443,7 +449,7 @@ stock bool:InitializeMapBounds()
 				vecMapBoundsMin[BOUNDS_START][0] = SQL_FetchFloat( TempQuery, field );
 			else
 			{
-				PrintToServer( "\n\n%s No bounds were applied to map!\n\n", CONSOLE_PREFIX );
+				PrintToServer( "%s No bounds were applied to map!", CONSOLE_PREFIX );
 				return false;
 			}
 			
@@ -571,22 +577,25 @@ stock bool:InitializeMapBounds()
 		}
 	}
 	
+	// In-correct statement?
 	Format( Buffer, sizeof( Buffer ), "SELECT mode, MIN( time ), steamid, name FROM '%s' GROUP BY mode;", CurrentMap );
 	TempQuery = SQL_Query( Database, Buffer );
 	
 	if ( TempQuery == INVALID_HANDLE )
 	{
 		SQL_GetError( Database, Error, sizeof( Error ) );
-		SetFailState( "\n\n\n%s Unable to retrieve map best times!\nError: %s\n\n", CONSOLE_PREFIX, Error );
+		SetFailState( "%s Unable to retrieve map best times!\nError: %s", CONSOLE_PREFIX, Error );
 	}
 	
 	new iMode;
+#if defined RECORD
 	decl String:SteamID[32], String:Name[MAX_NAME_LENGTH];
+#endif
 	while ( SQL_FetchRow( TempQuery ) )
 	{
 		iMode = SQL_FetchInt( TempQuery, 0 ); // Using SQL_FieldNameToNum seems to break everything for some reason.
 		flMapBestTime[iMode] = SQL_FetchFloat( TempQuery, 1 );
-		
+#if defined RECORD
 		SQL_FetchString( TempQuery, 2, SteamID, sizeof( SteamID ) );
 		SQL_FetchString( TempQuery, 3, Name, sizeof( Name ) );
 		
@@ -598,7 +607,7 @@ stock bool:InitializeMapBounds()
 			strcopy( MimicName[iMode], sizeof( MimicName[] ), Name );
 		}
 		else PrintToServer( "%s No recording found for %s!", CONSOLE_PREFIX, ModeName[MODENAME_LONG][iMode] );
-		//PrintToServer( "%s Received %s best time: %.3f ( %i )", CONSOLE_PREFIX, ModeName[iMode], flMapBestTime[iMode], iMode );
+#endif
 	}
 	
 	DoMapStuff();
@@ -625,7 +634,7 @@ stock bool:SaveMapCoords( bounds )
 	if ( !SQL_FastQuery( Database, Buffer ) )
 	{
 		SQL_GetError( Database, Error, sizeof( Error ) );
-		LogError( "\n\n%s Couldn't save map's ending bounds!\nError: %s\n\n", CONSOLE_PREFIX, Error );
+		LogError( "%s Couldn't save map's ending bounds!\nError: %s", CONSOLE_PREFIX, Error );
 		
 		return false;
 	}
@@ -653,7 +662,7 @@ stock bool:EraseMapCoords( bounds )
 	if ( !SQL_FastQuery( Database, Buffer ) )
 	{
 		SQL_GetError( Database, Error, sizeof( Error ) );
-		LogError( "\n\n%s Couldn't erase map's ending bounds!\nError: %s\n\n", CONSOLE_PREFIX, Error );
+		LogError( "%s Couldn't erase map's ending bounds!\nError: %s", CONSOLE_PREFIX, Error );
 		
 		return false;
 	}
