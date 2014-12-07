@@ -3,7 +3,7 @@ SM-OpenTimer (Read this!)
 
 SourceMod timer plugin for bunnyhop servers.
 
-I was kind of in the middle of working on the plugin when suddenly I was contacted about the plugin. I decided to release it in a hacky-state. Everything will probably not work yet.
+I was kind of in the middle of working on the plugin when suddenly I was contacted about it. I decided to release it in a hacky-state. However, everything should be stable right now. **The compiled version will always be stable.**
 
 **Dependencies (Optional):**
 - For 260vel weapons: https://forums.alliedmods.net/showthread.php?t=166468
