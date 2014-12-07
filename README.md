@@ -5,6 +5,9 @@ SourceMod timer plugin for bunnyhop servers. **Currently only supports multihop 
 
 I was kind of in the middle of working on the plugin when suddenly I was contacted about the plugin. I decided to release it in a hacky-state. Everything will probably not work yet.
 
+Dependencies:
+- For 260vel weapons: https://forums.alliedmods.net/showthread.php?t=166468
+
 Use these commands, please:
 - bot_quota_mode normal
 - sv_hudhint_sound 0 (lol)
