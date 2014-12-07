@@ -14,3 +14,4 @@ TO-DO LIST:
 - Use better sync, lol. The current one is shitty.
 - More tweaks.
 - More everything.
+- Fix shit.
