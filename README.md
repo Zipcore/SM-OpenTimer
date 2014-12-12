@@ -38,11 +38,11 @@ I was kind of in the middle of working on the plugin when suddenly I was contact
 - Move that into your server's maps folder. Potentially put it in your fast-dl. ;)
 
 **Features:**
-- Timer with semi-working records.
+- Timer with records and semi-working playback (not fully implemented.). 
 - Times saved with SQLite.
-- Toggle HUD elements.
-- Zone building (Starting/Ending/Block Zones)
-- Practising
+- Toggle HUD elements, change FOV, etc.
+- Zone building (Starting-Ending/Block/Freestyle/Bonus1-2 Zones)
+- Practising (not fully implemented.)
 - Simple map voting.
 - Chat processing. (Custom colors for chat.)
 
@@ -52,4 +52,4 @@ I was kind of in the middle of working on the plugin when suddenly I was contact
 - Fix menus.
 - More tweaks.
 - More everything.
-- Fix shit.
+- Fix everything.
