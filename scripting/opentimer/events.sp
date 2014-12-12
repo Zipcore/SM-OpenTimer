@@ -1,15 +1,19 @@
 // Doesn't work?
-public Action:Event_ClientTransmit( ent, client ) // Hide other players
+// Hide other players
+public Action:Event_ClientTransmit( ent, client )
 	return ( client != ent && ent > 0 && ent <= MaxClients ) ? Plugin_Handled : Plugin_Continue;
 
-public Action:Event_ClientName( Handle:event, const String:name[], bool:dontBroadcast )
+// Doesn't work.
+// Hide player name changes.
+/*public Action:Event_ClientName( Handle:event, const String:name[], bool:dontBroadcast )
 {
 	dontBroadcast = true;
 	SetEventBroadcast( event, true );
 	
 	return Plugin_Handled;
-}
+}*/
 
+// Set client ready for the map. Collision groups, bots, transparency, etc.
 public Event_ClientSpawn( Handle:event, const String:name[], bool:dontBroadcast )
 {
 	new client = GetClientOfUserId( GetEventInt( event, "userid" ) );
@@ -18,12 +22,11 @@ public Event_ClientSpawn( Handle:event, const String:name[], bool:dontBroadcast 
 	
 	if ( IsPlayerAlive( client ) && GetClientTeam( client ) > 1 )
 	{
-		if ( bIsLoaded ) TeleportEntity( client, vecSpawnPos, angSpawnAngles, vecNull );
+		if ( bIsLoaded[RUN_MAIN] ) TeleportEntity( client, vecSpawnPos[RUN_MAIN], angSpawnAngles[RUN_MAIN], vecNull );
 		
 		if ( !IsFakeClient( client ) )
 		{
-			if ( bNoBlock )
-				SetEntProp( client, Prop_Data, "m_CollisionGroup", 2 ); // Disable player collisions.
+			SetEntProp( client, Prop_Data, "m_CollisionGroup", 2 ); // Disable player collisions.
 			
 			SetEntityRenderMode( client, RENDER_TRANSALPHA );
 		}
@@ -31,7 +34,7 @@ public Event_ClientSpawn( Handle:event, const String:name[], bool:dontBroadcast 
 		{
 #if defined RECORD
 			// Hide those silly bots that do not have a record :^)
-			if ( iClientTickMax[client] == 0 )
+			if ( iMimicTickMax[ iClientMode[client] ] == 0 )
 				SetEntityRenderMode( client, RENDER_NONE );
 			else
 				SetEntityRenderMode( client, RENDER_TRANSALPHA );
@@ -46,6 +49,7 @@ public Event_ClientSpawn( Handle:event, const String:name[], bool:dontBroadcast 
 	}
 }
 
+// Continued from above event.
 public Action:Timer_ClientSpawn( Handle:timer, any:client )
 {
 	if ( !IsClientInGame( client ) ) return Plugin_Handled;
@@ -55,7 +59,7 @@ public Action:Timer_ClientSpawn( Handle:timer, any:client )
 	if ( IsFakeClient( client ) )
 	{
 #if defined RECORD
-		//SetEntityGravity( client, 0.0 );
+		SetEntityGravity( client, 0.0 );
 		
 		// Also, hide their guns so they are not just floating around
 		new wep;
@@ -98,10 +102,9 @@ public Event_ClientHurt( Handle:event, const String:name[], bool:dontBroadcast )
 public Event_ClientDeath( Handle:event, const String:name[], bool:dontBroadcast )
 {
 	new client = GetClientOfUserId( GetEventInt( event, "userid" ) );
-
+	
 	PrintColorChat( client, client, "%s Type !respawn to spawn again.", CHAT_PREFIX );
 }
-
 //////////
 // CHAT //
 //////////
@@ -119,10 +122,21 @@ public Action:Listener_Say( client, const String:command[], argc )
 		
 		StripQuotes( Arg );
 		
-		if ( !IsPlayerAlive( client ) ) PrintColorChatAll( client, true, "%s[%sSPEC%s] \x03%N\x01 :  %s%s", COLOR_WHITE, COLOR_PURPLE, COLOR_WHITE, client, COLOR_WHITE, Arg );
-		else PrintColorChatAll( client, true, "\x03%N\x01 :  %s%s", client, COLOR_WHITE, Arg );
+#if defined VOTING
+		if ( StrEqual( Arg, "rtv" ) || StrEqual( Arg, "rockthevote" ) || StrEqual( Arg, "nominate" ) || StrEqual( Arg, "choosemap" ) )
+		{
+			ClientCommand( client, "sm_choosemap" );
+			return Plugin_Handled;
+		}
+#endif
+		
+		if ( !IsPlayerAlive( client ) ) PrintColorChatAll( client, true, "%s[%sSPEC%s] \x03%N\x01: %s%s", COLOR_TEXT, COLOR_PURPLE, COLOR_TEXT, client, COLOR_TEXT, Arg );
+		else PrintColorChatAll( client, true, "\x03%N\x01: %s%s", client, COLOR_TEXT, Arg );
 		
 		PrintToServer( "%N: %s", client, Arg );
+		
+		for ( new i = 1; i <= MaxClients; i++ )
+			if ( IsClientInGame( i ) ) PrintToConsole( i, "%N: %s", client, Arg );
 	}
 	
 	return Plugin_Handled;
@@ -153,20 +167,20 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 {
 	if ( !IsPlayerAlive( client ) ) return Plugin_Continue;
 	
-	new bool:_bIsBot = true;
+	new bool:bIsBot = true;
 	if ( !IsFakeClient( client ) )
 	{
-		_bIsBot = false;
-		// MODES AND ANTI-CHEAT
+		bIsBot = false;
+		// MODES AND "ANTI-CHEAT"
 		if ( iClientMode[client] == MODE_SIDEWAYS )
 		{
-			if ( buttons & IN_MOVELEFT ) ForcePlayerSuicide( client );
-			else if ( buttons & IN_MOVERIGHT ) ForcePlayerSuicide( client );
+			if ( buttons & IN_MOVELEFT ) CheckFreestyle( client );
+			else if ( buttons & IN_MOVERIGHT ) CheckFreestyle( client );
 		}
 		else if ( iClientMode[client] == MODE_W )
-			if ( buttons & IN_BACK ) ForcePlayerSuicide( client );
-			else if ( buttons & IN_MOVELEFT ) ForcePlayerSuicide( client );
-			else if ( buttons & IN_MOVERIGHT ) ForcePlayerSuicide( client );
+			if ( buttons & IN_BACK ) CheckFreestyle( client );
+			else if ( buttons & IN_MOVELEFT ) CheckFreestyle( client );
+			else if ( buttons & IN_MOVERIGHT ) CheckFreestyle( client );
 		
 		if ( buttons & IN_RELOAD )
 		{
@@ -182,9 +196,9 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 		
 		// SYNC AND AUTOHOP
 		// We don't want ladders or water counted as jumpable space.
-		if ( GetEntityMoveType( client ) != MOVETYPE_LADDER && GetEntProp( client, Prop_Data, "m_nWaterLevel" ) < 2 )
+		if ( iClientState[client] == STATE_RUNNING && GetEntityMoveType( client ) != MOVETYPE_LADDER && GetEntProp( client, Prop_Data, "m_nWaterLevel" ) < 2 )
 		{
-			if ( bAutoHop && bClientAutoHop[client] )
+			if ( bAutoHop && bClientAutoHop[client] ) // Server setting && Client setting
 			{
 				new oldbuttons = GetEntProp( client, Prop_Data, "m_nOldButtons" );
 				oldbuttons &= ~IN_JUMP;
@@ -281,7 +295,7 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 	else if ( bIsClientMimicing[client] )
 	{
 		new iFrame[FRAME_SIZE];
-		GetArrayArray( hClientRecording[client], iClientTick[client], iFrame, _:FrameInfo );
+		GetArrayArray( hMimicRecording[ iClientMode[client] ], iClientTick[client], iFrame, _:FrameInfo );
 		
 		buttons = iFrame[FRAME_BUTTONS];
 		
@@ -297,6 +311,7 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 			ArrayCopy( iFrame[FRAME_POS], vecPos, 3 );
 			
 			// Using this is very inconsistent.
+			// Again, using DHOOKS for actual teleporting and this for snapshots should make it look a lot better.
 			SetEntPropVector( client, Prop_Send, "m_vecOrigin", vecPos );
 		}
 		
@@ -304,7 +319,7 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 		
 		iClientTick[client]++;
 		
-		if ( iClientTick[client] >= iClientTickMax[client] )
+		if ( iClientTick[client] >= iMimicTickMax[ iClientMode[client] ] )
 		{
 			bIsClientMimicing[client] = false;
 			
@@ -315,16 +330,19 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 		
 		return Plugin_Changed;
 	}
-	else if ( iClientTick[client] == -1 )
+	else if ( iClientTick[client] < 0 )
 	{
-		ArrayCopy( angInitAngles[client], angles, 2 );
+		// -1 means that we are at the start of the run, about to begin our recorded run.
+		// Kinda hacky, but works.
+		ArrayCopy( angInitMimicAngles[ iClientMode[client] ], angles, 2 );
 		vel = vecNull;
 		
-		TeleportEntity( client, vecInitPos[client], angInitAngles[client], vecNull );
+		TeleportEntity( client, vecInitMimicPos[ iClientMode[client] ], angInitMimicAngles[ iClientMode[client] ], vecNull );
 		
 		return Plugin_Changed;
 	}
 #endif
 	
-	return _bIsBot ? Plugin_Handled : Plugin_Continue;
+	// Freezes bots when they don't need to do anything.
+	return bIsBot ? Plugin_Handled : Plugin_Continue;
 }

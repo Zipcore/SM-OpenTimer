@@ -7,6 +7,7 @@ stock ArrayFill( any:Array[], any:data, size = 1 )
 	for ( new i; i < size; i++ )
 		Array[i] = data;
 
+// Format seconds and make them look naic.
 stock FormatSeconds( Float:flSeconds, String:TargetString[], bool:bIsDeci, bool:bColored=false )
 {
 	new iHours, iMinutes;
@@ -53,12 +54,27 @@ stock FormatSeconds( Float:flSeconds, String:TargetString[], bool:bIsDeci, bool:
 		Format( TargetString, 18, "\x03%s\x06:\x03%s\x06:\x03%s", Hours, Minutes, Seconds );
 }
 
+// "Real" velocity
 stock Float:GetClientVelocity( client )
 {
 	decl Float:vecVelocity[3];
 	GetEntPropVector( client, Prop_Data, "m_vecVelocity", vecVelocity );
 	
 	return SquareRoot( ( vecVelocity[0] * vecVelocity[0] ) + ( vecVelocity[1] * vecVelocity[1] ) );
+}
+
+// Tell people what our time is in the clan section of scoreboard.
+stock UpdateScoreboard( client )
+{
+	if ( flClientBestTime[client][ iClientRun[client] ][ iClientMode[client] ] <= 0.0 )
+	{
+		CS_SetClientClanTag( client, "" );
+		return;
+	}
+	
+	decl String:NewTime[13];
+	FormatSeconds( flClientBestTime[client][ iClientRun[client] ][ iClientMode[client] ], NewTime, false );
+	CS_SetClientClanTag( client, NewTime );
 }
 
 stock SetClientFOV( client, fov, bool:bClientSet = false )
@@ -84,28 +100,28 @@ stock GetActivePlayers()
 #if defined VOTING
 stock CalcVotes()
 {
-	new _iClients = GetActivePlayers();
+	new iClients = GetActivePlayers();
 	
-	if ( _iClients < 1 || hMapList == INVALID_HANDLE ) return;
+	if ( iClients < 1 || hMapList == INVALID_HANDLE ) return;
 	
 	new len = GetArraySize( hMapList );
-	new _iMapVotes[len];
+	new iMapVotes[len];
 	
 	// Gather votes
 	for ( new i = 1; i <= MaxClients; i++ )
 		if ( IsClientInGame( i ) && iClientVote[i] != -1 )
-			_iMapVotes[ iClientVote[i] ]++;
+			iMapVotes[ iClientVote[i] ]++;
 	
 	// Check if we have a winrar
 	for ( new i; i < len; i++ )
-		if ( _iMapVotes[i] >= _iClients )
+		if ( iMapVotes[i] >= iClients )
 		{
 			new iMap[MAX_MAP_NAME_LENGTH];
 			GetArrayArray( hMapList, i, iMap, _:MapInfo );
 			strcopy( NextMap, sizeof( NextMap ), iMap[MAP_NAME] );
 			
-			CreateTimer( 3.0, Timer_Vote );
-			PrintColorChatAll( 0, false, "%s Enough people voted for %s! Changing map...", CHAT_PREFIX, NextMap );
+			CreateTimer( 3.0, Timer_ChangeMap );
+			PrintColorChatAll( 0, false, "%s Enough people voted for \x03%s%s! Changing map...", CHAT_PREFIX, NextMap, COLOR_TEXT );
 			
 			return;
 		}
@@ -123,13 +139,25 @@ stock GetMapVotes( index )
 	return amt;
 }
 #endif
+// Used for players and other entities.
 stock bool:IsInsideBounds( ent, bounds )
 {
+	if ( !bZoneExists[bounds] ) return false;
+	
 	decl Float:vecPos[3];
 	GetEntPropVector( ent, Prop_Data, "m_vecOrigin", vecPos );
-	//GetClientAbsOrigin( ent, vecPos );
 	
-	return ( ( ( vecPos[0] >= vecMapBoundsMin[bounds][0] && vecPos[0] <= vecMapBoundsMax[bounds][0] ) || ( vecPos[0] <= vecMapBoundsMin[bounds][0] && vecPos[0] >= vecMapBoundsMax[bounds][0] ) ) && ( ( vecPos[1] >= vecMapBoundsMin[bounds][1] && vecPos[1] <= vecMapBoundsMax[bounds][1] ) || ( vecPos[1] <= vecMapBoundsMin[bounds][1] && vecPos[1] >= vecMapBoundsMax[bounds][1] ) ) && ( ( vecPos[2] >= vecMapBoundsMin[bounds][2] && vecPos[2] <= vecMapBoundsMax[bounds][2] ) || ( vecPos[2] <= vecMapBoundsMin[bounds][2] && vecPos[2] >= vecMapBoundsMax[bounds][2] ) ) );
+	// Basically, a shit ton of checking if the entity is between coordinates.
+	return ( ( ( vecPos[0] >= vecBoundsMin[bounds][0] && vecPos[0] <= vecBoundsMax[bounds][0] ) || ( vecPos[0] <= vecBoundsMin[bounds][0] && vecPos[0] >= vecBoundsMax[bounds][0] ) ) && ( ( vecPos[1] >= vecBoundsMin[bounds][1] && vecPos[1] <= vecBoundsMax[bounds][1] ) || ( vecPos[1] <= vecBoundsMin[bounds][1] && vecPos[1] >= vecBoundsMax[bounds][1] ) ) && ( ( vecPos[2] >= vecBoundsMin[bounds][2] && vecPos[2] <= vecBoundsMax[bounds][2] ) || ( vecPos[2] <= vecBoundsMin[bounds][2] && vecPos[2] >= vecBoundsMax[bounds][2] ) ) );
+}
+
+stock CheckFreestyle( client )
+{
+	if ( IsInsideBounds( client, BOUNDS_FREESTYLE_1 ) || IsInsideBounds( client, BOUNDS_FREESTYLE_2 ) || IsInsideBounds( client, BOUNDS_FREESTYLE_3 ) )
+		return;
+	
+	PrintColorChat( client, client, "%s That key is not allowed in %s!", CHAT_PREFIX, ModeName[MODENAME_LONG][ iClientMode[client] ] );
+	ForcePlayerSuicide( client );
 }
 
 stock PrintColorChat( target, author, const String:Message[], any:... )
@@ -164,7 +192,7 @@ stock SendColorMessage( target, author, const String:Message[] )
 	if ( Buffer != INVALID_HANDLE )
 	{
 		BfWriteByte( Buffer, author );
-		BfWriteByte( Buffer, false );
+		BfWriteByte( Buffer, false ); // false for no console print.
 		BfWriteString( Buffer, Message );
 		
 		EndMessage();
@@ -179,10 +207,10 @@ stock ShowKeyHintText( client, target )
 	{
 		decl String:Time[13], String:TextBuffer[128];
 		
-		if ( flClientBestTime[target][ iClientMode[target] ] != 0.0 )
+		if ( flClientBestTime[target][ iClientRun[target] ][ iClientMode[target] ] != 0.0 )
 		{
 			decl Float:flSeconds;
-			flSeconds = flClientBestTime[target][ iClientMode[target] ];
+			flSeconds = flClientBestTime[target][ iClientRun[target] ][ iClientMode[target] ];
 			
 			decl String:FormattedMyTime[13];
 			FormatSeconds( flSeconds, FormattedMyTime, true );
@@ -211,73 +239,84 @@ stock ShowKeyHintText( client, target )
 	}
 }
 
+// Find a destination where we are supposed to go to when teleporting back to a zone.
 stock DoMapStuff()
 {
-	PrintToServer( "\n%s Fixing map specific stuff...\n", CONSOLE_PREFIX );
+	PrintToServer( "%s Reallocating spawnpoints...", CONSOLE_PREFIX );
 	
-	if ( vecMapBoundsMin[BOUNDS_START][0] < vecMapBoundsMax[BOUNDS_START][0] )
-		vecSpawnPos[0] = vecMapBoundsMin[BOUNDS_START][0] + ( vecMapBoundsMax[BOUNDS_START][0] - vecMapBoundsMin[BOUNDS_START][0] ) / 2;
-	else
-		vecSpawnPos[0] = vecMapBoundsMax[BOUNDS_START][0] + ( vecMapBoundsMin[BOUNDS_START][0] - vecMapBoundsMax[BOUNDS_START][0] ) / 2;
-		
-	if ( vecMapBoundsMin[BOUNDS_START][1] < vecMapBoundsMax[BOUNDS_START][1] )
-		vecSpawnPos[1] = vecMapBoundsMin[BOUNDS_START][1] + ( vecMapBoundsMax[BOUNDS_START][1] - vecMapBoundsMin[BOUNDS_START][1] ) / 2;
-	else
-		vecSpawnPos[1] = vecMapBoundsMax[BOUNDS_START][1] + ( vecMapBoundsMin[BOUNDS_START][1] - vecMapBoundsMax[BOUNDS_START][1] ) / 2;
-		
-	vecSpawnPos[2] = vecMapBoundsMin[BOUNDS_START][2] + 16.0;
-	
-	new ent = -1;
-	// ZM BHOP MAPS
-	while ( ( ent = FindEntityByClassname( ent, "info_player_deathmatch" ) ) != -1 )
-		if ( IsInsideBounds( ent, BOUNDS_START ) )
-		{
-			decl Float:vecOrigin[3];
-			
-			GetEntPropVector( ent, Prop_Data, "m_vecOrigin", vecOrigin );
-			
-			if ( StrEqual( CurrentMap, "bhop_yokai" ) ) vecOrigin[2] -= 64.0; // GOD DAMN IT, YECKOH!
-			else vecOrigin[2] += 4.0;
-			
-			new spawn = CreateEntityByName( "info_player_counterterrorist" );
-			
-			DispatchKeyValueVector( spawn, "origin", vecOrigin );
-			
-			DispatchSpawn( spawn );
-			
-			break;
-		}
-	
-	new bool:_bFound;
-	decl Float:vecAngle[3];
-	
+	new ent;
 	while ( ( ent = FindEntityByClassname( ent, "info_teleport_destination" ) ) != -1 )
 		if ( IsInsideBounds( ent, BOUNDS_START ) )
 		{
-			GetEntPropVector( ent, Prop_Data, "m_vecOrigin", vecSpawnPos );
-			GetEntPropVector( ent, Prop_Data, "m_angRotation", vecAngle );
+			decl Float:angAngle[3];
+			GetEntPropVector( ent, Prop_Data, "m_angRotation", angAngle );
 			
-			_bFound = true;
-			break;
+			ArrayCopy( angAngle, angSpawnAngles[RUN_MAIN], 2 );
+		}
+		else if ( IsInsideBounds( ent, BOUNDS_BONUS_1_START ) )
+		{
+			decl Float:angAngle[3];
+			GetEntPropVector( ent, Prop_Data, "m_angRotation", angAngle );
+			
+			ArrayCopy( angAngle, angSpawnAngles[RUN_BONUS_1], 2 );
+		}
+		else if ( IsInsideBounds( ent, BOUNDS_BONUS_2_START ) )
+		{
+			decl Float:angAngle[3];
+			GetEntPropVector( ent, Prop_Data, "m_angRotation", angAngle );
+			
+			ArrayCopy( angAngle, angSpawnAngles[RUN_BONUS_2], 2 );
 		}
 	
-	if ( !_bFound )
-		while ( ( ent = FindEntityByClassname( ent, "info_target" ) ) != -1 )
-			if ( IsInsideBounds( ent, BOUNDS_START ) )
-			{
-				GetEntPropVector( ent, Prop_Data, "m_vecOrigin", vecSpawnPos );
-				GetEntPropVector( ent, Prop_Data, "m_angRotation", vecAngle );
-				
-				break;
-			}
+	if ( bZoneExists[BOUNDS_START] )
+	{
+		if ( vecBoundsMin[BOUNDS_START][0] < vecBoundsMax[BOUNDS_START][0] )
+			vecSpawnPos[RUN_MAIN][0] = vecBoundsMin[BOUNDS_START][0] + ( vecBoundsMax[BOUNDS_START][0] - vecBoundsMin[BOUNDS_START][0] ) / 2;
+		else
+			vecSpawnPos[RUN_MAIN][0] = vecBoundsMax[BOUNDS_START][0] + ( vecBoundsMin[BOUNDS_START][0] - vecBoundsMax[BOUNDS_START][0] ) / 2;
+			
+		if ( vecBoundsMin[BOUNDS_START][1] < vecBoundsMax[BOUNDS_START][1] )
+			vecSpawnPos[RUN_MAIN][1] = vecBoundsMin[BOUNDS_START][1] + ( vecBoundsMax[BOUNDS_START][1] - vecBoundsMin[BOUNDS_START][1] ) / 2;
+		else
+			vecSpawnPos[RUN_MAIN][1] = vecBoundsMax[BOUNDS_START][1] + ( vecBoundsMin[BOUNDS_START][1] - vecBoundsMax[BOUNDS_START][1] ) / 2;
+			
+		vecSpawnPos[RUN_MAIN][2] = vecBoundsMin[BOUNDS_START][2] + 16.0;
+	}
 	
+	if ( bZoneExists[BOUNDS_BONUS_1_START] )
+	{
+		if ( vecBoundsMin[BOUNDS_BONUS_1_START][0] < vecBoundsMax[BOUNDS_BONUS_1_START][0] )
+			vecSpawnPos[RUN_BONUS_1][0] = vecBoundsMin[BOUNDS_BONUS_1_START][0] + ( vecBoundsMax[BOUNDS_BONUS_1_START][0] - vecBoundsMin[BOUNDS_BONUS_1_START][0] ) / 2;
+		else
+			vecSpawnPos[RUN_BONUS_1][0] = vecBoundsMax[BOUNDS_BONUS_1_START][0] + ( vecBoundsMin[BOUNDS_BONUS_1_START][0] - vecBoundsMax[BOUNDS_BONUS_1_START][0] ) / 2;
+			
+		if ( vecBoundsMin[BOUNDS_BONUS_1_START][1] < vecBoundsMax[BOUNDS_BONUS_1_START][1] )
+			vecSpawnPos[RUN_BONUS_1][1] = vecBoundsMin[BOUNDS_BONUS_1_START][1] + ( vecBoundsMax[BOUNDS_BONUS_1_START][1] - vecBoundsMin[BOUNDS_BONUS_1_START][1] ) / 2;
+		else
+			vecSpawnPos[RUN_BONUS_1][1] = vecBoundsMax[BOUNDS_BONUS_1_START][1] + ( vecBoundsMin[BOUNDS_BONUS_1_START][1] - vecBoundsMax[BOUNDS_BONUS_1_START][1] ) / 2;
+			
+		vecSpawnPos[RUN_BONUS_1][2] = vecBoundsMin[BOUNDS_BONUS_1_START][2] + 16.0;
+	}
+	
+	if ( bZoneExists[BOUNDS_BONUS_2_START] )
+	{
+		if ( vecBoundsMin[BOUNDS_BONUS_2_START][0] < vecBoundsMax[BOUNDS_BONUS_2_START][0] )
+			vecSpawnPos[RUN_BONUS_2][0] = vecBoundsMin[BOUNDS_BONUS_2_START][0] + ( vecBoundsMax[BOUNDS_BONUS_2_START][0] - vecBoundsMin[BOUNDS_BONUS_2_START][0] ) / 2;
+		else
+			vecSpawnPos[RUN_BONUS_2][0] = vecBoundsMax[BOUNDS_BONUS_2_START][0] + ( vecBoundsMin[BOUNDS_BONUS_2_START][0] - vecBoundsMax[BOUNDS_BONUS_2_START][0] ) / 2;
+			
+		if ( vecBoundsMin[BOUNDS_BONUS_2_START][1] < vecBoundsMax[BOUNDS_BONUS_2_START][1] )
+			vecSpawnPos[RUN_BONUS_2][1] = vecBoundsMin[BOUNDS_BONUS_2_START][1] + ( vecBoundsMax[BOUNDS_BONUS_2_START][1] - vecBoundsMin[BOUNDS_BONUS_2_START][1] ) / 2;
+		else
+			vecSpawnPos[RUN_BONUS_2][1] = vecBoundsMax[BOUNDS_BONUS_2_START][1] + ( vecBoundsMin[BOUNDS_BONUS_2_START][1] - vecBoundsMax[BOUNDS_BONUS_2_START][1] ) / 2;
+			
+		vecSpawnPos[RUN_BONUS_2][2] = vecBoundsMin[BOUNDS_BONUS_2_START][2] + 16.0;
+	}
 	
 	if ( FindEntityByClassname( ent, "info_player_counterterrorist" ) != -1 )
 		iPreferedTeam = CS_TEAM_CT;
 	else
 		iPreferedTeam = CS_TEAM_T;
-	
-	ArrayCopy( vecAngle, angSpawnAngles, 2 );
 	
 #if defined DELETE_ENTS
 	CreateTimer( 3.0, Timer_DoMapStuff );
@@ -293,10 +332,6 @@ stock FindMimic( finder )
 	
 	return 0;
 }
-
-stock _CreateFakeClient()
-	if ( iPreferedTeam == CS_TEAM_CT ) ServerCommand( "bot_add_ct" );
-	else ServerCommand( "bot_add_t" );
 
 stock bool:ExCreateDir( const String:Path[] )
 {
@@ -315,7 +350,7 @@ stock bool:ExCreateDir( const String:Path[] )
 }
 
 // RECORD STUFF
-stock bool:SaveRecording( client, iMode, const Handle:hRecording, iLength )
+stock bool:SaveRecording( client, iLength )
 {
 	decl String:SteamID[32];
 	
@@ -341,7 +376,7 @@ stock bool:SaveRecording( client, iMode, const Handle:hRecording, iLength )
 	if ( !ExCreateDir( Path ) ) return false;
 
 	
-	Format( Path, sizeof( Path ), "%s/%s", Path, ModeName[MODENAME_SHORT][iMode] );
+	Format( Path, sizeof( Path ), "%s/%s", Path, ModeName[MODENAME_SHORT][ iClientMode[client] ] );
 	
 	if ( !ExCreateDir( Path ) ) return false;
 	
@@ -375,7 +410,7 @@ stock bool:SaveRecording( client, iMode, const Handle:hRecording, iLength )
 	
 	for ( new i; i < iLength; i++ )
 	{
-		GetArrayArray( hRecording, i, iFrame, _:FrameInfo );
+		GetArrayArray( hClientRecording[client], i, iFrame, _:FrameInfo );
 		
 		if ( !WriteFile( hFile, iFrame, _:FrameInfo, 4 ) )
 		{
@@ -432,8 +467,13 @@ stock bool:LoadRecording( String:SteamID[], iMode )
 		return false;
 	}
 	
-	new iTickCount;
-	ReadFileCell( hFile, iTickCount, 4 );
+	ReadFileCell( hFile, iMimicTickMax[iMode], 4 );
+	
+	if ( iMimicTickMax[iMode] < 1 )
+	{
+		CloseHandle( hFile );
+		return false;
+	}
 	
 	new iHeader[HEADER_SIZE];
 	ReadFile( hFile, _:iHeader[_:HEADER_INITPOS], 3, 4 );
@@ -446,7 +486,7 @@ stock bool:LoadRecording( String:SteamID[], iMode )
 	new iFrame[FRAME_SIZE];
 	hMimicRecording[iMode] = CreateArray( _:FrameInfo );
 	
-	for ( new i; i < iTickCount; i++ )
+	for ( new i; i < iMimicTickMax[iMode]; i++ )
 	{
 		if ( ReadFile( hFile, iFrame, _:FrameInfo, 4 ) == -1 )
 		{

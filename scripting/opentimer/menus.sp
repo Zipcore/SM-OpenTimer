@@ -10,40 +10,40 @@ public Action:Command_ToggleHUD( client, args )
 
 	
 	if ( iClientHideFlags[client] & HIDEHUD_HUD )
-		AddMenuItem( hHudMenu, "_", "HUD: OFF" );
+		AddMenuItem( hHudMenu, "", "HUD: OFF" );
 	else
-		AddMenuItem( hHudMenu, "_", "HUD: ON" );
+		AddMenuItem( hHudMenu, "", "HUD: ON" );
 	
 	
 	if ( iClientHideFlags[client] & HIDEHUD_VM )
-		AddMenuItem( hHudMenu, "_", "Viewmodel: OFF" );
+		AddMenuItem( hHudMenu, "", "Viewmodel: OFF" );
 	else
-		AddMenuItem( hHudMenu, "_", "Viewmodel: ON" );
+		AddMenuItem( hHudMenu, "", "Viewmodel: ON" );
 		
 		
 	if ( iClientHideFlags[client] & HIDEHUD_PLAYERS )
-		AddMenuItem( hHudMenu, "_", "Players: OFF" );
+		AddMenuItem( hHudMenu, "", "Players: OFF" );
 	else
-		AddMenuItem( hHudMenu, "_", "Players: ON" );
+		AddMenuItem( hHudMenu, "", "Players: ON" );
 	
 	
 	if ( iClientHideFlags[client] & HIDEHUD_TIMER )
-		AddMenuItem( hHudMenu, "_", "Timer: OFF" );
+		AddMenuItem( hHudMenu, "", "Timer: OFF" );
 	else
-		AddMenuItem( hHudMenu, "_", "Timer: ON" );
+		AddMenuItem( hHudMenu, "", "Timer: ON" );
 	
 	
 	if ( iClientHideFlags[client] & HIDEHUD_SIDEINFO )
-		AddMenuItem( hHudMenu, "_", "Sidebar: OFF" );
+		AddMenuItem( hHudMenu, "", "Sidebar: OFF" );
 	else
-		AddMenuItem( hHudMenu, "_", "Sidebar: ON" );
+		AddMenuItem( hHudMenu, "", "Sidebar: ON" );
 	
 	if ( iClientHideFlags[client] & HIDEHUD_CHAT )
-		AddMenuItem( hHudMenu, "_", "Chat: OFF\n " );
+		AddMenuItem( hHudMenu, "", "Chat: OFF\n " );
 	else
-		AddMenuItem( hHudMenu, "_", "Chat: ON\n " );
+		AddMenuItem( hHudMenu, "", "Chat: ON\n " );
 	
-	AddMenuItem( hHudMenu, "_", "Exit" );
+	AddMenuItem( hHudMenu, "", "Exit" );
 	SetMenuExitButton( hHudMenu, false );
 	
 	DisplayMenu( hHudMenu, client, MENU_TIME_FOREVER );
@@ -218,11 +218,11 @@ public Action:Command_VoteMap( client, args )
 		GetArrayArray( hMapList, i, iMap, _:MapInfo );
 		strcopy( MapName, sizeof( MapName ), iMap[MAP_NAME] );
 		
-		AddMenuItem( hVoteMenu, "_", MapName );
+		AddMenuItem( hVoteMenu, "", MapName );
 	}
 	
-	//AddMenuItem( hVoteMenu, "_", "\n", ITEMDRAW_RAWLINE );
-	AddMenuItem( hVoteMenu, "_", "Exit" );
+	//AddMenuItem( hVoteMenu, "", "\n", ITEMDRAW_RAWLINE );
+	AddMenuItem( hVoteMenu, "", "Exit" );
 	SetMenuExitButton( hVoteMenu, false );
 	
 	DisplayMenu( hVoteMenu, client, MENU_TIME_FOREVER );
@@ -242,21 +242,28 @@ public Handler_Vote( Handle:hVoteMenu, MenuAction:action, client, index )
 	else if ( action == MenuAction_Select )
 	{	
 		if ( iClientVote[client] != index )
-		{
-			new iMap[MAX_MAP_NAME_LENGTH];
-			decl String:MapName[MAX_MAP_NAME_LENGTH];
+		{	
+			new len = GetArraySize( hMapList );
 			
-			GetArrayArray( hMapList, index, iMap, _:MapInfo );
-			strcopy( iMap[MAP_NAME], sizeof( iMap[MAP_NAME] ), MapName );
-			
-			if ( iClientVote[client] != -1 )
-				PrintColorChatAll( client, false, "%s \x03%N%s changed his/her vote to %s!", CHAT_PREFIX, client, COLOR_WHITE, MapName );
-			else
-				PrintColorChatAll( client, false, "%s \x03%N%s voted for %s!", CHAT_PREFIX, client, COLOR_WHITE, MapName );
-			
-			iClientVote[client] = index;
-			
-			CalcVotes();
+			if ( index < len )
+			{
+				new iMap[MAX_MAP_NAME_LENGTH];
+				decl String:MapName[MAX_MAP_NAME_LENGTH];
+				
+				GetArrayArray( hMapList, index, iMap, _:MapInfo );
+				
+				strcopy( MapName, sizeof( MapName ), iMap[MAP_NAME] );
+				
+				if ( iClientVote[client] != -1 )
+					PrintColorChatAll( client, false, "%s \x03%N%s changed his/her vote to \x03%s%s!", CHAT_PREFIX, client, COLOR_TEXT, MapName, COLOR_TEXT );
+				else
+					PrintColorChatAll( client, false, "%s \x03%N%s voted for \x03%s%s!", CHAT_PREFIX, client, COLOR_TEXT, MapName, COLOR_TEXT );
+				
+				iClientVote[client] = index;
+				
+				CalcVotes();
+				//else PrintColorChat( client, client, "%s Was unable to process your vote. Try again.", CHAT_PREFIX );
+			}
 		}
 	}
 }
@@ -277,29 +284,29 @@ public Action:Command_Admin_ZoneMenu( client, args )
 	
 	if ( iBuilderIndex == 0 )
 	{
-		AddMenuItem( hZoneMenu, "_", "New Zone" );
-		AddMenuItem( hZoneMenu, "_", "End Zone", ITEMDRAW_DISABLED );
-		AddMenuItem( hZoneMenu, "_", GridSize );
+		AddMenuItem( hZoneMenu, "", "New Zone" );
+		AddMenuItem( hZoneMenu, "", "End Zone", ITEMDRAW_DISABLED );
+		AddMenuItem( hZoneMenu, "", GridSize );
 	}
 	else
 	{
-		AddMenuItem( hZoneMenu, "_", "New Zone", ITEMDRAW_DISABLED );
+		AddMenuItem( hZoneMenu, "", "New Zone", ITEMDRAW_DISABLED );
 		
 		if ( iBuilderIndex == client )
 		{
-			AddMenuItem( hZoneMenu, "_", "End Zone" );
-			AddMenuItem( hZoneMenu, "_", GridSize );
+			AddMenuItem( hZoneMenu, "", "End Zone" );
+			AddMenuItem( hZoneMenu, "", GridSize );
 		}
 		else
 		{
-			AddMenuItem( hZoneMenu, "_", "End Zone", ITEMDRAW_DISABLED );
-			AddMenuItem( hZoneMenu, "_", GridSize, ITEMDRAW_DISABLED );
+			AddMenuItem( hZoneMenu, "", "End Zone", ITEMDRAW_DISABLED );
+			AddMenuItem( hZoneMenu, "", GridSize, ITEMDRAW_DISABLED );
 		}
 	}
 	
-	AddMenuItem( hZoneMenu, "_", "Delete Zone\n " );
+	AddMenuItem( hZoneMenu, "", "Delete Zone\n " );
 	
-	AddMenuItem( hZoneMenu, "_", "Exit" );
+	AddMenuItem( hZoneMenu, "", "Exit" );
 	SetMenuExitButton( hZoneMenu, false );
 	
 	DisplayMenu( hZoneMenu, client, MENU_TIME_FOREVER );
@@ -350,17 +357,17 @@ public Action:Command_Admin_ZoneStart( client, args )
 	
 	SetMenuTitle( hZoneCreate, "Zone Creation\n " );
 	
-	new bool:_bFound;
+	new bool:bFound;
 	
 	for ( new i; i < MAX_BOUNDS; i++ )
 		if ( !bZoneExists[i] )
 		{
-			AddMenuItem( hZoneCreate, "_", ZoneNames[i] );
-			_bFound = true;
+			AddMenuItem( hZoneCreate, "", ZoneNames[i] );
+			bFound = true;
 		}
-		else AddMenuItem( hZoneCreate, "_", ZoneNames[i], ITEMDRAW_DISABLED );
+		else AddMenuItem( hZoneCreate, "", ZoneNames[i], ITEMDRAW_DISABLED );
 	
-	if ( !_bFound )
+	if ( !bFound )
 	{
 		PrintColorChat( client, client, "%s All the zones already exist!", CHAT_PREFIX );
 		
@@ -368,8 +375,8 @@ public Action:Command_Admin_ZoneStart( client, args )
 		return Plugin_Handled;
 	}
 	
-	//AddMenuItem( hZoneCreate, "_", "\n", ITEMDRAW_RAWLINE );
-	AddMenuItem( hZoneCreate, "_", "Exit" );
+	//AddMenuItem( hZoneCreate, "", "\n", ITEMDRAW_RAWLINE );
+	AddMenuItem( hZoneCreate, "", "Exit" );
 	SetMenuExitButton( hZoneCreate, false );
 	
 	DisplayMenu( hZoneCreate, client, MENU_TIME_FOREVER );
@@ -393,9 +400,9 @@ public Handler_ZoneCreate( Handle:hZoneCreate, MenuAction:action, client, zone )
 			decl Float:vecClientPos[3];
 			GetClientAbsOrigin( client, vecClientPos );
 			
-			vecMapBoundsMin[zone][0] = vecClientPos[0] - ( RoundFloat( vecClientPos[0] ) % iBuilderGridSize );
-			vecMapBoundsMin[zone][1] = vecClientPos[1] - ( RoundFloat( vecClientPos[1] ) % iBuilderGridSize );
-			vecMapBoundsMin[zone][2] = float( RoundFloat( vecClientPos[2] - 0.5 ) );
+			vecBoundsMin[zone][0] = vecClientPos[0] - ( RoundFloat( vecClientPos[0] ) % iBuilderGridSize );
+			vecBoundsMin[zone][1] = vecClientPos[1] - ( RoundFloat( vecClientPos[1] ) % iBuilderGridSize );
+			vecBoundsMin[zone][2] = float( RoundFloat( vecClientPos[2] - 0.5 ) );
 			
 			iBuilderZone = zone;
 			iBuilderIndex = client;
@@ -419,17 +426,17 @@ public Action:Command_Admin_ZoneDelete( client, args )
 	
 	SetMenuTitle( hZoneDelete, "Zone Delete\n " );
 	
-	new bool:_bFound;
+	new bool:bFound;
 	
 	for ( new i; i < MAX_BOUNDS; i++ )
 		if ( bZoneExists[i] )
 		{
-			AddMenuItem( hZoneDelete, "_", ZoneNames[i] );
-			_bFound = true;
+			AddMenuItem( hZoneDelete, "", ZoneNames[i] );
+			bFound = true;
 		}
-		else AddMenuItem( hZoneDelete, "_", ZoneNames[i], ITEMDRAW_DISABLED );
+		else AddMenuItem( hZoneDelete, "", ZoneNames[i], ITEMDRAW_DISABLED );
 	
-	if ( !_bFound )
+	if ( !bFound )
 	{
 		PrintColorChat( client, client, "%s There are no zones!", CHAT_PREFIX );
 		
@@ -437,8 +444,8 @@ public Action:Command_Admin_ZoneDelete( client, args )
 		return Plugin_Handled;
 	}
 	
-	//AddMenuItem( hZoneDelete, "_", "\n", ITEMDRAW_RAWLINE );
-	AddMenuItem( hZoneDelete, "_", "Exit" );
+	//AddMenuItem( hZoneDelete, "", "\n", ITEMDRAW_RAWLINE );
+	AddMenuItem( hZoneDelete, "", "Exit" );
 	SetMenuExitButton( hZoneDelete, false );
 	
 	DisplayMenu( hZoneDelete, client, MENU_TIME_FOREVER );
@@ -448,7 +455,7 @@ public Action:Command_Admin_ZoneDelete( client, args )
 
 public Handler_ZoneDelete( Handle:hZoneCreate, MenuAction:action, client, zone )
 {
-	PrintToServer( "INDEX: %i", zone );
+	//PrintToServer( "INDEX: %i", zone );
 	
 	if ( action == MenuAction_End )
 	{
@@ -459,12 +466,6 @@ public Handler_ZoneDelete( Handle:hZoneCreate, MenuAction:action, client, zone )
 	}
 	else if ( action == MenuAction_Select )
 	{
-		// 0 = START
-		// 1 = END
-		// 2 = BLOCK_1
-		// 3 = BLOCK_2
-		// 4 = BLOCK_3
-		// 5 = MAXBOUNDS
 		if ( zone > -1 && zone < MAX_BOUNDS )
 		{
 			bZoneExists[zone] = false;
@@ -473,7 +474,7 @@ public Handler_ZoneDelete( Handle:hZoneCreate, MenuAction:action, client, zone )
 			
 			if ( zone == BOUNDS_START || zone == BOUNDS_END )
 			{
-				bIsLoaded = false;
+				bIsLoaded[RUN_MAIN] = false;
 				PrintColorChatAll( client, false, "%s Map is currently not available for running!", CHAT_PREFIX );
 			}
 			

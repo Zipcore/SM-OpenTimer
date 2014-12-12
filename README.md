@@ -1,13 +1,22 @@
 SM-OpenTimer (Read this!)
 ============
 
-SourceMod timer plugin for bunnyhop servers.
+SourceMod timer plugin for *CSS* bunnyhop servers.
 
 I was kind of in the middle of working on the plugin when suddenly I was contacted about it. I decided to release it in a hacky-state. However, everything should be stable right now. **The compiled version will always be stable.**
 
 **Dependencies (Optional):**
 - For 260vel weapons: https://forums.alliedmods.net/showthread.php?t=166468
 - For multihop (Maps with func_door platforms.): https://forums.alliedmods.net/showthread.php?t=90467
+
+**SQLite Required (Put this in your sourcemod/configs/databases.cfg)**
+
+    "default"
+    {
+    	"driver"	"sqlite"
+    	"database"	"database_name"
+    	"host"		"localhost"
+    }
 
 **Use these commands, please:**
 - bot_quota_mode normal

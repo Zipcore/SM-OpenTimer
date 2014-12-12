@@ -1,3 +1,4 @@
+// Every 3600 seconds we check if there are any players around. If not, we restart the map for performance reasons.
 public Action:Timer_RestartMap( Handle:hTimer )
 {
 	PrintToServer( "%s Attempting to restart map!", CONSOLE_PREFIX );
@@ -20,13 +21,13 @@ public Action:Timer_Connected( Handle:hTimer, any:client )
 	
 	PrintColorChat( client, client, "%s Type !commands for more info.", CHAT_PREFIX );
 	
-	if ( !bIsLoaded )
+	if ( !bIsLoaded[RUN_MAIN] )
 		PrintColorChat( client, client, "%s No records are available for this map!", CHAT_PREFIX );
 	
 	return Plugin_Handled;
 }
 
-//#define SYMBOL_PERCENT 0x25
+// Main component of the HUD timer.
 public Action:Timer_ShowClientInfo( Handle:hTimer, any:client )
 {
 	if ( !IsClientInGame( client ) ) return Plugin_Stop;
@@ -57,7 +58,7 @@ public Action:Timer_ShowClientInfo( Handle:hTimer, any:client )
 			}
 		}
 		
-		if ( !bIsLoaded )
+		if ( !bIsLoaded[ iClientRun[client] ] )
 		{
 			PrintHintText( client, "Speed: %.1f", GetClientVelocity( target ) );
 			return Plugin_Continue;
@@ -72,25 +73,25 @@ public Action:Timer_ShowClientInfo( Handle:hTimer, any:client )
 		decl Float:flSeconds, Float:flBestSeconds, String:TextBuffer[92];
 		new char = '-';
 		
-		if ( iClientState[target] != STATE_RUNNING ) flSeconds = flClientFinishTime[target][ iClientMode[target] ];
+		if ( iClientState[target] != STATE_RUNNING ) flSeconds = flClientFinishTime[target];
 		else flSeconds = GetEngineTime() - flClientStartTime[target];
 		
-		if ( flMapBestTime[ iClientMode[target] ] > flSeconds )
-			flBestSeconds = flMapBestTime[ iClientMode[target] ] - flSeconds;
-		else if ( flMapBestTime[ iClientMode[target] ] > 0.0 )
+		if ( flMapBestTime[ iClientRun[target] ][ iClientMode[target] ] > flSeconds )
+			flBestSeconds = flMapBestTime[ iClientRun[target] ][ iClientMode[target] ] - flSeconds;
+		else if ( flMapBestTime[ iClientRun[target] ][ iClientMode[target] ] > 0.0 )
 		{
-			flBestSeconds = flSeconds - flMapBestTime[ iClientMode[target] ];
+			flBestSeconds = flSeconds - flMapBestTime[ iClientRun[target] ][ iClientMode[target] ];
 			char = '+';
 		}
 		
 		decl String:FormattedMyTime[13], String:FormattedBestTime[13];
 		FormatSeconds( flSeconds, FormattedMyTime, false );
 		
-		if ( flMapBestTime[ iClientMode[target] ] != 0.0 )
+		if ( flMapBestTime[ iClientRun[target] ][ iClientMode[target] ] != 0.0 )
 			FormatSeconds( flBestSeconds, FormattedBestTime, false );
 		
 		// 00:00:00.0\n(+00:00:00.0)Vel - 1000.0\nStrafes - 1000
-		if ( flMapBestTime[ iClientMode[target] ] > 0.0 )
+		if ( flMapBestTime[ iClientRun[target] ][ iClientMode[target] ] > 0.0 )
 			Format( TextBuffer, sizeof( TextBuffer ), "%s\n(%c%s)\n \nSpeed: %.1f", FormattedMyTime, char, FormattedBestTime, GetClientVelocity( target ) );
 		else
 			Format( TextBuffer, sizeof( TextBuffer ), "%s\n \nSpeed: %.1f", FormattedMyTime, GetClientVelocity( target ) );
@@ -129,11 +130,18 @@ public Action:Timer_DoMapStuff( Handle:hTimer )
 static const BeamColor[MAX_BOUNDS][] = {
 	{ 0, 255, 0, 255 },
 	{ 255, 0, 0, 255 },
+	{ 255, 0, 255, 255 },
+	{ 255, 0, 0, 255 },
+	{ 255, 0, 255, 255 },
+	{ 255, 0, 0, 255 },
 	{ 255, 128, 0, 255 },
 	{ 255, 128, 0, 255 },
-	{ 255, 128, 0, 255 }
+	{ 255, 128, 0, 255 },
+	{ 0, 255, 255, 255 },
+	{ 0, 255, 255, 255 },
+	{ 0, 255, 255, 255 }
 };
-public Action:Timer_DrawZoneBeams( Handle:timer, any:flTime )
+public Action:Timer_DrawZoneBeams( Handle:hTimer )
 {
 	decl Float:flPoint4Min[3], Float:flPoint4Max[3], Float:flPoint3Min[3], Float:flPoint2Min[3], Float:flPoint2Max[3], Float:flPoint1Max[3];
 	
@@ -141,53 +149,53 @@ public Action:Timer_DrawZoneBeams( Handle:timer, any:flTime )
 	{
 		if ( !bZoneExists[i] ) continue;
 		
-		flPoint4Min[0] = vecMapBoundsMin[i][0]; flPoint4Min[1] = vecMapBoundsMax[i][1]; flPoint4Min[2] = vecMapBoundsMin[i][2] + 2.0;
-		flPoint4Max[0] = vecMapBoundsMin[i][0]; flPoint4Max[1] = vecMapBoundsMax[i][1]; flPoint4Max[2] = vecMapBoundsMax[i][2] - 2.0;
+		flPoint4Min[0] = vecBoundsMin[i][0]; flPoint4Min[1] = vecBoundsMax[i][1]; flPoint4Min[2] = vecBoundsMin[i][2] + 2.0;
+		flPoint4Max[0] = vecBoundsMin[i][0]; flPoint4Max[1] = vecBoundsMax[i][1]; flPoint4Max[2] = vecBoundsMax[i][2] - 2.0;
 		
-		flPoint3Min[0] = vecMapBoundsMax[i][0]; flPoint3Min[1] = vecMapBoundsMax[i][1]; flPoint3Min[2] = vecMapBoundsMin[i][2] + 2.0;
-		//flStartPoint3Max[0] = vecMapBoundsMax[i][0]; flStartPoint3Max[1] = vecMapBoundsMax[i][1]; flStartPoint3Max[2] = vecMapBoundsMax[i][2] - 2.0;
+		flPoint3Min[0] = vecBoundsMax[i][0]; flPoint3Min[1] = vecBoundsMax[i][1]; flPoint3Min[2] = vecBoundsMin[i][2] + 2.0;
+		//flStartPoint3Max[0] = vecBoundsMax[i][0]; flStartPoint3Max[1] = vecBoundsMax[i][1]; flStartPoint3Max[2] = vecBoundsMax[i][2] - 2.0;
 		
-		flPoint2Min[0] = vecMapBoundsMax[i][0]; flPoint2Min[1] = vecMapBoundsMin[i][1]; flPoint2Min[2] = vecMapBoundsMin[i][2] + 2.0;
-		flPoint2Max[0] = vecMapBoundsMax[i][0]; flPoint2Max[1] = vecMapBoundsMin[i][1]; flPoint2Max[2] = vecMapBoundsMax[i][2] - 2.0;
+		flPoint2Min[0] = vecBoundsMax[i][0]; flPoint2Min[1] = vecBoundsMin[i][1]; flPoint2Min[2] = vecBoundsMin[i][2] + 2.0;
+		flPoint2Max[0] = vecBoundsMax[i][0]; flPoint2Max[1] = vecBoundsMin[i][1]; flPoint2Max[2] = vecBoundsMax[i][2] - 2.0;
 		
-		//flStartPoint1Min[0] = vecMapBoundsMin[i][0]; flStartPoint1Min[1] = vecMapBoundsMin[i][1]; flStartPoint1Min[2] = vecMapBoundsMin[i][2] + 2.0;
-		flPoint1Max[0] = vecMapBoundsMin[i][0]; flPoint1Max[1] = vecMapBoundsMin[i][1]; flPoint1Max[2] = vecMapBoundsMax[i][2] - 2.0;
+		//flStartPoint1Min[0] = vecBoundsMin[i][0]; flStartPoint1Min[1] = vecBoundsMin[i][1]; flStartPoint1Min[2] = vecBoundsMin[i][2] + 2.0;
+		flPoint1Max[0] = vecBoundsMin[i][0]; flPoint1Max[1] = vecBoundsMin[i][1]; flPoint1Max[2] = vecBoundsMax[i][2] - 2.0;
 		
 		
-		TE_SetupBeamPoints( vecMapBoundsMin[i], flPoint1Max, iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( vecBoundsMin[i], flPoint1Max, iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( vecMapBoundsMin[i], flPoint4Min, iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( vecBoundsMin[i], flPoint4Min, iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( vecMapBoundsMin[i], flPoint2Min, iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( vecBoundsMin[i], flPoint2Min, iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint3Min, vecMapBoundsMax[i], iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( flPoint3Min, vecBoundsMax[i], iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint3Min, flPoint4Min, iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( flPoint3Min, flPoint4Min, iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint3Min, flPoint2Min, iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( flPoint3Min, flPoint2Min, iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint2Max, flPoint2Min, iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( flPoint2Max, flPoint2Min, iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint2Max, flPoint1Max, iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( flPoint2Max, flPoint1Max, iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint2Max, vecMapBoundsMax[i], iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( flPoint2Max, vecBoundsMax[i], iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint4Max, flPoint4Min, iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( flPoint4Max, flPoint4Min, iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint4Max, flPoint1Max, iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( flPoint4Max, flPoint1Max, iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint4Max, vecMapBoundsMax[i], iBeam, 0, 0, 0, flTime, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( flPoint4Max, vecBoundsMax[i], iBeam, 0, 0, 0, BOUNDS_UPDATE_INTERVAL, 4.0, 2.0, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 	}
 	
@@ -212,25 +220,25 @@ public Action:Timer_DrawBuildZoneBeams( Handle:timer, any:client )
 	
 	decl Float:flPoint4Min[3], Float:flPoint4Max[3], Float:flPoint3Min[3], Float:flPoint2Min[3], Float:flPoint2Max[3], Float:flPoint1Max[3];
 	
-	flPoint4Min[0] = vecMapBoundsMin[iBuilderZone][0]; flPoint4Min[1] = vecClientPos[1]; flPoint4Min[2] = vecMapBoundsMin[iBuilderZone][2];
-	flPoint4Max[0] = vecMapBoundsMin[iBuilderZone][0]; flPoint4Max[1] = vecClientPos[1]; flPoint4Max[2] = vecClientPos[2];
+	flPoint4Min[0] = vecBoundsMin[iBuilderZone][0]; flPoint4Min[1] = vecClientPos[1]; flPoint4Min[2] = vecBoundsMin[iBuilderZone][2];
+	flPoint4Max[0] = vecBoundsMin[iBuilderZone][0]; flPoint4Max[1] = vecClientPos[1]; flPoint4Max[2] = vecClientPos[2];
 	
-	flPoint3Min[0] = vecClientPos[0]; flPoint3Min[1] = vecClientPos[1]; flPoint3Min[2] = vecMapBoundsMin[iBuilderZone][2];
-	//flPoint3Max[0] = vecMapBoundsMax[iBuilderZone][0]; flPoint3Max[1] = vecMapBoundsMax[iBuilderZone][1]; flPoint3Max[2] = vecMapBoundsMax[iBuilderZone][2];
+	flPoint3Min[0] = vecClientPos[0]; flPoint3Min[1] = vecClientPos[1]; flPoint3Min[2] = vecBoundsMin[iBuilderZone][2];
+	//flPoint3Max[0] = vecBoundsMax[iBuilderZone][0]; flPoint3Max[1] = vecBoundsMax[iBuilderZone][1]; flPoint3Max[2] = vecBoundsMax[iBuilderZone][2];
 	
-	flPoint2Min[0] = vecClientPos[0]; flPoint2Min[1] = vecMapBoundsMin[iBuilderZone][1]; flPoint2Min[2] = vecMapBoundsMin[iBuilderZone][2];
-	flPoint2Max[0] = vecClientPos[0]; flPoint2Max[1] = vecMapBoundsMin[iBuilderZone][1]; flPoint2Max[2] = vecClientPos[2];
+	flPoint2Min[0] = vecClientPos[0]; flPoint2Min[1] = vecBoundsMin[iBuilderZone][1]; flPoint2Min[2] = vecBoundsMin[iBuilderZone][2];
+	flPoint2Max[0] = vecClientPos[0]; flPoint2Max[1] = vecBoundsMin[iBuilderZone][1]; flPoint2Max[2] = vecClientPos[2];
 	
-	//flPoint1Min[0] = vecMapBoundsMin[iBuilderZone][0]; flPoint1Min[1] = vecMapBoundsMin[iBuilderZone][1]; flPoint1Min[2] = vecMapBoundsMin[iBuilderZone][2];
-	flPoint1Max[0] = vecMapBoundsMin[iBuilderZone][0]; flPoint1Max[1] = vecMapBoundsMin[iBuilderZone][1]; flPoint1Max[2] = vecClientPos[2];
+	//flPoint1Min[0] = vecBoundsMin[iBuilderZone][0]; flPoint1Min[1] = vecBoundsMin[iBuilderZone][1]; flPoint1Min[2] = vecBoundsMin[iBuilderZone][2];
+	flPoint1Max[0] = vecBoundsMin[iBuilderZone][0]; flPoint1Max[1] = vecBoundsMin[iBuilderZone][1]; flPoint1Max[2] = vecClientPos[2];
 	
-	TE_SetupBeamPoints( vecMapBoundsMin[iBuilderZone], flPoint1Max, iBeam, 0, 0, 0, 0.1, 4.0, 2.0, 0, 0.0, BeamColor[iBuilderZone], 0 );
+	TE_SetupBeamPoints( vecBoundsMin[iBuilderZone], flPoint1Max, iBeam, 0, 0, 0, 0.1, 4.0, 2.0, 0, 0.0, BeamColor[iBuilderZone], 0 );
 	TE_SendToClient( client, 0.0 );
 	
-	TE_SetupBeamPoints( vecMapBoundsMin[iBuilderZone], flPoint4Min, iBeam, 0, 0, 0, 0.1, 4.0, 2.0, 0, 0.0, BeamColor[iBuilderZone], 0 );
+	TE_SetupBeamPoints( vecBoundsMin[iBuilderZone], flPoint4Min, iBeam, 0, 0, 0, 0.1, 4.0, 2.0, 0, 0.0, BeamColor[iBuilderZone], 0 );
 	TE_SendToClient( client, 0.0 );
 	
-	TE_SetupBeamPoints( vecMapBoundsMin[iBuilderZone], flPoint2Min, iBeam, 0, 0, 0, 0.1, 4.0, 2.0, 0, 0.0, BeamColor[iBuilderZone], 0 );
+	TE_SetupBeamPoints( vecBoundsMin[iBuilderZone], flPoint2Min, iBeam, 0, 0, 0, 0.1, 4.0, 2.0, 0, 0.0, BeamColor[iBuilderZone], 0 );
 	TE_SendToClient( client, 0.0 );
 	
 	TE_SetupBeamPoints( flPoint3Min, vecClientPos, iBeam, 0, 0, 0, 0.1, 4.0, 2.0, 0, 0.0, BeamColor[iBuilderZone], 0 );
@@ -268,7 +276,7 @@ public Action:Timer_DrawBuildZoneBeams( Handle:timer, any:client )
 #if defined RECORD
 public Action:Timer_Rec_Start( Handle:hTimer, any:mimic )
 {
-	if ( !IsClientInGame( mimic ) || !IsFakeClient( mimic ) || hClientRecording[mimic] == INVALID_HANDLE )
+	if ( !IsClientInGame( mimic ) || !IsFakeClient( mimic ) || hMimicRecording[ iClientMode[mimic] ] == INVALID_HANDLE )
 		return Plugin_Handled;
 	
 	iClientTick[mimic] = 0;
@@ -280,11 +288,11 @@ public Action:Timer_Rec_Start( Handle:hTimer, any:mimic )
 // WAIT TIME BETWEEN RECORDS
 public Action:Timer_Rec_Restart( Handle:hTimer, any:mimic )
 {
-	if ( !IsClientInGame( mimic ) || !IsFakeClient( mimic ) || hClientRecording[mimic] == INVALID_HANDLE )
+	if ( !IsClientInGame( mimic ) || !IsFakeClient( mimic ) || hMimicRecording[ iClientMode[mimic] ] == INVALID_HANDLE )
 		return Plugin_Handled;
 	
 	iClientTick[mimic] = -1;
-	TeleportEntity( mimic, vecInitPos[mimic], angInitAngles[mimic], vecNull );
+	TeleportEntity( mimic, vecInitMimicPos[ iClientMode[mimic] ], angInitMimicAngles[ iClientMode[mimic] ], vecNull );
 	SetEntProp( mimic, Prop_Data, "m_nButtons", 0 );
 	
 	CreateTimer( 2.0, Timer_Rec_Start, mimic );
@@ -297,14 +305,15 @@ public Action:Timer_Rec_Stop( Handle:hTimer, any:mimic )
 	if ( !IsClientInGame( mimic ) || !IsFakeClient( mimic ) )
 		return Plugin_Handled;
 	
-	CloseHandle( hClientRecording[mimic] );
+	CloseHandle( hMimicRecording[ iClientMode[mimic] ] );
 	AcceptEntityInput( mimic, "Kill" );
 	
 	return Plugin_Handled;
 }
 #endif
+
 #if defined VOTING
-public Action:Timer_Vote( Handle:hTimer )
+public Action:Timer_ChangeMap( Handle:hTimer )
 {
 	ServerCommand( "changelevel %s", NextMap );
 	return Plugin_Handled;
