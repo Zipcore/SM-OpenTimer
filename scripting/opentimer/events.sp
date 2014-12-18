@@ -1,60 +1,72 @@
-// Doesn't work?
-// Hide other players
+// Hide other players ( doesn't work with bots? )
 public Action:Event_ClientTransmit( ent, client )
-	return ( client != ent && ent > 0 && ent <= MaxClients ) ? Plugin_Handled : Plugin_Continue;
-
-// Doesn't work.
-// Hide player name changes.
-/*public Action:Event_ClientName( Handle:event, const String:name[], bool:dontBroadcast )
+{
+	if ( !IsPlayerAlive( client ) ) return Plugin_Continue;
+	
+	return ( client != ent ) ? Plugin_Handled : Plugin_Continue;
+}
+// Hide player name changes. Doesn't work.
+/*public Action:Event_ClientName( Handle:hEvent, const String:name[], bool:dontBroadcast )
 {
 	dontBroadcast = true;
-	SetEventBroadcast( event, true );
+	SetEventBroadcast( hEvent, true );
 	
 	return Plugin_Handled;
 }*/
-
-// Set client ready for the map. Collision groups, bots, transparency, etc.
-public Event_ClientSpawn( Handle:event, const String:name[], bool:dontBroadcast )
+/*public Event_ClientChangeTeam( Handle:hEvent, const String:name[], bool:dontBroadcast )
 {
-	new client = GetClientOfUserId( GetEventInt( event, "userid" ) );
+	if ( GetEventBool( hEvent, "disconnect" ) ) return;
 	
-	if ( client < 1 ) return;
-	
-	if ( IsPlayerAlive( client ) && GetClientTeam( client ) > 1 )
+	if ( GetEventInt( hEvent, "team" ) > 1 )
 	{
-		if ( bIsLoaded[RUN_MAIN] ) TeleportEntity( client, vecSpawnPos[RUN_MAIN], angSpawnAngles[RUN_MAIN], vecNull );
+		new client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) );
+		
+		if ( !IsPlayerAlive( client ) )
+			CreateTimer( 0.1, Timer_RespawnClient, GetClientUserId( client ) );
+	}
+}
+public Action:Timer_RespawnClient( Handle:hTimer, any:client )
+{
+	if ( ( client = GetClientOfUserId( client ) ) > 0 )
+		CS_RespawnPlayer( client );
+}*/
+// Set client ready for the map. Collision groups, bots, transparency, etc.
+public Event_ClientSpawn( Handle:hEvent, const String:name[], bool:dontBroadcast )
+{
+	new client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) );
+	
+	if ( client < 1 || GetClientTeam( client ) < 2 ) return;
+	
+	if ( IsPlayerAlive( client ) )
+	{
+		if ( bIsLoaded[ iClientRun[client] ] )
+			TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+	
+		SetEntityRenderMode( client, RENDER_TRANSALPHA );
+		SetEntityRenderColor( client, _, _, _, 64 );
 		
 		if ( !IsFakeClient( client ) )
-		{
 			SetEntProp( client, Prop_Data, "m_CollisionGroup", 2 ); // Disable player collisions.
-			
-			SetEntityRenderMode( client, RENDER_TRANSALPHA );
-		}
 		else
-		{
-#if defined RECORD
-			// Hide those silly bots that do not have a record :^)
-			if ( iMimicTickMax[ iClientMode[client] ] == 0 )
-				SetEntityRenderMode( client, RENDER_NONE );
-			else
-				SetEntityRenderMode( client, RENDER_TRANSALPHA );
-#endif
 			SetEntProp( client, Prop_Data, "m_CollisionGroup", 1 ); // No trigger collision for bots.
-		}
-		
-		CreateTimer( 0.1, Timer_ClientSpawn, client );
-		
-		
-		SetEntityRenderColor( client, _, _, _, 92 );
 	}
+	
+	CreateTimer( 0.1, Timer_ClientSpawn, GetClientUserId( client ) );
 }
 
 // Continued from above event.
 public Action:Timer_ClientSpawn( Handle:timer, any:client )
 {
-	if ( !IsClientInGame( client ) ) return Plugin_Handled;
+	if ( ( client = GetClientOfUserId( client ) ) < 1 ) return Plugin_Handled;
 	
-	SetEntProp( client, Prop_Data, "m_nHitboxSet", 2 );
+	// Hides deathnotices, health and weapon. Radar and crosshair stuff can be disabled client side. Disabling those won't allow you to switch between weapons.
+	if ( iClientHideFlags[client] & HIDEHUD_HUD ) SetEntProp( client, Prop_Data, "m_iHideHUD", HIDE_FLAGS );
+	if ( iClientHideFlags[client] & HIDEHUD_VM ) SetEntProp( client, Prop_Data, "m_bDrawViewmodel", 0 );
+	
+	if ( !IsPlayerAlive( client ) )
+		return Plugin_Handled;
+		
+	SetEntProp( client, Prop_Data, "m_nHitboxSet", 2 ); // Don't get damaged from weapons.
 	
 	if ( IsFakeClient( client ) )
 	{
@@ -63,9 +75,10 @@ public Action:Timer_ClientSpawn( Handle:timer, any:client )
 		
 		// Also, hide their guns so they are not just floating around
 		new wep;
-		for ( new i; i < 4; i++ )
+		for ( new i; i < 6; i++ )
 			if ( ( wep = GetPlayerWeaponSlot( client, i ) ) > 0 )
-				SetEntityRenderMode( wep, RENDER_NONE );
+				AcceptEntityInput( wep, "Kill" );
+				//SetEntityRenderMode( wep, RENDER_NONE );
 #endif
 
 		return Plugin_Handled;
@@ -73,35 +86,31 @@ public Action:Timer_ClientSpawn( Handle:timer, any:client )
 	
 	SetClientFOV( client, iClientFOV[client], false );
 	
-	// Hides deathnotices, health and weapon. Radar and crosshair stuff can be disabled client side. Disabling those won't allow you to switch between weapons.
-	if ( iClientHideFlags[client] & HIDEHUD_HUD ) SetEntProp( client, Prop_Data, "m_iHideHUD", HIDE_FLAGS );
-	if ( iClientHideFlags[client] & HIDEHUD_VM ) SetEntProp( client, Prop_Data, "m_bDrawViewmodel", 0 );
-	
 	return Plugin_Handled;
 }
 ////////////
 // EZHOP //
 ////////////
-public Event_ClientJump( Handle:event, const String:name[], bool:dontBroadcast )
+public Event_ClientJump( Handle:hEvent, const String:name[], bool:dontBroadcast )
 {
 	if ( !bAutoHop ) return;
 	
-	SetEntPropFloat( GetClientOfUserId( GetEventInt( event, "userid" ) ), Prop_Send, "m_flStamina", 0.0 );
+	SetEntPropFloat( GetClientOfUserId( GetEventInt( hEvent, "userid" ) ), Prop_Send, "m_flStamina", 0.0 );
 }
 
-public Event_ClientHurt( Handle:event, const String:name[], bool:dontBroadcast )
+public Event_ClientHurt( Handle:hEvent, const String:name[], bool:dontBroadcast )
 {
-	if ( !bAutoHop ) return;
+	new client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) );
 	
-	new client = GetClientOfUserId( GetEventInt( event, "userid" ) );
-	
-	SetEntPropFloat( client, Prop_Send, "m_flVelocityModifier", 1.0 );
+	if ( bAutoHop )
+		SetEntPropFloat( client, Prop_Send, "m_flVelocityModifier", 1.0 );
+		
 	SetEntProp( client, Prop_Data, "m_iHealth", 100 );
 }
 
-public Event_ClientDeath( Handle:event, const String:name[], bool:dontBroadcast )
+public Event_ClientDeath( Handle:hEvent, const String:name[], bool:dontBroadcast )
 {
-	new client = GetClientOfUserId( GetEventInt( event, "userid" ) );
+	new client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) );
 	
 	PrintColorChat( client, client, "%s Type !respawn to spawn again.", CHAT_PREFIX );
 }
@@ -111,10 +120,12 @@ public Event_ClientDeath( Handle:event, const String:name[], bool:dontBroadcast 
 #if defined CHAT
 public Action:Listener_Say( client, const String:command[], argc )
 {
-	if ( client == 0 ) return Plugin_Continue; // No team messages
+	if ( client == 0 ) return Plugin_Continue;
 	
 	if ( IsClientInGame( client ) )
 	{
+		if ( BaseComm_IsClientGagged( client ) ) return Plugin_Handled;
+		
 		decl String:Arg[130]; // MAX MESSAGE LENGTH ( SayText ) + QUOTES
 		GetCmdArgString( Arg, sizeof( Arg ) );
 		
@@ -147,21 +158,28 @@ public Action:Listener_Say( client, const String:command[], argc )
 //////////////////////////////////////
 
 #if defined RECORD
-static bool:bClientTeleported[MAXPLAYERS_BHOP];
+//static bool:bClientTeleported[MAXPLAYERS_BHOP];
 
-public Event_Teleport( const String:output[], caller, activator, Float:delay )
+public MRESReturn:Event_OnTeleport( client, Handle:hParams ) // This is called only on real players.
 {
-	// This is a really bad way to do this, lol.
-	// Have to update to use DHOOKS.
-	if ( activator < 1 || activator > MaxClients ) return;
+	if ( iClientState[client] == STATE_RUNNING && hClientRecording[client] != INVALID_HANDLE && !DHookIsNullParam( hParams, 1 ) )
+	{
+		decl Float:vecOrigin[3];
+		DHookGetParamVector( hParams, 1, vecOrigin );
+		
+		new index = GetArraySize( hClientRecording[client] ) - 1;
+		
+		if ( index < 0 ) return MRES_Ignored;
+		
+		SetArrayCell( hClientRecording[client], index, FRAMEFLAG_TELEPORT, 12 );
+		SetArrayCell( hClientRecording[client], index, vecOrigin[2], 11 );
+		SetArrayCell( hClientRecording[client], index, vecOrigin[1], 10 );
+		SetArrayCell( hClientRecording[client], index, vecOrigin[0], 9 );
+	}
 	
-	if ( bIsClientRecording[activator] )
-		bClientTeleported[activator] = true;
+	return MRES_Ignored;
 }
 #endif
-
-static iClientSync[MAXPLAYERS_BHOP];
-static Float:flClientLastVel[MAXPLAYERS_BHOP];
 
 public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon, &subtype, &cmdnum, &tickcount, &seed, mouse[2] )
 {
@@ -172,20 +190,35 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 	{
 		bIsBot = false;
 		// MODES AND "ANTI-CHEAT"
-		if ( iClientMode[client] == MODE_SIDEWAYS )
+		if ( iClientStyle[client] == STYLE_SIDEWAYS )
 		{
-			if ( buttons & IN_MOVELEFT ) CheckFreestyle( client );
-			else if ( buttons & IN_MOVERIGHT ) CheckFreestyle( client );
+			if ( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) CheckFreestyle( client );
 		}
-		else if ( iClientMode[client] == MODE_W )
-			if ( buttons & IN_BACK ) CheckFreestyle( client );
-			else if ( buttons & IN_MOVELEFT ) CheckFreestyle( client );
-			else if ( buttons & IN_MOVERIGHT ) CheckFreestyle( client );
-		
-		if ( buttons & IN_RELOAD )
+		else if ( iClientStyle[client] == STYLE_W )
 		{
-			SetEntProp( client, Prop_Data, "m_iFOV", iClientFOV[client] );
-			SetEntProp( client, Prop_Data, "m_iDefaultFOV", iClientFOV[client] );
+			if ( buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) CheckFreestyle( client );
+		}
+		else if ( iClientStyle[client] == STYLE_REAL_HSW )
+		{
+			// We have to have something pressed in order to get punish.
+			if ( buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_FORWARD || buttons & IN_MOVERIGHT )
+			{
+				// Prevents people from holding left+forward+back
+				// Allow them to hold all keys, tho
+				if ( ( buttons & IN_BACK || buttons & IN_FORWARD ) && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) ) CheckFreestyle( client );
+				// Not holding back+right and back+left
+				// Not holding forward+right and forward+left
+				else if ( 	( ( !( buttons & IN_BACK ) && !( buttons & IN_MOVERIGHT ) ) && ( !( buttons & IN_BACK ) && !( buttons & IN_MOVELEFT ) ) ) ||
+							( ( !( buttons & IN_FORWARD ) && !( buttons & IN_MOVERIGHT ) ) && ( !( buttons & IN_FORWARD ) && !( buttons & IN_MOVELEFT ) ) ) )
+					CheckFreestyle( client );
+			}
+						
+		}
+		else if ( iClientStyle[client] == STYLE_HSW )
+		{
+			if ( buttons & IN_BACK ) CheckFreestyle( client );
+			else if ( buttons & IN_BACK || ( buttons & IN_FORWARD && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) ) )
+				CheckFreestyle( client );
 		}
 		
 		if ( !bForbiddenCommands )
@@ -194,69 +227,84 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 			if ( buttons & IN_RIGHT ) ForcePlayerSuicide( client );
 		}
 		
-		// SYNC AND AUTOHOP
-		// We don't want ladders or water counted as jumpable space.
-		if ( iClientState[client] == STATE_RUNNING && GetEntityMoveType( client ) != MOVETYPE_LADDER && GetEntProp( client, Prop_Data, "m_nWaterLevel" ) < 2 )
+		if ( buttons & IN_RELOAD )
 		{
-			if ( bAutoHop && bClientAutoHop[client] ) // Server setting && Client setting
-			{
-				new oldbuttons = GetEntProp( client, Prop_Data, "m_nOldButtons" );
-				oldbuttons &= ~IN_JUMP;
-				
-				SetEntProp( client, Prop_Data, "m_nOldButtons", oldbuttons );
-			}
+			SetEntProp( client, Prop_Data, "m_iFOV", iClientFOV[client] );
+			SetEntProp( client, Prop_Data, "m_iDefaultFOV", iClientFOV[client] );
+		}
+		
+		// AUTOHOP
+		if ( bAutoHop /*&& bClientAutoHop[client]*/ ) // Server setting && Client setting
+		{
+			new oldbuttons = GetEntProp( client, Prop_Data, "m_nOldButtons" );
+			oldbuttons &= ~IN_JUMP;
 			
+			SetEntProp( client, Prop_Data, "m_nOldButtons", oldbuttons );
+		}
+		
+		// We don't want ladders or water counted as jumpable space.
+		if ( GetEntityMoveType( client ) != MOVETYPE_LADDER && GetEntProp( client, Prop_Data, "m_nWaterLevel" ) < 2 )
+		{	
 			new flags = GetEntityFlags( client );
 			
 			if ( buttons & IN_JUMP && flags & FL_ONGROUND )
 				iClientJumpCount[client]++;
 			
-			if ( !( flags & FL_ONGROUND ) )
+			// SYNC
+			if ( iClientState[client] == STATE_RUNNING )
 			{
-				if ( iClientLastStrafe[client] != STRAFE_LEFT && buttons & IN_MOVELEFT && !( buttons & IN_MOVERIGHT ) && mouse[0] < 0 )
-				{
-					// Player is in 'perfect' left strafe.
-					iClientLastStrafe[client] = STRAFE_LEFT;
-					iClientStrafeCount[client]++;
-				}
-				else if ( iClientLastStrafe[client] != STRAFE_RIGHT && buttons & IN_MOVERIGHT && !( buttons & IN_MOVELEFT ) && mouse[0] > 0 )
-				{
-					// Player is in 'perfect' right strafe.
-					iClientLastStrafe[client] = STRAFE_RIGHT;
-					iClientStrafeCount[client]++;
-				}
-				/*else if ( iClientLastStrafe[client] != STRAFE_RIGHT && mouse[0] > 0 && ( buttons & IN_MOVELEFT || !( buttons & IN_MOVERIGHT ) ) )
-				{
-					// Mouse going right but we're not holding right strafe key!
-					iClientGoodSync[client][ iClientSync[client] ] = 0;
-					iClientSync[client]++;
-				}
-				else if ( iClientLastStrafe[client] != STRAFE_LEFT && mouse[0] < 0 && ( buttons & IN_MOVERIGHT || !( buttons & IN_MOVELEFT ) ) )
-				{
-					// Mouse going left but we're not holding left strafe key!
-					iClientGoodSync[client][ iClientSync[client] ] = 0;
-					iClientSync[client]++;
-				}*/
-				
-				if ( ( buttons & IN_MOVERIGHT || buttons & IN_MOVELEFT ) && mouse[0] != 0 )
+				static Float:flClientLastVel[MAXPLAYERS_BHOP];
+			
+				if ( !( flags & FL_ONGROUND ) ) // Only calc sync in air. If we're not in air, we reset our last speed.
 				{
 					new Float:flCurVel = GetClientVelocity( client );
 					
-					if ( flClientLastVel[client] < flCurVel )
-						iClientGoodSync[client][ iClientSync[client] ] = 1;
-					else
+					if ( mouse[0] != 0 ) // We're moving our mouse, but are we gaining speed?
+					{
+						static iClientSync[MAXPLAYERS_BHOP];
+						
+						if ( flClientLastVel[client] < flCurVel )
+							iClientGoodSync[client][ iClientSync[client] ] = 1;
+						else
+							iClientGoodSync[client][ iClientSync[client] ] = 0;
+						
+						iClientSync[client]++;
+						
+						flClientLastVel[client] = flCurVel;
+						
+						if ( iClientSync[client] >= SYNC_MAX_SAMPLES )
+							iClientSync[client] = 0;
+					}
+					
+					// If we haven't strafes to the left and mouse is going to the left, etc.
+					if ( iClientLastStrafe[client] != STRAFE_LEFT && mouse[0] < 0/* && flCurVel >= flClientLastVel[client]*/ )
+					{
+						// Player is in 'perfect' left strafe.
+						iClientLastStrafe[client] = STRAFE_LEFT;
+						iClientStrafeCount[client]++;
+					}
+					else if ( iClientLastStrafe[client] != STRAFE_RIGHT && mouse[0] > 0/* && flCurVel >= flClientLastVel[client]*/  )
+					{
+						// Player is in 'perfect' right strafe.
+						iClientLastStrafe[client] = STRAFE_RIGHT;
+						iClientStrafeCount[client]++;
+					}
+					/*else if ( iClientLastStrafe[client] != STRAFE_RIGHT && mouse[0] > 0 && ( buttons & IN_MOVELEFT || !( buttons & IN_MOVERIGHT ) ) )
+					{
+						// Mouse going right but we're not holding right strafe key!
 						iClientGoodSync[client][ iClientSync[client] ] = 0;
-					
-					iClientSync[client]++;
-					
-					flClientLastVel[client] = flCurVel;
-					
-					if ( iClientSync[client] >= SYNC_MAX_SAMPLES )
-						iClientSync[client] = 0;
+						iClientSync[client]++;
+					}
+					else if ( iClientLastStrafe[client] != STRAFE_LEFT && mouse[0] < 0 && ( buttons & IN_MOVERIGHT || !( buttons & IN_MOVELEFT ) ) )
+					{
+						// Mouse going left but we're not holding left strafe key!
+						iClientGoodSync[client][ iClientSync[client] ] = 0;
+						iClientSync[client]++;
+					}*/
 				}
+				else if ( !( buttons & IN_JUMP ) )
+					flClientLastVel[client] = 0.0;
 			}
-			else if ( !( buttons & IN_JUMP ) )
-				flClientLastVel[client] = 0.0;
 		}
 	}
 	
@@ -278,14 +326,13 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 		GetEntPropVector( client, Prop_Data, "m_vecAbsVelocity", vecAbsVelocity );
 		iFrame[FRAME_ABSVELOCITY] = vecAbsVelocity;
 		
-		if ( iClientTick[client] % SNAPSHOT_INTERVAL == 0 || iClientTick[client] == 0 || bClientTeleported[client] )
+		if ( iClientTick[client] % SNAPSHOT_INTERVAL == 0 || iClientTick[client] == 0 || GetEntityMoveType( client ) == MOVETYPE_LADDER )
 		{
 			decl Float:vecPos[3];
 			GetClientAbsOrigin( client, vecPos );
 			ArrayCopy( vecPos, iFrame[FRAME_POS], 3 );
-			
-			bClientTeleported[client] = false;
-			iFrame[FRAME_DOTELE] = true;
+
+			iFrame[FRAME_FLAGS] = FRAMEFLAG_SNAPSHOT;
 		}
 		
 		iClientTick[client]++;
@@ -295,7 +342,7 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 	else if ( bIsClientMimicing[client] )
 	{
 		new iFrame[FRAME_SIZE];
-		GetArrayArray( hMimicRecording[ iClientMode[client] ], iClientTick[client], iFrame, _:FrameInfo );
+		GetArrayArray( hMimicRecording[ iClientRun[client] ][ iClientStyle[client] ], iClientTick[client], iFrame, _:FrameInfo );
 		
 		buttons = iFrame[FRAME_BUTTONS];
 		
@@ -305,21 +352,23 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 		decl Float:vecAbsVelocity[3];
 		ArrayCopy( iFrame[FRAME_ABSVELOCITY], vecAbsVelocity, 3 );
 		
-		if ( iFrame[FRAME_DOTELE] )
+		if ( iFrame[FRAME_FLAGS] > 0 )
 		{
 			decl Float:vecPos[3];
 			ArrayCopy( iFrame[FRAME_POS], vecPos, 3 );
 			
-			// Using this is very inconsistent.
-			// Again, using DHOOKS for actual teleporting and this for snapshots should make it look a lot better.
-			SetEntPropVector( client, Prop_Send, "m_vecOrigin", vecPos );
+			if ( iFrame[FRAME_FLAGS] == FRAMEFLAG_TELEPORT )
+				TeleportEntity( client, vecPos, NULL_VECTOR, NULL_VECTOR );
+			else
+				SetEntPropVector( client, Prop_Send, "m_vecOrigin", vecPos );
+				
 		}
 		
 		TeleportEntity( client, NULL_VECTOR, angles, vecAbsVelocity );
 		
 		iClientTick[client]++;
 		
-		if ( iClientTick[client] >= iMimicTickMax[ iClientMode[client] ] )
+		if ( iClientTick[client] >= iMimicTickMax[ iClientRun[client] ][ iClientStyle[client] ] )
 		{
 			bIsClientMimicing[client] = false;
 			
@@ -334,10 +383,10 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 	{
 		// -1 means that we are at the start of the run, about to begin our recorded run.
 		// Kinda hacky, but works.
-		ArrayCopy( angInitMimicAngles[ iClientMode[client] ], angles, 2 );
+		ArrayCopy( angInitMimicAngles[ iClientRun[client] ][ iClientStyle[client] ], angles, 2 );
 		vel = vecNull;
 		
-		TeleportEntity( client, vecInitMimicPos[ iClientMode[client] ], angInitMimicAngles[ iClientMode[client] ], vecNull );
+		TeleportEntity( client, vecInitMimicPos[ iClientRun[client] ][ iClientStyle[client] ], angInitMimicAngles[ iClientRun[client] ][ iClientStyle[client] ], vecNull );
 		
 		return Plugin_Changed;
 	}

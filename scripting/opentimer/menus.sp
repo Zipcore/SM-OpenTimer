@@ -46,7 +46,7 @@ public Action:Command_ToggleHUD( client, args )
 	AddMenuItem( hHudMenu, "", "Exit" );
 	SetMenuExitButton( hHudMenu, false );
 	
-	DisplayMenu( hHudMenu, client, MENU_TIME_FOREVER );
+	DisplayMenu( hHudMenu, client, 5 );
 	
 	return Plugin_Handled;
 }
@@ -448,7 +448,7 @@ public Action:Command_Admin_ZoneDelete( client, args )
 	AddMenuItem( hZoneDelete, "", "Exit" );
 	SetMenuExitButton( hZoneDelete, false );
 	
-	DisplayMenu( hZoneDelete, client, MENU_TIME_FOREVER );
+	DisplayMenu( hZoneDelete, client, 5 );
 	
 	return Plugin_Handled;
 }
@@ -478,9 +478,60 @@ public Handler_ZoneDelete( Handle:hZoneCreate, MenuAction:action, client, zone )
 				PrintColorChatAll( client, false, "%s Map is currently not available for running!", CHAT_PREFIX );
 			}
 			
-			EraseMapCoords( zone );
+			EraseCurMapCoords( zone );
 		}
 		
 		ClientCommand( client, "sm_zone" );
+	}
+}
+
+public Action:Command_Style( client, args )
+{
+	if ( client < 1 ) return Plugin_Handled;
+	
+	if ( !IsPlayerAlive( client ) )
+	{
+		PrintColorChat( client, client, "%s You must be alive to change your style!", CHAT_PREFIX );
+		return Plugin_Handled;
+	}
+	
+	SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
+	
+	new Handle:hModeMenu = CreateMenu( Handler_Mode );
+	
+	SetMenuTitle( hModeMenu, "Choose Style\n " );
+	
+	for ( new i; i < MAX_STYLES; i++ )
+		if ( iClientStyle[client] != i )
+			AddMenuItem( hModeMenu, "", StyleName[NAME_LONG][i] );
+		else
+			AddMenuItem( hModeMenu, "", StyleName[NAME_LONG][i], ITEMDRAW_DISABLED );
+
+	AddMenuItem( hModeMenu, "", "Exit" );
+	SetMenuExitButton( hModeMenu, false );
+	
+	DisplayMenu( hModeMenu, client, 5 );
+	
+	return Plugin_Handled;
+}
+
+public Handler_Mode( Handle:hModeMenu, MenuAction:action, client, style )
+{
+	if ( action == MenuAction_End )
+	{
+		if ( client > 0 && iClientHideFlags[client] & HIDEHUD_HUD )
+			SetEntProp( client, Prop_Data, "m_iHideHUD", 3946 );
+			
+		CloseHandle( hModeMenu );
+	}
+	else if ( action == MenuAction_Select )
+	{
+		if ( style > -1 && style < MAX_STYLES )
+		{
+			TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+			iClientStyle[client] = style;
+			
+			PrintColorChat( client, client, "%s Your style is now \x03%s%s!", CHAT_PREFIX, StyleName[NAME_LONG][style], COLOR_TEXT );
+		}
 	}
 }

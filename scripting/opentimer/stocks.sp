@@ -66,14 +66,14 @@ stock Float:GetClientVelocity( client )
 // Tell people what our time is in the clan section of scoreboard.
 stock UpdateScoreboard( client )
 {
-	if ( flClientBestTime[client][ iClientRun[client] ][ iClientMode[client] ] <= 0.0 )
+	if ( flClientBestTime[client][ iClientRun[client] ][ iClientStyle[client] ] <= 0.0 )
 	{
 		CS_SetClientClanTag( client, "" );
 		return;
 	}
 	
 	decl String:NewTime[13];
-	FormatSeconds( flClientBestTime[client][ iClientRun[client] ][ iClientMode[client] ], NewTime, false );
+	FormatSeconds( flClientBestTime[client][ iClientRun[client] ][ iClientStyle[client] ], NewTime, false );
 	CS_SetClientClanTag( client, NewTime );
 }
 
@@ -126,18 +126,6 @@ stock CalcVotes()
 			return;
 		}
 }
-
-stock GetMapVotes( index )
-{
-	new amt;
-	
-	// Gather votes
-	for ( new i = 1; i <= MaxClients; i++ )
-		if ( IsClientInGame( i ) && iClientVote[i] == index )
-			amt++;
-	
-	return amt;
-}
 #endif
 // Used for players and other entities.
 stock bool:IsInsideBounds( ent, bounds )
@@ -153,11 +141,24 @@ stock bool:IsInsideBounds( ent, bounds )
 
 stock CheckFreestyle( client )
 {
-	if ( IsInsideBounds( client, BOUNDS_FREESTYLE_1 ) || IsInsideBounds( client, BOUNDS_FREESTYLE_2 ) || IsInsideBounds( client, BOUNDS_FREESTYLE_3 ) )
+	if ( iClientState[client] == STATE_START
+		|| IsInsideBounds( client, BOUNDS_FREESTYLE_1 )
+		|| IsInsideBounds( client, BOUNDS_FREESTYLE_2 )
+		|| IsInsideBounds( client, BOUNDS_FREESTYLE_3 ) )
 		return;
 	
-	PrintColorChat( client, client, "%s That key is not allowed in %s!", CHAT_PREFIX, ModeName[MODENAME_LONG][ iClientMode[client] ] );
-	ForcePlayerSuicide( client );
+	ClientCommand( client, "-forward; -back; -moveleft; -moveright" );
+	
+	PrintColorChat( client, client, "%s That key is not allowed in \x03%s%s!", CHAT_PREFIX, StyleName[NAME_LONG][ iClientStyle[client] ], COLOR_TEXT );
+	
+	
+	if ( !bIsLoaded[ iClientRun[client] ] )
+	{
+		ForcePlayerSuicide( client );
+		return;
+	}
+	
+	TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
 }
 
 stock PrintColorChat( target, author, const String:Message[], any:... )
@@ -192,7 +193,7 @@ stock SendColorMessage( target, author, const String:Message[] )
 	if ( Buffer != INVALID_HANDLE )
 	{
 		BfWriteByte( Buffer, author );
-		BfWriteByte( Buffer, false ); // false for no console print.
+		BfWriteByte( Buffer, false ); // false for no console print. We do this manually because it would display the hex codes in the console.
 		BfWriteString( Buffer, Message );
 		
 		EndMessage();
@@ -207,10 +208,10 @@ stock ShowKeyHintText( client, target )
 	{
 		decl String:Time[13], String:TextBuffer[128];
 		
-		if ( flClientBestTime[target][ iClientRun[target] ][ iClientMode[target] ] != 0.0 )
+		if ( flClientBestTime[target][ iClientRun[target] ][ iClientStyle[target] ] != 0.0 )
 		{
 			decl Float:flSeconds;
-			flSeconds = flClientBestTime[target][ iClientRun[target] ][ iClientMode[target] ];
+			flSeconds = flClientBestTime[target][ iClientRun[target] ][ iClientStyle[target] ];
 			
 			decl String:FormattedMyTime[13];
 			FormatSeconds( flSeconds, FormattedMyTime, true );
@@ -227,10 +228,14 @@ stock ShowKeyHintText( client, target )
 			for ( new i; i < SYNC_MAX_SAMPLES; i++ )
 				flSyncTotal += iClientGoodSync[target][i];
 			
-			Format( TextBuffer, sizeof( TextBuffer ), "Strafes: %i\nSync: %.1f\nJumps: %i\n \nMode: %s\nPersonal Best: %s", iClientStrafeCount[target], ( flSyncTotal / SYNC_MAX_SAMPLES ) * 100, iClientJumpCount[target], ModeName[MODENAME_LONG][ iClientMode[target] ], Time );
+			Format( TextBuffer, sizeof( TextBuffer ), "Strafes: %i\nSync: %.1f\nJumps: %i\n \nStyle: %s\nPersonal Best: %s", iClientStrafeCount[target], ( flSyncTotal / SYNC_MAX_SAMPLES ) * 100, iClientJumpCount[target], StyleName[NAME_LONG][ iClientStyle[target] ], Time );
+			/*if ( iClientStyle[target] == STYLE_NORMAL )
+				Format( TextBuffer, sizeof( TextBuffer ), "Strafes: %i\nSync: %.1f\nJumps: %i\n \nStyle: %s\nPersonal Best: %s", iClientStrafeCount[target], ( flSyncTotal / SYNC_MAX_SAMPLES ) * 100, iClientJumpCount[target], StyleName[NAME_LONG][ iClientStyle[target] ], Time );
+			else
+				Format( TextBuffer, sizeof( TextBuffer ), "Jumps: %i\n \nStyle: %s\nPersonal Best: %s", iClientJumpCount[target], StyleName[NAME_LONG][ iClientStyle[target] ], Time );*/
 		}
 		else
-			Format( TextBuffer, sizeof( TextBuffer ), "Mode: %s\nPersonal Best: %s", ModeName[MODENAME_LONG][ iClientMode[target] ], Time );
+			Format( TextBuffer, sizeof( TextBuffer ), "Style: %s\nPersonal Best: %s", StyleName[NAME_LONG][ iClientStyle[target] ], Time );
 		
 		BfWriteByte( Buffer, 1 );
 		BfWriteString( Buffer, TextBuffer );
@@ -244,7 +249,7 @@ stock DoMapStuff()
 {
 	PrintToServer( "%s Reallocating spawnpoints...", CONSOLE_PREFIX );
 	
-	new ent;
+	new ent, bool:bFoundAng[MAX_RUNS];
 	while ( ( ent = FindEntityByClassname( ent, "info_teleport_destination" ) ) != -1 )
 		if ( IsInsideBounds( ent, BOUNDS_START ) )
 		{
@@ -252,6 +257,7 @@ stock DoMapStuff()
 			GetEntPropVector( ent, Prop_Data, "m_angRotation", angAngle );
 			
 			ArrayCopy( angAngle, angSpawnAngles[RUN_MAIN], 2 );
+			bFoundAng[RUN_MAIN] = true;
 		}
 		else if ( IsInsideBounds( ent, BOUNDS_BONUS_1_START ) )
 		{
@@ -259,6 +265,7 @@ stock DoMapStuff()
 			GetEntPropVector( ent, Prop_Data, "m_angRotation", angAngle );
 			
 			ArrayCopy( angAngle, angSpawnAngles[RUN_BONUS_1], 2 );
+			bFoundAng[RUN_BONUS_1] = true;
 		}
 		else if ( IsInsideBounds( ent, BOUNDS_BONUS_2_START ) )
 		{
@@ -266,6 +273,7 @@ stock DoMapStuff()
 			GetEntPropVector( ent, Prop_Data, "m_angRotation", angAngle );
 			
 			ArrayCopy( angAngle, angSpawnAngles[RUN_BONUS_2], 2 );
+			bFoundAng[RUN_BONUS_2] = true;
 		}
 	
 	if ( bZoneExists[BOUNDS_START] )
@@ -281,6 +289,9 @@ stock DoMapStuff()
 			vecSpawnPos[RUN_MAIN][1] = vecBoundsMax[BOUNDS_START][1] + ( vecBoundsMin[BOUNDS_START][1] - vecBoundsMax[BOUNDS_START][1] ) / 2;
 			
 		vecSpawnPos[RUN_MAIN][2] = vecBoundsMin[BOUNDS_START][2] + 16.0;
+		
+		if ( !bFoundAng[RUN_MAIN] )
+			angSpawnAngles[RUN_MAIN][1] = ArcTangent2( vecBoundsMin[BOUNDS_END][1] - vecBoundsMin[BOUNDS_START][1], vecBoundsMin[BOUNDS_END][0] - vecBoundsMin[BOUNDS_START][0] ) * 180 / 3.14159265359;
 	}
 	
 	if ( bZoneExists[BOUNDS_BONUS_1_START] )
@@ -296,6 +307,9 @@ stock DoMapStuff()
 			vecSpawnPos[RUN_BONUS_1][1] = vecBoundsMax[BOUNDS_BONUS_1_START][1] + ( vecBoundsMin[BOUNDS_BONUS_1_START][1] - vecBoundsMax[BOUNDS_BONUS_1_START][1] ) / 2;
 			
 		vecSpawnPos[RUN_BONUS_1][2] = vecBoundsMin[BOUNDS_BONUS_1_START][2] + 16.0;
+		
+		if ( !bFoundAng[RUN_BONUS_1] )
+			angSpawnAngles[RUN_BONUS_1][1] = ArcTangent2( vecBoundsMin[BOUNDS_BONUS_1_END][1] - vecBoundsMin[BOUNDS_BONUS_1_START][1], vecBoundsMin[BOUNDS_BONUS_1_END][0] - vecBoundsMin[BOUNDS_BONUS_1_START][0] ) * 180 / 3.14159265359;
 	}
 	
 	if ( bZoneExists[BOUNDS_BONUS_2_START] )
@@ -311,12 +325,29 @@ stock DoMapStuff()
 			vecSpawnPos[RUN_BONUS_2][1] = vecBoundsMax[BOUNDS_BONUS_2_START][1] + ( vecBoundsMin[BOUNDS_BONUS_2_START][1] - vecBoundsMax[BOUNDS_BONUS_2_START][1] ) / 2;
 			
 		vecSpawnPos[RUN_BONUS_2][2] = vecBoundsMin[BOUNDS_BONUS_2_START][2] + 16.0;
+		
+		if ( !bFoundAng[RUN_BONUS_2] )
+			angSpawnAngles[RUN_BONUS_2][1] = ArcTangent2( vecBoundsMin[BOUNDS_BONUS_2_END][1] - vecBoundsMin[BOUNDS_BONUS_2_START][1], vecBoundsMin[BOUNDS_BONUS_2_END][0] - vecBoundsMin[BOUNDS_BONUS_2_START][0] ) * 180 / 3.14159265359;
 	}
 	
 	if ( FindEntityByClassname( ent, "info_player_counterterrorist" ) != -1 )
+	{
 		iPreferedTeam = CS_TEAM_CT;
+		
+#if defined RECORD
+		ServerCommand( "bot_join_team ct" );
+#endif
+	}
 	else
+	{
 		iPreferedTeam = CS_TEAM_T;
+		
+#if defined RECORD
+		ServerCommand( "bot_join_team t" );
+#endif
+	}
+		
+
 	
 #if defined DELETE_ENTS
 	CreateTimer( 3.0, Timer_DoMapStuff );
@@ -324,15 +355,6 @@ stock DoMapStuff()
 }
 
 #if defined RECORD
-stock FindMimic( finder )
-{
-	for ( new i = 1; i <= MaxClients; i++ )
-		if ( IsClientInGame( i ) && IsPlayerAlive( i ) && IsFakeClient( i ) && ( hClientRecording[i] == INVALID_HANDLE && !bIsClientMimicing[i] ) )
-			return i;
-	
-	return 0;
-}
-
 stock bool:ExCreateDir( const String:Path[] )
 {
 	if ( !DirExists( Path ) )
@@ -367,21 +389,20 @@ stock bool:SaveRecording( client, iLength )
 	
 	decl String:Path[PLATFORM_MAX_PATH];
 	BuildPath( Path_SM, Path, sizeof( Path ), "records" );
-	
 	if ( !ExCreateDir( Path ) ) return false;
 	
 	
-	Format( Path, sizeof( Path ), "%s/%s", Path, CurrentMap );
-	
+	Format( Path, sizeof( Path ), "%s/%s", Path, CurrentMap ); // records/bhop_map
 	if ( !ExCreateDir( Path ) ) return false;
 
+	Format( Path, sizeof( Path ), "%s/%s", Path, RunName[NAME_SHORT][ iClientRun[client] ] ); // records/bhop_map/M
+	if ( !ExCreateDir( Path ) ) return false;
 	
-	Format( Path, sizeof( Path ), "%s/%s", Path, ModeName[MODENAME_SHORT][ iClientMode[client] ] );
-	
+	Format( Path, sizeof( Path ), "%s/%s", Path, StyleName[NAME_SHORT][ iClientStyle[client] ] ); // records/bhop_map/M/HSW
 	if ( !ExCreateDir( Path ) ) return false;
 	
 	
-	Format( Path, sizeof( Path ), "%s/%s.rec", Path, SteamID );
+	Format( Path, sizeof( Path ), "%s/%s.rec", Path, SteamID ); // records/bhop_map/N/HSW/0_1_30495520
 	
 	new Handle:hFile = OpenFile( Path, "wb" );
 	if ( hFile == INVALID_HANDLE )
@@ -426,7 +447,7 @@ stock bool:SaveRecording( client, iLength )
 	return true;
 }
 
-stock bool:LoadRecording( String:SteamID[], iMode )
+stock bool:LoadRecording( String:SteamID[], iRun, iStyle )
 {
 	ReplaceString( SteamID, 32, "STEAM_", "" );
 	
@@ -437,7 +458,7 @@ stock bool:LoadRecording( String:SteamID[], iMode )
 	
 	
 	decl String:Path[PLATFORM_MAX_PATH];
-	BuildPath( Path_SM, Path, sizeof( Path ), "records/%s/%s/%s.rec", CurrentMap, ModeName[MODENAME_SHORT][iMode], SteamID );
+	BuildPath( Path_SM, Path, sizeof( Path ), "records/%s/%s/%s/%s.rec", CurrentMap, RunName[NAME_SHORT][iRun], StyleName[NAME_SHORT][iStyle], SteamID );
 	
 	new Handle:hFile = OpenFile( Path, "rb" );
 	
@@ -461,15 +482,15 @@ stock bool:LoadRecording( String:SteamID[], iMode )
 	
 	if ( iFormat != BINARY_FORMAT )
 	{
-		PrintToServer( "%s Tried to read from while with different binary format!", CONSOLE_PREFIX );
+		PrintToServer( "%s Tried to read from file with different binary format!", CONSOLE_PREFIX );
 		
 		CloseHandle( hFile );
 		return false;
 	}
 	
-	ReadFileCell( hFile, iMimicTickMax[iMode], 4 );
+	ReadFileCell( hFile, iMimicTickMax[iRun][iStyle], 4 );
 	
-	if ( iMimicTickMax[iMode] < 1 )
+	if ( iMimicTickMax[iRun][iStyle] < 1 )
 	{
 		CloseHandle( hFile );
 		return false;
@@ -479,14 +500,14 @@ stock bool:LoadRecording( String:SteamID[], iMode )
 	ReadFile( hFile, _:iHeader[_:HEADER_INITPOS], 3, 4 );
 	ReadFile( hFile, _:iHeader[_:HEADER_INITANGLES], 2, 4 );
 	
-	ArrayCopy( iHeader[_:HEADER_INITPOS], vecInitMimicPos[iMode], 3 );
-	ArrayCopy( iHeader[_:HEADER_INITANGLES], angInitMimicAngles[iMode], 2 );
+	ArrayCopy( iHeader[_:HEADER_INITPOS], vecInitMimicPos[iRun][iStyle], 3 );
+	ArrayCopy( iHeader[_:HEADER_INITANGLES], angInitMimicAngles[iRun][iStyle], 2 );
 	
 	// GET FRAMES
 	new iFrame[FRAME_SIZE];
-	hMimicRecording[iMode] = CreateArray( _:FrameInfo );
+	hMimicRecording[iRun][iStyle] = CreateArray( _:FrameInfo );
 	
-	for ( new i; i < iMimicTickMax[iMode]; i++ )
+	for ( new i; i < iMimicTickMax[iRun][iStyle]; i++ )
 	{
 		if ( ReadFile( hFile, iFrame, _:FrameInfo, 4 ) == -1 )
 		{
@@ -496,11 +517,52 @@ stock bool:LoadRecording( String:SteamID[], iMode )
 			return false;
 		}
 		
-		PushArrayArray( hMimicRecording[iMode], iFrame, _:FrameInfo );
+		PushArrayArray( hMimicRecording[iRun][iStyle], iFrame, _:FrameInfo );
 	}
 	
 	CloseHandle( hFile );
 	
 	return true;
+}
+
+stock bool:RemoveAllRecords( iRun, iStyle )
+{
+	decl String:Path[PLATFORM_MAX_PATH];
+	BuildPath( Path_SM, Path, sizeof( Path ), "records/%s/%s/%s", CurrentMap, RunName[NAME_SHORT][iRun], StyleName[NAME_SHORT][iStyle] );
+	
+	new Handle:hDir = OpenDirectory( Path );
+	
+	if ( hDir == INVALID_HANDLE )
+		return false;
+	
+	decl String:FileName[64], String:NewPath[PLATFORM_MAX_PATH];
+	while ( ReadDirEntry( hDir, FileName, sizeof( FileName ) ) )
+	{
+		Format( NewPath, sizeof( NewPath ), "%s/%s", Path, FileName );
+		
+		if ( !FileExists( NewPath ) )
+			continue;
+		
+		DeleteFile( NewPath );
+	}
+	
+	return true;
+}
+
+stock bool:RemoveRecord( String:SteamID[], iRun, iStyle )
+{
+	ReplaceString( SteamID, 32, "STEAM_", "" );
+	
+	// STEAM_0:1:30495520 to 0_1_30495520
+	for ( new i; i < 5; i++ )
+		if ( SteamID[i] == ':' )
+			SteamID[i] = '_';
+	
+	BuildPath( Path_SM, Path, sizeof( Path ), "records/%s/%s/%s/%s.rec", CurrentMap, RunName[NAME_SHORT][iRun], StyleName[NAME_SHORT][iStyle], SteamID );
+	
+	if ( !FileExists( Path ) )
+		return false;
+	
+	return DeleteFile( Path );
 }
 #endif
