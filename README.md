@@ -40,7 +40,7 @@ I was kind of in the middle of working on the plugin when suddenly I was contact
 - Move that into your server's maps folder. Potentially put it in your fast-dl. ;)
 
 **Features:**
-- Timer with records and semi-working playback (not fully implemented.). 
+- Timer with records and playback.
 - Times saved with SQLite.
 - Toggle HUD elements, change FOV, etc.
 - Zone building (Starting-Ending/Block/Freestyle/Bonus1-2 Zones)
@@ -49,7 +49,6 @@ I was kind of in the middle of working on the plugin when suddenly I was contact
 - Chat processing. (Custom colors for chat.)
 
 **TO-DO LIST:**
-- Use DHOOKS to teleport the bots.
 - Use better sync, lol. The current one is shitty.
 - Fix menus.
 - More tweaks.
