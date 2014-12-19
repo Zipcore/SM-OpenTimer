@@ -247,7 +247,7 @@ stock ShowKeyHintText( client, target )
 // Find a destination where we are supposed to go to when teleporting back to a zone.
 stock DoMapStuff()
 {
-	PrintToServer( "%s Reallocating spawnpoints...", CONSOLE_PREFIX );
+	PrintToServer( "%s Relocating spawnpoints...", CONSOLE_PREFIX ); // "Reallocating" lol
 	
 	new ent, bool:bFoundAng[MAX_RUNS];
 	while ( ( ent = FindEntityByClassname( ent, "info_teleport_destination" ) ) != -1 )

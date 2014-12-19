@@ -1,11 +1,10 @@
-public Threaded_PrintRecords( Handle:hOwner, Handle:hQuery, const String:error[], any:hData )
+// Query handles are closed automatically.
+
+public Threaded_PrintRecords( Handle:hDatabase, Handle:hQuery, const String:error[], any:hData )
 {
 	new client; 
 	if ( ( client = GetClientOfUserId( GetArrayCell( hData, 0, 0 ) ) ) == 0 )
-	{
-		CloseHandle( hQuery );
 		return;
-	}
 	
 	if ( hQuery == INVALID_HANDLE )
 	{
@@ -47,8 +46,6 @@ public Threaded_PrintRecords( Handle:hOwner, Handle:hQuery, const String:error[]
 		ply++;
 	}
 	
-	CloseHandle( hQuery );
-	
 	new index = 1;
 	if ( !bInConsole )
 	{
@@ -88,7 +85,7 @@ public Threaded_PrintRecords( Handle:hOwner, Handle:hQuery, const String:error[]
 	}
 }
 
-public Threaded_RetrieveClientInfo( Handle:hOwner, Handle:hQuery, const String:error[], any:data )
+public Threaded_RetrieveClientInfo( Handle:hDatabase, Handle:hQuery, const String:error[], any:data )
 {
 	if ( hQuery == INVALID_HANDLE )
 	{
@@ -100,17 +97,13 @@ public Threaded_RetrieveClientInfo( Handle:hOwner, Handle:hQuery, const String:e
 
 	new client;
 	if ( ( client = GetClientOfUserId( data ) ) == 0 )
-	{
-		CloseHandle( hQuery );
 		return;
-	}
-	
+		
 	decl String:SteamID[32];
 	
 	if ( !GetClientAuthString( client, SteamID, sizeof( SteamID ) ) )
 	{
 		LogError( "%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.", CONSOLE_PREFIX, client );
-		CloseHandle( hQuery );
 		return;
 	}
 	
@@ -119,7 +112,6 @@ public Threaded_RetrieveClientInfo( Handle:hOwner, Handle:hQuery, const String:e
 	if ( SQL_GetRowCount( hQuery ) == 0 )
 	{
 		Format( Buffer, sizeof( Buffer ), "INSERT INTO player_data ( steamid, fov, hideflags ) VALUES ( '%s', 90, 0 );", SteamID );
-		CloseHandle( hQuery );
 		
 		if ( !SQL_FastQuery( Database, Buffer ) )
 		{
@@ -127,7 +119,6 @@ public Threaded_RetrieveClientInfo( Handle:hOwner, Handle:hQuery, const String:e
 			return;
 		}
 
-		CloseHandle( hQuery );
 		return;
 	}
 
@@ -143,11 +134,9 @@ public Threaded_RetrieveClientInfo( Handle:hOwner, Handle:hQuery, const String:e
 	
 	Format( Buffer, sizeof( Buffer ), "SELECT time, style, run FROM '%s' WHERE steamid = '%s' ORDER BY run;", CurrentMap, SteamID );
 	SQL_TQuery( Database, Threaded_RetrieveClientTimes, Buffer, GetClientUserId( client ) );
-	
-	CloseHandle( hQuery );
 }
 
-public Threaded_RetrieveClientTimes( Handle:hOwner, Handle:hQuery, const String:error[], any:data )
+public Threaded_RetrieveClientTimes( Handle:hDatabase, Handle:hQuery, const String:error[], any:data )
 {
 	if ( hQuery == INVALID_HANDLE )
 	{
@@ -159,10 +148,7 @@ public Threaded_RetrieveClientTimes( Handle:hOwner, Handle:hQuery, const String:
 
 	new client;
 	if ( ( client = GetClientOfUserId( data ) ) == 0 )
-	{
-		CloseHandle( hQuery );
 		return;
-	}
 	
 	if ( hQuery != INVALID_HANDLE )
 	{
@@ -179,8 +165,6 @@ public Threaded_RetrieveClientTimes( Handle:hOwner, Handle:hQuery, const String:
 			flClientBestTime[client][iRun][iStyle] = SQL_FetchFloat( hQuery, field );
 		}
 	}
-	
-	CloseHandle( hQuery );
 	
 	UpdateScoreboard( client );
 }

@@ -245,7 +245,10 @@ stock InitializeDatabase()
 	Database = SQLite_UseDatabase( "opentimer", Error, sizeof( Error ) );
 	
 	if ( Database == INVALID_HANDLE )
+	{
 		SetFailState( "%s Unable to establish connection to database!\n Error: %s", CONSOLE_PREFIX, Error );
+		return;
+	}
 	
 	SQL_LockDatabase( Database );
 	

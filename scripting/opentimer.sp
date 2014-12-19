@@ -16,8 +16,12 @@
 #endif
 
 #if defined RECORD
+
+#define RECORDING_MAX_LENGTH 1800.0 // In seconds (def. 30 minutes)
+
 #undef REQUIRE_EXTENSIONS
 #include <dhooks>
+
 #endif
 
 #define MAXPLAYERS_BHOP 24 + 1 // Change according to your player count. ( slots + 1 )
@@ -34,7 +38,7 @@
 #define CONSOLE_PREFIX "[OpenTimer]" // Used only for console/server.
 
 #define PLUGIN_NAME "OpenTimer" // Name of the plugin. Please don't change this.
-#define PLUGIN_VERSION "1.2"
+#define PLUGIN_VERSION "1.2.1"
 
 #define COLOR_PURPLE "\x07E71470"
 #define COLOR_TEAL "\x0766CCCC"
@@ -189,12 +193,6 @@ new iBuilderIndex;
 new iBuilderZone = -1;
 new iBuilderGridSize = BUILDER_DEF_GRIDSIZE;
 
-// Settings (Convars)
-new bool:bPreSpeed;
-new bool:bForbiddenCommands;
-//new bool:bClientAutoHop[MAXPLAYERS_BHOP] = { true, ... };
-new bool:bAutoHop = true;
-
 // Running
 new iClientState[MAXPLAYERS_BHOP];
 new iClientStyle[MAXPLAYERS_BHOP];
@@ -278,6 +276,12 @@ new Handle:ConVar_AirAccelerate; // To tell the client what aa we have.
 static Handle:ConVar_PreSpeed;
 new Handle:ConVar_AutoHop;
 new Handle:ConVar_LeftRight;
+
+// Settings (Convars)
+new bool:bPreSpeed;
+new bool:bForbiddenCommands;
+//new bool:bClientAutoHop[MAXPLAYERS_BHOP] = { true, ... };
+new bool:bAutoHop = true;
 
 //////////////////////////////
 // End of shared variables. //
@@ -768,7 +772,17 @@ public Event_ClientThink( client )
 	}
 	else if ( !bIsClientPractising[client] )
 	{
-		// We're running, so let's check for potential block zones.
+		// We're running, so let's check for potential block zones and stuff.
+#if defined RECORD
+		if ( ( GetEngineTime() - flClientStartTime[client] ) > RECORDING_MAX_LENGTH && bIsClientRecording[client] )
+		{
+			iClientTick[client] = 0;
+			bIsClientRecording[client] = false;
+			
+			PrintColorChat( client, client, "%s Your time is too long to be recorded!", CHAT_PREFIX );
+		}
+#endif
+		
 		for ( new i = BOUNDS_BLOCK_1; i < MAX_BOUNDS; i++ )
 		{
 			if ( !bZoneExists[i] ) continue;

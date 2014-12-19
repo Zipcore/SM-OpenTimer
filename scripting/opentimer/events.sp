@@ -35,21 +35,18 @@ public Event_ClientSpawn( Handle:hEvent, const String:name[], bool:dontBroadcast
 {
 	new client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) );
 	
-	if ( client < 1 || GetClientTeam( client ) < 2 ) return;
+	if ( client < 1 || GetClientTeam( client ) < 2 || !IsPlayerAlive( client ) ) return;
+
+	if ( bIsLoaded[ iClientRun[client] ] )
+		TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
 	
-	if ( IsPlayerAlive( client ) )
-	{
-		if ( bIsLoaded[ iClientRun[client] ] )
-			TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+	SetEntityRenderMode( client, RENDER_TRANSALPHA );
+	SetEntityRenderColor( client, _, _, _, 64 );
 	
-		SetEntityRenderMode( client, RENDER_TRANSALPHA );
-		SetEntityRenderColor( client, _, _, _, 64 );
-		
-		if ( !IsFakeClient( client ) )
-			SetEntProp( client, Prop_Data, "m_CollisionGroup", 2 ); // Disable player collisions.
-		else
-			SetEntProp( client, Prop_Data, "m_CollisionGroup", 1 ); // No trigger collision for bots.
-	}
+	if ( !IsFakeClient( client ) )
+		SetEntProp( client, Prop_Data, "m_CollisionGroup", 2 ); // Disable player collisions.
+	else
+		SetEntProp( client, Prop_Data, "m_CollisionGroup", 1 ); // No trigger collision for bots.
 	
 	CreateTimer( 0.1, Timer_ClientSpawn, GetClientUserId( client ) );
 }
@@ -63,9 +60,6 @@ public Action:Timer_ClientSpawn( Handle:timer, any:client )
 	if ( iClientHideFlags[client] & HIDEHUD_HUD ) SetEntProp( client, Prop_Data, "m_iHideHUD", HIDE_FLAGS );
 	if ( iClientHideFlags[client] & HIDEHUD_VM ) SetEntProp( client, Prop_Data, "m_bDrawViewmodel", 0 );
 	
-	if ( !IsPlayerAlive( client ) )
-		return Plugin_Handled;
-		
 	SetEntProp( client, Prop_Data, "m_nHitboxSet", 2 ); // Don't get damaged from weapons.
 	
 	if ( IsFakeClient( client ) )
@@ -257,11 +251,11 @@ public Action:OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 			
 				if ( !( flags & FL_ONGROUND ) ) // Only calc sync in air. If we're not in air, we reset our last speed.
 				{
-					new Float:flCurVel = GetClientVelocity( client );
-					
 					if ( mouse[0] != 0 ) // We're moving our mouse, but are we gaining speed?
 					{
 						static iClientSync[MAXPLAYERS_BHOP];
+						
+						new Float:flCurVel = GetClientVelocity( client );
 						
 						if ( flClientLastVel[client] < flCurVel )
 							iClientGoodSync[client][ iClientSync[client] ] = 1;
