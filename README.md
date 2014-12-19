@@ -12,13 +12,14 @@ I was kind of in the middle of working on the plugin when suddenly I was contact
 
 **Things to remember:**
 
-    1. Make sure your admin status is root to create/delete zones. configs/admins.cfg
-    2. Use !zone to configure zones.
-    3. Plugin's internal max player count is 24. You can change this by changing MAXPLAYERS_BHOP in opentimer.sp and recompiling it.
-    4. You can remove some functions such as recording or fancy chat by commenting out first few lines in the opentimer.sp file.
-    5. !r, !respawn can be used to respawn.
-    6. Rest of the commands can be found with !commands.
-    7. This plugin will automatically create a new database called 'opentimer'. You are no longer required to change databases.cfg.
+    - Make sure your admin status is root to create/delete zones. (configs/admins.cfg)
+    - Use !zone to configure zones.
+    - Plugin's internal max player count is 24. You can change this by changing MAXPLAYERS_BHOP in opentimer.sp and recompiling it.
+    - You can remove some functions such as recording or fancy chat by commenting out first few lines in the opentimer.sp file.
+    - !r, !respawn can be used to respawn.
+    - Rest of the commands can be found with !commands.
+    - This plugin will automatically create a new database called 'opentimer'. You are no longer required to change databases.cfg.
+    - By default, max recording length is 30 minutes. Times can be however long.
 
 **Use these commands, please:**
 - bot_quota_mode normal
