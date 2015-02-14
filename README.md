@@ -30,7 +30,8 @@ SourceMod timer plugin for *CSS* bunnyhop servers.
 - sv_allow_wait_command 0
 
 **Plugin commands:**
-- sm_autohopping 0/1 (Allow EZHOP and AUTO?)
+- sm_autobhop 0/1
+- sm_ezhop 0/1
 - sm_forbidden_commands 0/1 (+left/+right allowed?)
 - sm_prespeed 0/1 (Can go over 300vel when leaving starting zone?)
 
