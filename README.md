@@ -2,6 +2,7 @@ SM-OpenTimer (Read this!)
 ============
 
 SourceMod timer plugin for *CSS* bunnyhop servers.
+
 **Read opentimer_log.txt if you want to know what changes have been made!**
 
 **Dependencies (Optional):**
@@ -18,7 +19,7 @@ SourceMod timer plugin for *CSS* bunnyhop servers.
     - !r, !respawn can be used to respawn.
     - Rest of the commands can be found with !commands.
     - This plugin will automatically create a new database called 'opentimer'. You are no longer required to change databases.cfg.
-    - By default, max recording length is 30 minutes. Times can be however long.
+    - By default, max recording length is 45 minutes. Times can be however long.
 
 **Use these commands, please:**
 - bot_quota_mode normal
@@ -36,7 +37,7 @@ SourceMod timer plugin for *CSS* bunnyhop servers.
 
 **Creating a .nav file for maps:** (Required for record bots. Tell Valve how much you hate it.)
 - Local server and the map you want to generate the .nav file for.
-- *sv_cheats 1; nav_mark_walkable* and aim at the floor. This should generate .nav file in your maps folder.
+- *sv_cheats 1; nav_edit 1; nav_mark_walkable* and aim at the floor. This should generate .nav file in your maps folder.
 - Move that into your server's maps folder. Potentially put it in your fast-dl. ;)
 
 **Features:**
