@@ -1,4 +1,4 @@
-public Action:Command_Help( client, args )
+public Action Command_Help( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;	
 	
@@ -17,13 +17,13 @@ public Action:Command_Help( client, args )
 	return Plugin_Handled;
 }
 
-/*public Action:Command_AutoHop( client, args )
+/*public Action Command_AutoHop( int client, int args )
 {
-	if ( GetConVarBool( ConVar_AutoHop ) )
+	if ( GetConVarBool( g_ConVar_AutoHop ) )
 	{
-		bClientAutoHop[client] = !bClientAutoHop[client];
+		g_bClientAutoHop[client] = !g_bClientAutoHop[client];
 		
-		if ( bClientAutoHop[client] )
+		if ( g_bClientAutoHop[client] )
 			PrintColorChat( client, client, "%s Autobhop is enabled!", CHAT_PREFIX );
 		else
 			PrintColorChat( client, client, "%s Autobhop is disabled!", CHAT_PREFIX );
@@ -31,29 +31,29 @@ public Action:Command_Help( client, args )
 	else PrintColorChat( client, client, "%s Access denied.", CHAT_PREFIX );
 }*/
 
-public Action:Command_Spawn( client, args )
+public Action Command_Spawn( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
 	if ( GetClientTeam( client ) == CS_TEAM_SPECTATOR )
-		ChangeClientTeam( client, iPreferedTeam );
-	else if ( !IsPlayerAlive( client ) || !bIsLoaded[ iClientRun[client] ] )
+		ChangeClientTeam( client, g_iPreferedTeam );
+	else if ( !IsPlayerAlive( client ) || !g_bIsLoaded[ g_iClientRun[client] ] )
 		CS_RespawnPlayer( client );
 	else
-		TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 	
 	return Plugin_Handled;
 }
 
-public Action:Command_Spectate( client, args )
+public Action Command_Spectate( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
 	if ( args == 0 ) ChangeClientTeam( client, CS_TEAM_SPECTATOR );
 	else
 	{
-		decl String:Target[MAX_NAME_LENGTH];
-		if ( GetCmdArgString( Target, sizeof( Target ) ) < 1 )
+		char szTarget[MAX_NAME_LENGTH];
+		if ( GetCmdArgString( szTarget, sizeof( szTarget ) ) < 1 )
 		{
 			ChangeClientTeam( client, CS_TEAM_SPECTATOR );
 			
@@ -62,7 +62,7 @@ public Action:Command_Spectate( client, args )
 			return Plugin_Handled;
 		}
 		
-		new target = FindTarget( client, Target, false, false );
+		int target = FindTarget( client, szTarget, false, false );
 		
 		if ( target < 1 || !IsClientInGame( target ) || !IsPlayerAlive( client ) )
 			return Plugin_Handled;
@@ -76,16 +76,16 @@ public Action:Command_Spectate( client, args )
 	return Plugin_Handled;
 }
 
-public Action:Command_FieldOfView( client, args )
+public Action Command_FieldOfView( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
 	if ( args == 1 )
 	{
-		decl String:Number[4];
-		GetCmdArgString( Number, sizeof( Number ) );
+		char szNum[4];
+		GetCmdArgString( szNum, sizeof( szNum ) );
 		
-		new fov = StringToInt( Number );
+		int fov = StringToInt( szNum );
 		
 		if ( fov > 150 )
 		{
@@ -99,7 +99,7 @@ public Action:Command_FieldOfView( client, args )
 		}
 		
 		SetClientFOV( client, fov, true );
-		iClientFOV[client] = fov;
+		g_iClientFOV[client] = fov;
 		
 		if ( !SaveClientInfo( client ) )
 			PrintColorChat( client, client, "%s Couldn't save your option to database!", CHAT_PREFIX );
@@ -110,11 +110,11 @@ public Action:Command_FieldOfView( client, args )
 	return Plugin_Handled;
 }
 
-public Action:Command_RecordsMOTD( client, args )
+public Action Command_RecordsMOTD( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsLoaded[RUN_MAIN] )
+	if ( !g_bIsLoaded[RUN_MAIN] )
 	{
 		PrintColorChat( client, client, "%s This map doesn't have map bounds! No records can be found.", CHAT_PREFIX );
 		return Plugin_Handled;
@@ -125,11 +125,11 @@ public Action:Command_RecordsMOTD( client, args )
 	return Plugin_Handled;
 }
 
-public Action:Command_RecordsPrint( client, args )
+public Action Command_RecordsPrint( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsLoaded[RUN_MAIN] )
+	if ( !g_bIsLoaded[RUN_MAIN] )
 	{
 		PrintColorChat( client, client, "%s This map doesn't have map bounds! No records can be found.", CHAT_PREFIX );
 		return Plugin_Handled;
@@ -139,47 +139,53 @@ public Action:Command_RecordsPrint( client, args )
 		PrintRecords( client, true );
 	else
 	{
-		decl String:Text[12];
-		GetCmdArgString( Text, sizeof( Text ) );
+		char szArg[12];
+		GetCmdArgString( szArg, sizeof( szArg ) );
 		
-		StripQuotes( Text );
+		StripQuotes( szArg );
 		
-		if ( StrEqual( Text, "b", false ) || StrEqual( Text, "b1", false ) || StrEqual( Text, "bonus1", false ) )
+		if ( StrEqual( szArg, "b", false ) || StrEqual( szArg, "b1", false ) || StrEqual( szArg, "bonus1", false ) )
 		{
-			if ( !bZoneExists[RUN_BONUS_1] )
+			if ( !g_bZoneExists[RUN_BONUS_1] )
 			{
-				PrintColorChat( client, client, "%s \x03%s%s records do not exist!", CHAT_PREFIX, RunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
+				PrintColorChat( client, client, "%s \x03%s%s records do not exist!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
 				return Plugin_Handled;
 			}
 			
 			PrintRecords( client, true, STYLE_NORMAL, RUN_BONUS_1 );
 		}
-		else if ( StrEqual( Text, "b2", false ) || StrEqual( Text, "bonus2", false ) )
+		else if ( StrEqual( szArg, "b2", false ) || StrEqual( szArg, "bonus2", false ) )
 		{
-			if ( !bZoneExists[RUN_BONUS_2] )
+			if ( !g_bZoneExists[RUN_BONUS_2] )
 			{
-				PrintColorChat( client, client, "%s \x03%s%s records do not exist!", CHAT_PREFIX, RunName[NAME_LONG][RUN_BONUS_2], COLOR_TEXT );
+				PrintColorChat( client, client, "%s \x03%s%s records do not exist!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_2], COLOR_TEXT );
 				return Plugin_Handled;
 			}
 			
 			PrintRecords( client, true, STYLE_NORMAL, RUN_BONUS_2 );
 		}
-		else if ( StrEqual( Text, "normal", false ) || StrEqual( Text, "n", false ) )
+		else if ( StrEqual( szArg, "normal", false ) || StrEqual( szArg, "n", false ) )
+		{
 			PrintRecords( client, true, STYLE_NORMAL );
-		else if ( StrEqual( Text, "sideways", false ) || StrEqual( Text, "sw", false ) )
+		}
+		else if ( StrEqual( szArg, "sideways", false ) || StrEqual( szArg, "sw", false ) )
+		{
 			PrintRecords( client, true, STYLE_SIDEWAYS );
-		else if ( StrEqual( Text, "w-only", false ) || StrEqual( Text, "w", false ) )
+		}
+		else if ( StrEqual( szArg, "w-only", false ) || StrEqual( szArg, "w", false ) )
+		{
 			PrintRecords( client, true, STYLE_W );
+		}
 	}
 	
 	return Plugin_Handled;
 }
 
-public Action:Command_Style_Normal( client, args )
+public Action Command_Style_Normal( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsLoaded[ iClientRun[client] ] )
+	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
 	{
 		PrintColorChat( client, client, "%s Unable to comply.", CHAT_PREFIX );
 		return Plugin_Handled;
@@ -187,10 +193,10 @@ public Action:Command_Style_Normal( client, args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
-		iClientStyle[client] = STYLE_NORMAL;
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		g_iClientStyle[client] = STYLE_NORMAL;
 		
-		PrintColorChat( client, client, "%s Your style is now \x05%s%s!", CHAT_PREFIX, StyleName[NAME_LONG][STYLE_NORMAL], COLOR_TEXT );
+		PrintColorChat( client, client, "%s Your style is now \x05%s%s!", CHAT_PREFIX, g_szStyleName[NAME_LONG][STYLE_NORMAL], COLOR_TEXT );
 		
 		UpdateScoreboard( client );
 	}
@@ -199,11 +205,11 @@ public Action:Command_Style_Normal( client, args )
 	return Plugin_Handled;
 }
 
-public Action:Command_Style_Sideways( client, args )
+public Action Command_Style_Sideways( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsLoaded[ iClientRun[client] ] )
+	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
 	{
 		PrintColorChat( client, client, "%s Unable to comply.", CHAT_PREFIX );
 		return Plugin_Handled;
@@ -211,21 +217,21 @@ public Action:Command_Style_Sideways( client, args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
-		iClientStyle[client] = STYLE_SIDEWAYS;
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		g_iClientStyle[client] = STYLE_SIDEWAYS;
 		
-		PrintColorChat( client, client, "%s Your style is now \x05%s%s!", CHAT_PREFIX, StyleName[NAME_LONG][STYLE_SIDEWAYS], COLOR_TEXT );
+		PrintColorChat( client, client, "%s Your style is now \x05%s%s!", CHAT_PREFIX, g_szStyleName[NAME_LONG][STYLE_SIDEWAYS], COLOR_TEXT );
 	}
 	else PrintColorChat( client, client, "%s You must be alive to change your style!", CHAT_PREFIX );
 		
 	return Plugin_Handled;
 }
 
-public Action:Command_Style_W( client, args )
+public Action Command_Style_W( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsLoaded[ iClientRun[client] ] )
+	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
 	{
 		PrintColorChat( client, client, "%s Unable to comply.", CHAT_PREFIX );
 		return Plugin_Handled;
@@ -233,10 +239,10 @@ public Action:Command_Style_W( client, args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
-		iClientStyle[client] = STYLE_W;
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		g_iClientStyle[client] = STYLE_W;
 		
-		PrintColorChat( client, client, "%s Your style is now \x05%s%s!", CHAT_PREFIX, StyleName[NAME_LONG][STYLE_W], COLOR_TEXT );
+		PrintColorChat( client, client, "%s Your style is now \x05%s%s!", CHAT_PREFIX, g_szStyleName[NAME_LONG][STYLE_W], COLOR_TEXT );
 		
 		UpdateScoreboard( client );
 	}
@@ -245,11 +251,11 @@ public Action:Command_Style_W( client, args )
 	return Plugin_Handled;
 }
 
-public Action:Command_Style_RealHSW( client, args )
+public Action Command_Style_RealHSW( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsLoaded[ iClientRun[client] ] )
+	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
 	{
 		PrintColorChat( client, client, "%s Unable to comply.", CHAT_PREFIX );
 		return Plugin_Handled;
@@ -257,10 +263,10 @@ public Action:Command_Style_RealHSW( client, args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
-		iClientStyle[client] = STYLE_REAL_HSW;
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		g_iClientStyle[client] = STYLE_REAL_HSW;
 		
-		PrintColorChat( client, client, "%s Your style is now \x05%s%s!", CHAT_PREFIX, StyleName[NAME_LONG][STYLE_REAL_HSW], COLOR_TEXT );
+		PrintColorChat( client, client, "%s Your style is now \x05%s%s!", CHAT_PREFIX, g_szStyleName[NAME_LONG][STYLE_REAL_HSW], COLOR_TEXT );
 		
 		UpdateScoreboard( client );
 	}
@@ -269,11 +275,11 @@ public Action:Command_Style_RealHSW( client, args )
 	return Plugin_Handled;
 }
 
-public Action:Command_Style_HSW( client, args )
+public Action Command_Style_HSW( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsLoaded[ iClientRun[client] ] )
+	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
 	{
 		PrintColorChat( client, client, "%s Unable to comply.", CHAT_PREFIX );
 		return Plugin_Handled;
@@ -281,10 +287,10 @@ public Action:Command_Style_HSW( client, args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
-		iClientStyle[client] = STYLE_HSW;
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		g_iClientStyle[client] = STYLE_HSW;
 		
-		PrintColorChat( client, client, "%s Your style is now \x05%s%s!", CHAT_PREFIX, StyleName[NAME_LONG][STYLE_HSW], COLOR_TEXT );
+		PrintColorChat( client, client, "%s Your style is now \x05%s%s!", CHAT_PREFIX, g_szStyleName[NAME_LONG][STYLE_HSW], COLOR_TEXT );
 		
 		UpdateScoreboard( client );
 	}
@@ -293,7 +299,7 @@ public Action:Command_Style_HSW( client, args )
 	return Plugin_Handled;
 }
 
-public Action:Command_Practise( client, args )
+public Action Command_Practise( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
@@ -303,34 +309,34 @@ public Action:Command_Practise( client, args )
 		return Plugin_Handled;
 	}
 	
-	if ( !bIsLoaded[RUN_MAIN] )
+	if ( !g_bIsLoaded[RUN_MAIN] )
 	{
 		PrintColorChat( client, client, "%s This map doesn't have records enabled!", CHAT_PREFIX );
 		return Plugin_Handled;
 	}
 	
-	bIsClientPractising[client] = !bIsClientPractising[client];
+	g_bIsClientPractising[client] = !g_bIsClientPractising[client];
 	
-	if ( bIsClientPractising[client] )
-		PrintColorChat( client, client, "%s You're now in \x03practice%s mode! Type \x03!prac%s to toggle.", CHAT_PREFIX, COLOR_TEXT );
+	if ( g_bIsClientPractising[client] )
+		PrintColorChat( client, client, "%s You're now in \x03practice%s mode! Type \x03!prac%s to toggle.", CHAT_PREFIX, COLOR_TEXT, COLOR_TEXT );
 	else
 		PrintColorChat( client, client, "%s You're now in \x03normal%s running mode!", CHAT_PREFIX, COLOR_TEXT );
 	
-	iClientState[client] = STATE_START;
-	flClientStartTime[client] = 0.0;
+	g_iClientState[client] = STATE_START;
+	g_flClientStartTime[client] = TIME_INVALID;
 	
 #if defined RECORD
-	bIsClientRecording[client] = false;
+	g_bIsClientRecording[client] = false;
 #endif
 	
 	return Plugin_Handled;
 }
 
-public Action:Command_Practise_SavePoint( client, args )
+public Action Command_Practise_SavePoint( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsClientPractising[client] )
+	if ( !g_bIsClientPractising[client] )
 	{
 		PrintColorChat( client, client, "%s You have to be in practice mode! (\x03!practise/!practice/!prac%s)", CHAT_PREFIX, COLOR_TEXT );
 		return Plugin_Handled;
@@ -342,22 +348,22 @@ public Action:Command_Practise_SavePoint( client, args )
 		return Plugin_Handled;
 	}
 	
-	flClientSaveTime[client] = GetEngineTime();
+	g_flClientSaveTime[client] = GetEngineTime();
 	
-	GetClientAbsAngles( client, vecClientSaveAng[client] );
-	GetClientAbsOrigin( client, vecClientSavePos[client] );
-	GetEntPropVector( client, Prop_Data, "m_vecAbsVelocity", vecClientSaveVel[client] );
+	GetClientAbsAngles( client, g_vecClientSaveAng[client] );
+	GetClientAbsOrigin( client, g_vecClientSavePos[client] );
+	GetEntPropVector( client, Prop_Data, "m_vecAbsVelocity", g_vecClientSaveVel[client] );
 	
 	PrintColorChat( client, client, "Saved location!" );
 	
 	return Plugin_Handled;
 }
 
-public Action:Command_Practise_GotoPoint( client, args )
+public Action Command_Practise_GotoPoint( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsClientPractising[client] )
+	if ( !g_bIsClientPractising[client] )
 	{
 		PrintColorChat( client, client, "%s You have to be in practice mode! (\x03!practise/!practice/!prac%s)", CHAT_PREFIX, COLOR_TEXT );
 		return Plugin_Handled;
@@ -369,16 +375,16 @@ public Action:Command_Practise_GotoPoint( client, args )
 		return Plugin_Handled;
 	}
 	
-	if ( flClientSaveTime[client] == 0.0 )
+	if ( g_flClientSaveTime[client] == TIME_INVALID )
 	{
 		PrintColorChat( client, client, "%s You must save a location first! (\x03!save/!saveloc%s)", CHAT_PREFIX, COLOR_TEXT );
 		return Plugin_Handled;
 	}
 	
-	flClientStartTime[client] += GetEngineTime() - flClientSaveTime[client];
-	flClientSaveTime[client] = GetEngineTime();
+	g_flClientStartTime[client] += GetEngineTime() - g_flClientSaveTime[client];
+	g_flClientSaveTime[client] = GetEngineTime();
 	
-	TeleportEntity( client, vecClientSavePos[client], vecClientSaveAng[client], vecClientSaveVel[client] );
+	TeleportEntity( client, g_vecClientSavePos[client], g_vecClientSaveAng[client], g_vecClientSaveVel[client] );
 
 	return Plugin_Handled;
 }
@@ -386,185 +392,197 @@ public Action:Command_Practise_GotoPoint( client, args )
 ////////////////////
 // ADMIN COMMANDS //
 ////////////////////
-public Action:Command_Admin_ZoneEnd( client, args )
+public Action Command_Admin_ZoneEnd( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( iBuilderIndex != client )
+	if ( g_iBuilderIndex != client )
 	{
 		PrintColorChat( client, client, "%s Somebody else is building the zone!", CHAT_PREFIX );
 		return Plugin_Handled;
 	}
 	
-	if ( iBuilderZone < 0 )
+	if ( g_iBuilderZone < 0 )
 	{
 		PrintColorChat( client, client, "%s You haven't even started a zone! (!startzone start/end)", CHAT_PREFIX );
 		return Plugin_Handled;
 	}
 	
-	decl Float:vecClientPos[3];
+	static float vecClientPos[3];
 	GetClientAbsOrigin( client, vecClientPos );
 	
-	vecBoundsMax[iBuilderZone][0] = vecClientPos[0] - ( RoundFloat( vecClientPos[0] ) % iBuilderGridSize );
-	vecBoundsMax[iBuilderZone][1] = vecClientPos[1] - ( RoundFloat( vecClientPos[1] ) % iBuilderGridSize );
-	vecBoundsMax[iBuilderZone][2] = float( RoundFloat( vecClientPos[2] ) );
+	g_vecBoundsMax[g_iBuilderZone][0] = vecClientPos[0] - ( RoundFloat( vecClientPos[0] ) % g_iBuilderGridSize );
+	g_vecBoundsMax[g_iBuilderZone][1] = vecClientPos[1] - ( RoundFloat( vecClientPos[1] ) % g_iBuilderGridSize );
 	
-	//static const Float:angDown[] = { 90.0, 0.0, 0.0 };
 	
-	/*TR_TraceRay( vecBoundsMin[iBuilderZone], angDown, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite );
+	float flDif = g_vecBoundsMin[g_iBuilderZone][2] - g_vecBoundsMax[g_iBuilderZone][2];
 	
-	if ( TR_DidHit( INVALID_HANDLE ) )
-		if ( TR_GetEntityIndex( INVALID_HANDLE ) != client )
-			TR_GetEndPosition( vecBoundsMin[iBuilderZone], INVALID_HANDLE );*/
-
-
-	if ( SaveMapCoords( iBuilderZone ) ) PrintColorChat( client, client, "%s Saved the zone!", CHAT_PREFIX );
+	// If player built the mins on the ground and just walks to the other side, we will then automatically make it 72 units high.
+	g_vecBoundsMax[g_iBuilderZone][2] = ( flDif <= 2.0 && flDif >= -2.0 ) ? ( vecClientPos[2] + 72.0 ) : float( RoundFloat( vecClientPos[2] ) );
+	
+	
+	
+	// This was used for precise min bounds that would always be on the ground, so our origin cannot be under the mins.
+	// E.g Player is standing on ground but our mins are higher than player's origin meaning that the player is outside of the bounds.
+	// It is unneccesary now because our bounds are rounded. The player will always be 0.1 - 2.0 units higher.
+	
+	/*
+	static const float angDown[] = { 90.0, 0.0, 0.0 };
+	
+	TR_TraceRay( g_vecBoundsMin[g_iBuilderZone], angDown, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite );
+	
+	if ( TR_DidHit( null ) )
+		if ( TR_GetEntityIndex( null ) != client )
+			TR_GetEndPosition( g_vecBoundsMin[g_iBuilderZone], null );
+	*/
+	
+	if ( SaveMapCoords( g_iBuilderZone ) ) PrintColorChat( client, client, "%s Saved the zone!", CHAT_PREFIX );
 	else PrintColorChat( client, client, "%s Couldn't save the zone!", CHAT_PREFIX );
 	
-	if ( ( iBuilderZone == BOUNDS_START || iBuilderZone == BOUNDS_END ) && ( bZoneExists[BOUNDS_START] && bZoneExists[BOUNDS_END] ) )
+	if ( ( g_iBuilderZone == BOUNDS_START || g_iBuilderZone == BOUNDS_END ) && ( g_bZoneExists[BOUNDS_START] && g_bZoneExists[BOUNDS_END] ) )
 	{
 		DoMapStuff();
 		
-		bIsLoaded[RUN_MAIN] = true;
+		g_bIsLoaded[RUN_MAIN] = true;
 		PrintColorChatAll( client, false, "%s Main zones are back!", CHAT_PREFIX );
 	}
 	
-	if ( ( iBuilderZone == BOUNDS_BONUS_1_START || iBuilderZone == BOUNDS_BONUS_1_END ) && ( bZoneExists[BOUNDS_BONUS_1_START] && bZoneExists[BOUNDS_BONUS_1_END] ) )
+	if ( ( g_iBuilderZone == BOUNDS_BONUS_1_START || g_iBuilderZone == BOUNDS_BONUS_1_END ) && ( g_bZoneExists[BOUNDS_BONUS_1_START] && g_bZoneExists[BOUNDS_BONUS_1_END] ) )
 	{
 		DoMapStuff();
 		
-		bIsLoaded[RUN_BONUS_1] = true;
-		PrintColorChatAll( client, false, "%s \x03%s%s is now back!", CHAT_PREFIX, RunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
+		g_bIsLoaded[RUN_BONUS_1] = true;
+		PrintColorChatAll( client, false, "%s \x03%s%s is now back!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
 	}
 	
-	if ( ( iBuilderZone == BOUNDS_BONUS_2_START || iBuilderZone == BOUNDS_BONUS_2_END ) && ( bZoneExists[BOUNDS_BONUS_2_START] && bZoneExists[BOUNDS_BONUS_2_END] ) )
+	if ( ( g_iBuilderZone == BOUNDS_BONUS_2_START || g_iBuilderZone == BOUNDS_BONUS_2_END ) && ( g_bZoneExists[BOUNDS_BONUS_2_START] && g_bZoneExists[BOUNDS_BONUS_2_END] ) )
 	{
 		DoMapStuff();
 		
-		bIsLoaded[RUN_BONUS_2] = true;
-		PrintColorChatAll( client, false, "%s \x03%s%s is now back!", CHAT_PREFIX, RunName[NAME_LONG][RUN_BONUS_2], COLOR_TEXT );
+		g_bIsLoaded[RUN_BONUS_2] = true;
+		PrintColorChatAll( client, false, "%s \x03%s%s is now back!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_2], COLOR_TEXT );
 	}
 	
-	iBuilderIndex = 0;
-	iBuilderZone = -1;
+	g_iBuilderIndex = 0;
+	g_iBuilderZone = -1;
 	
 	return Plugin_Handled;
 }
 
-public Action:Command_Run_Bonus( client, args )
+public Action Command_Run_Bonus( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
 	if ( args < 1 )
 	{
-		if ( !bIsLoaded[RUN_BONUS_1] )
+		if ( !g_bIsLoaded[RUN_BONUS_1] )
 		{
-			PrintColorChat( client, client, "%s This map doesn't have \x03%s%s", CHAT_PREFIX, RunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
+			PrintColorChat( client, client, "%s This map doesn't have \x03%s%s", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
 			return Plugin_Handled;
 		}
 	
-		iClientRun[client] = RUN_BONUS_1;
+		g_iClientRun[client] = RUN_BONUS_1;
 	
-		TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 		UpdateScoreboard( client );
 		
-		PrintColorChat( client, client, "%s You are now in \x03%s%s! Use \x03!main%s to go back.", CHAT_PREFIX, RunName[NAME_LONG][ iClientRun[client] ], COLOR_TEXT, COLOR_TEXT );
+		PrintColorChat( client, client, "%s You are now in \x03%s%s! Use \x03!main%s to go back.", CHAT_PREFIX, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT, COLOR_TEXT );
 		return Plugin_Handled;
 	}
 	
-	decl String:Arg[2];
-	GetCmdArgString( Arg, sizeof( Arg ) );
+	char szArg[2];
+	GetCmdArgString( szArg, sizeof( szArg ) );
 	
-	if ( Arg[0] == '1' )
+	if ( szArg[0] == '1' )
 	{
-		if ( !bIsLoaded[RUN_BONUS_1] )
+		if ( !g_bIsLoaded[RUN_BONUS_1] )
 		{
-			PrintColorChat( client, client, "%s This map doesn't have \x03%s%s!", CHAT_PREFIX, RunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
+			PrintColorChat( client, client, "%s This map doesn't have \x03%s%s!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
 			return Plugin_Handled;
 		}
 		
-		iClientRun[client] = RUN_BONUS_1;
+		g_iClientRun[client] = RUN_BONUS_1;
 	
-		TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 		UpdateScoreboard( client );
 		
-		PrintColorChat( client, client, "%s You are now in \x03%s%s! Use \x03!main%s to go back.", CHAT_PREFIX, RunName[NAME_LONG][ iClientRun[client] ], COLOR_TEXT, COLOR_TEXT );
+		PrintColorChat( client, client, "%s You are now in \x03%s%s! Use \x03!main%s to go back.", CHAT_PREFIX, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT, COLOR_TEXT );
 	}
-	else if ( Arg[0] == '2' )
+	else if ( szArg[0] == '2' )
 	{
-		if ( !bIsLoaded[RUN_BONUS_2] )
+		if ( !g_bIsLoaded[RUN_BONUS_2] )
 		{
-			PrintColorChat( client, client, "%s This map doesn't have \x03%s%s!", CHAT_PREFIX, RunName[NAME_LONG][ RUN_BONUS_2 ], COLOR_TEXT );
+			PrintColorChat( client, client, "%s This map doesn't have \x03%s%s!", CHAT_PREFIX, g_szRunName[NAME_LONG][ RUN_BONUS_2 ], COLOR_TEXT );
 			return Plugin_Handled;
 		}
 		
-		iClientRun[client] = RUN_BONUS_2;
+		g_iClientRun[client] = RUN_BONUS_2;
 	
-		TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 		UpdateScoreboard( client );
 		
-		PrintColorChat( client, client, "%s You are now in \x03%s%s! Use \x03!main%s to go back.", CHAT_PREFIX, RunName[NAME_LONG][ iClientRun[client] ], COLOR_TEXT, COLOR_TEXT );
+		PrintColorChat( client, client, "%s You are now in \x03%s%s! Use \x03!main%s to go back.", CHAT_PREFIX, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT, COLOR_TEXT );
 	}
 	
 	return Plugin_Handled;
 }
 
-public Action:Command_Run_Main( client, args )
+public Action Command_Run_Main( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsLoaded[RUN_MAIN] )
+	if ( !g_bIsLoaded[RUN_MAIN] )
 	{
-		PrintColorChat( client, client, "%s This map doesn't have \x03%s%s!", CHAT_PREFIX, RunName[NAME_LONG][RUN_MAIN], COLOR_TEXT );
+		PrintColorChat( client, client, "%s This map doesn't have \x03%s%s!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_MAIN], COLOR_TEXT );
 		return Plugin_Handled;
 	}
 	
-	iClientRun[client] = RUN_MAIN;
+	g_iClientRun[client] = RUN_MAIN;
 	
-	TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+	TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 	UpdateScoreboard( client );
 	
-	PrintColorChat( client, client, "%s You are now in \x03%s%s!", CHAT_PREFIX, RunName[NAME_LONG][ iClientRun[client] ], COLOR_TEXT );
+	PrintColorChat( client, client, "%s You are now in \x03%s%s!", CHAT_PREFIX, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT );
 	
 	return Plugin_Handled;
 }
 
-public Action:Command_Run_Bonus_1( client, args )
+public Action Command_Run_Bonus_1( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsLoaded[RUN_BONUS_1] )
+	if ( !g_bIsLoaded[RUN_BONUS_1] )
 	{
-		PrintColorChat( client, client, "%s This map doesn't have \x03%s%s!", CHAT_PREFIX, RunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
+		PrintColorChat( client, client, "%s This map doesn't have \x03%s%s!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
 		return Plugin_Handled;
 	}
 	
-	iClientRun[client] = RUN_BONUS_1;
+	g_iClientRun[client] = RUN_BONUS_1;
 	
-	TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+	TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 	UpdateScoreboard( client );
 	
-	PrintColorChat( client, client, "%s You are now in \x03%s%s!", CHAT_PREFIX, RunName[NAME_LONG][ iClientRun[client] ], COLOR_TEXT );
+	PrintColorChat( client, client, "%s You are now in \x03%s%s!", CHAT_PREFIX, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT );
 	
 	return Plugin_Handled;
 }
 
-public Action:Command_Run_Bonus_2( client, args )
+public Action Command_Run_Bonus_2( int client, int args )
 {
 	if ( client < 1 ) return Plugin_Handled;
 	
-	if ( !bIsLoaded[RUN_BONUS_2] )
+	if ( !g_bIsLoaded[RUN_BONUS_2] )
 	{
-		PrintColorChat( client, client, "%s This map doesn't have \x03%s%s!", CHAT_PREFIX, RunName[NAME_LONG][RUN_BONUS_2], COLOR_TEXT );
+		PrintColorChat( client, client, "%s This map doesn't have \x03%s%s!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_2], COLOR_TEXT );
 		return Plugin_Handled;
 	}
 	
-	iClientRun[client] = RUN_BONUS_2;
+	g_iClientRun[client] = RUN_BONUS_2;
 	
-	TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+	TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 	UpdateScoreboard( client );
 	
-	PrintColorChat( client, client, "%s You are now in \x03%s%s!", CHAT_PREFIX, RunName[NAME_LONG][ iClientRun[client] ], COLOR_TEXT );
+	PrintColorChat( client, client, "%s You are now in \x03%s%s!", CHAT_PREFIX, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT );
 	
 	return Plugin_Handled;
 }

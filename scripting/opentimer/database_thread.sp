@@ -1,38 +1,43 @@
 // Query handles are closed automatically.
 
-public Threaded_PrintRecords( Handle:hDatabase, Handle:hQuery, const String:error[], any:hData )
+public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] szError, any hData )
 {
-	new client; 
-	if ( ( client = GetClientOfUserId( GetArrayCell( hData, 0, 0 ) ) ) == 0 )
-		return;
+	int client;
+	if ( ( client = GetClientOfUserId( GetArrayCell( hData, 0, 0 ) ) ) == 0 ) return;
 	
-	if ( hQuery == INVALID_HANDLE )
+	if ( hQuery == null )
 	{
-		SQL_GetError( Database, Error, sizeof( Error ) );
-		LogError( "%s Error occured when trying to print times to client.\nError: %s", CONSOLE_PREFIX, Error );
+		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
+		LogError( "%s An error occured when trying to print times to client.\nError: %s", CONSOLE_PREFIX, g_szError );
 	
 		PrintColorChat( client, client, "%s Sorry, something went wrong.", CHAT_PREFIX );
 		return;
 	}
 	
-	new field, ply, iJumps[17], iStyle[17];
-	decl Float:flSeconds[17], String:SteamID[17][32], String:Name[17][MAX_NAME_LENGTH], String:FormattedTime[17][13];
+	int field, ply;
 	
-	new bool:bInConsole = GetArrayCell( hData, 0, 1 );
+	int iJumps[RECORDS_PRINT_MAXPLAYERS + 1], iStyle[RECORDS_PRINT_MAXPLAYERS + 1];
+	static float flSeconds[RECORDS_PRINT_MAXPLAYERS + 1];
+	
+	char szSteamId[RECORDS_PRINT_MAXPLAYERS + 1][STEAMID_MAXLENGTH];
+	char szName[RECORDS_PRINT_MAXPLAYERS + 1][MAX_NAME_LENGTH];
+	char szFormTime[RECORDS_PRINT_MAXPLAYERS + 1][12];
+	
+	bool bInConsole = GetArrayCell( hData, 0, 1 );
 	
 	while ( SQL_FetchRow( hQuery ) )
 	{
 		if ( bInConsole )
 		{
 			SQL_FieldNameToNum( hQuery, "steamid", field );
-			SQL_FetchString( hQuery, field, SteamID[ply], sizeof( SteamID[] ) );
+			SQL_FetchString( hQuery, field, szSteamId[ply], sizeof( szSteamId[] ) );
 		
 			SQL_FieldNameToNum( hQuery, "jumps", field );
 			iJumps[ply] = SQL_FetchInt( hQuery, field );
 		}
 		
 		SQL_FieldNameToNum( hQuery, "name", field );
-		SQL_FetchString( hQuery, field, Name[ply], sizeof( Name[] ) );
+		SQL_FetchString( hQuery, field, szName[ply], sizeof( szName[] ) );
 		
 		SQL_FieldNameToNum( hQuery, "time", field );
 		flSeconds[ply] = SQL_FetchFloat( hQuery, field );
@@ -41,39 +46,39 @@ public Threaded_PrintRecords( Handle:hDatabase, Handle:hQuery, const String:erro
 		SQL_FieldNameToNum( hQuery, "style", field );
 		iStyle[ply] = SQL_FetchInt( hQuery, field );
 		
-		FormatSeconds( flSeconds[ply], FormattedTime[ply], true );
+		FormatSeconds( flSeconds[ply], szFormTime[ply], sizeof( szFormTime[] ), true );
 		
 		ply++;
 	}
 	
-	new index = 1;
+	int index = 1;
 	if ( !bInConsole )
 	{
-		decl String:Text[200];
+		static char szText[200];
 		
 		if ( ply > 0 )
 		{
-			Format( Text, sizeof( Text ), "!printrecords for detailed version." );
+			Format( szText, sizeof( szText ), "!printrecords for detailed version." );
 			
-			for ( new i; i < ply; i++ )
+			for ( int i; i < ply; i++ )
 			{
-				Format( Text, sizeof( Text ), "%s\n%i. %s - %s - %s", Text, index, Name[i], FormattedTime[i], StyleName[NAME_SHORT][ iStyle[i] ] );
+				Format( szText, sizeof( szText ), "%s\n%i. %s - %s - %s", szText, index, szName[i], szFormTime[i], g_szStyleName[NAME_SHORT][ iStyle[i] ] );
 				index++;
 			}
 		}
-		else Format( Text, sizeof( Text ), "No one has beaten the map yet... :(" );
+		else Format( szText, sizeof( szText ), "No one has beaten the map yet... :(" );
 		
-		ShowMOTDPanel( client, "Top 5 (All modes)", Text, MOTDPANEL_TYPE_TEXT );
+		ShowMOTDPanel( client, "Top 5 (All modes)", szText, MOTDPANEL_TYPE_TEXT );
 	}
 	else
 	{
-		PrintToConsole( client, "\nRecords (Max. 16):\n!printrecord <style> for specific modes. (\"normal\", \"sideways\", \"w\", \"b1/b2\")\n----------------" );
+		PrintToConsole( client, "\nRecords (Max. %i):\n!printrecord <style> for specific modes. (\"normal\", \"sideways\", \"w\", \"b1/b2\")\n----------------", RECORDS_PRINT_MAXPLAYERS );
 		
 		if ( ply > 0 )
 		{
-			for ( new i; i < ply; i++ )
+			for ( int i; i < ply; i++ )
 			{
-				PrintToConsole( client, "%i. %s - %s - %s - %s - %i jumps", index, SteamID[i], Name[i], FormattedTime[i], StyleName[NAME_LONG][ iStyle[i] ], iJumps[i] );
+				PrintToConsole( client, "%i. %s - %s - %s - %s - %i jumps", index, szSteamId[i], szName[i], szFormTime[i], g_szStyleName[NAME_LONG][ iStyle[i] ], iJumps[i] );
 				index++;
 			}
 		}
@@ -85,74 +90,79 @@ public Threaded_PrintRecords( Handle:hDatabase, Handle:hQuery, const String:erro
 	}
 }
 
-public Threaded_RetrieveClientInfo( Handle:hDatabase, Handle:hQuery, const String:error[], any:data )
+public void Threaded_RetrieveClientInfo( Handle hOwner, Handle hQuery, const char[] szError, any data )
 {
-	if ( hQuery == INVALID_HANDLE )
+	if ( hQuery == null )
 	{
-		SQL_GetError( Database, Error, sizeof( Error ) );
-		LogError( "%s Couldn't retrieve player data!\n Error: %s", CONSOLE_PREFIX, Error );
+		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
+		LogError( "%s Couldn't retrieve player data!\n g_szError: %s", CONSOLE_PREFIX, g_szError );
 		
 		return;
 	}
-
-	new client;
-	if ( ( client = GetClientOfUserId( data ) ) == 0 )
-		return;
-		
-	decl String:SteamID[32];
 	
-	if ( !GetClientAuthString( client, SteamID, sizeof( SteamID ) ) )
+	int client;
+	
+	if ( ( client = GetClientOfUserId( data ) ) == 0 ) return;
+	
+	char szSteamId[STEAMID_MAXLENGTH];
+	
+	if ( !GetClientAuthId( client, AuthId_Engine, szSteamId, sizeof( szSteamId ) ) )
 	{
 		LogError( "%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.", CONSOLE_PREFIX, client );
 		return;
 	}
 	
-	decl String:Buffer[128];
+	static char szQuery[128];
 	
 	if ( SQL_GetRowCount( hQuery ) == 0 )
 	{
-		Format( Buffer, sizeof( Buffer ), "INSERT INTO player_data ( steamid, fov, hideflags ) VALUES ( '%s', 90, 0 );", SteamID );
+		Format( szQuery, sizeof( szQuery ), "INSERT INTO player_data ( steamid, fov, hideflags ) VALUES ( '%s', 90, 0 );", szSteamId );
 		
-		if ( !SQL_FastQuery( Database, Buffer ) )
+		SQL_LockDatabase( g_Database );
+		
+		if ( !SQL_FastQuery( g_Database, szQuery ) )
 		{
-			LogError( "%s Error! Couldn't add a row for new profile!! Steam ID: %s", CONSOLE_PREFIX, SteamID );
+			SQL_UnlockDatabase( g_Database );
+			
+			LogError( "%s Error! Couldn't add a row for new profile!! Steam ID: %s", CONSOLE_PREFIX, szSteamId );
 			return;
 		}
-
+		
+		SQL_UnlockDatabase( g_Database );
+		
 		return;
 	}
-
-	new field;
+	
+	int field;
 	while ( SQL_FetchRow( hQuery ) )
 	{
 		SQL_FieldNameToNum( hQuery, "fov", field );
-		iClientFOV[client] = SQL_FetchInt( hQuery, field );
+		g_iClientFOV[client] = SQL_FetchInt( hQuery, field );
 		
 		SQL_FieldNameToNum( hQuery, "hideflags", field );
-		iClientHideFlags[client] = SQL_FetchInt( hQuery, field );
+		g_iClientHideFlags[client] = SQL_FetchInt( hQuery, field );
 	}
 	
-	Format( Buffer, sizeof( Buffer ), "SELECT time, style, run FROM '%s' WHERE steamid = '%s' ORDER BY run;", CurrentMap, SteamID );
-	SQL_TQuery( Database, Threaded_RetrieveClientTimes, Buffer, GetClientUserId( client ) );
+	Format( szQuery, sizeof( szQuery ), "SELECT time, style, run FROM '%s' WHERE steamid = '%s' ORDER BY run;", g_szCurrentMap, szSteamId );
+	SQL_TQuery( g_Database, Threaded_RetrieveClientTimes, szQuery, GetClientUserId( client ) );
 }
 
-public Threaded_RetrieveClientTimes( Handle:hDatabase, Handle:hQuery, const String:error[], any:data )
+public void Threaded_RetrieveClientTimes( Handle hOwner, Handle hQuery, const char[] szError, any data )
 {
-	if ( hQuery == INVALID_HANDLE )
+	if ( hQuery == null )
 	{
-		SQL_GetError( Database, Error, sizeof( Error ) );
-		LogError( "%s Couldn't retrieve player data!\n Error: %s", CONSOLE_PREFIX, Error );
+		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
+		LogError( "%s Couldn't retrieve player data!\n Error: %s", CONSOLE_PREFIX, g_szError );
 		
 		return;
 	}
 
-	new client;
-	if ( ( client = GetClientOfUserId( data ) ) == 0 )
-		return;
+	int client;
+	if ( ( client = GetClientOfUserId( data ) ) == 0 ) return;
 	
-	if ( hQuery != INVALID_HANDLE )
+	if ( hQuery != null )
 	{
-		new field, iStyle, iRun;
+		int field, iStyle, iRun;
 		while ( SQL_FetchRow( hQuery ) )
 		{
 			SQL_FieldNameToNum( hQuery, "run", field );
@@ -162,9 +172,12 @@ public Threaded_RetrieveClientTimes( Handle:hDatabase, Handle:hQuery, const Stri
 			iStyle = SQL_FetchInt( hQuery, field );
 		
 			SQL_FieldNameToNum( hQuery, "time", field );
-			flClientBestTime[client][iRun][iStyle] = SQL_FetchFloat( hQuery, field );
+			g_flClientBestTime[client][iRun][iStyle] = SQL_FetchFloat( hQuery, field );
 		}
 	}
 	
 	UpdateScoreboard( client );
 }
+
+// No callback is needed.
+public void Threaded_Empty( Handle hOwner, Handle hQuery, const char[] szError, any data ) {}

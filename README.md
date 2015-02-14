@@ -2,13 +2,12 @@ SM-OpenTimer (Read this!)
 ============
 
 SourceMod timer plugin for *CSS* bunnyhop servers.
-
-I was kind of in the middle of working on the plugin when suddenly I was contacted about it. I decided to release it in a hacky-state. However, everything should be stable right now. **The compiled version will always be stable.**
+**Read opentimer_log.txt if you want to know what changes have been made!**
 
 **Dependencies (Optional):**
 - For 260vel weapons: https://forums.alliedmods.net/showthread.php?t=166468
 - For multihop (Maps with func_door platforms.): https://forums.alliedmods.net/showthread.php?t=90467
-- For smoother mimic teleporting **(Strongly recommended)**: https://forums.alliedmods.net/showthread.php?t=180114
+- For smoother mimic teleporting **(Strongly recommended)**: https://forums.alliedmods.net/showthread.php?t=180114 (Download v2.0 for SM 1.7)
 
 **Things to remember:**
 
@@ -46,8 +45,8 @@ I was kind of in the middle of working on the plugin when suddenly I was contact
 - Toggle HUD elements, change FOV, etc.
 - Zone building (Starting-Ending/Block/Freestyle/Bonus1-2 Zones)
 - Practising (not fully implemented.)
-- Simple map voting.
-- Chat processing. (Custom colors for chat.)
+- Simple map voting. **(Optional)**
+- Chat processing. (Custom colors for chat.) **(Optional)**
 
 **TO-DO LIST:**
 - Use better sync, lol. The current one is shitty.

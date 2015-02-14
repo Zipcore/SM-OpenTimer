@@ -1,31 +1,47 @@
-#pragma semicolon 1
-
 #include <sourcemod>
 #include <cstrike>
 #include <sdktools>
 #include <sdkhooks>
 
+#define PLUGIN_VERSION "1.3"
+
+
+//	OPTIONS: Uncomment/comment things to change the plugin to your liking! Simply adding '//' (without quotation marks) in front of the line.
+// ------------------------------------------------------------------------------------------------------------------------------------------
 #define RECORD // Comment out for no recording.
-#define VOTING // Comment out for no voting. NOTE: This overrides commands rtv, nominate, etc.
-#define CHAT // Comment out for no chat processing.
+
+
+//#define VOTING // Comment out for no voting. NOTE: This overrides commands rtv and nominate.
+// Disabled by default because it overrides default commands. (rtv/nominate)
+
+
+//#define CHAT // Comment out for no chat processing. Custom colors on player messages.
+// Disabled by default because it is not really necessary for this plugin.
+
 //#define DELETE_ENTS // Comment out to keep some entities. (func_doors, func_movelinears, etc.)
 // This was originally used for surf maps. If you want old bhop maps with platforms don't uncomment.
 
-#if defined CHAT
-#include <basecomm> // To check if client is gagged.
-#endif
+
+#define ZONE_EDIT_ADMFLAG ADMFLAG_ROOT // Admin flag that allows zone editing.
+// E.g ADMFLAG_KICK, ADMFLAG_BAN, ADMFLAG_CHANGELEVEL
+
 
 #if defined RECORD
 
-#define RECORDING_MAX_LENGTH 1800.0 // In seconds (def. 30 minutes)
-
-#undef REQUIRE_EXTENSIONS
-#include <dhooks>
+// 60 * minutes * tickrate
+// E.g: 60 * 45 * 100 = 270 000
+#define RECORDING_MAX_LENGTH 270000 // Maximum recording length (def. 45 minutes with 100tick)
 
 #endif
 
-#define MAXPLAYERS_BHOP 24 + 1 // Change according to your player count. ( slots + 1 )
-#define ZONE_EDIT_ADMFLAG ADMFLAG_ROOT // Admin flag that allows zone editing.
+
+#define MAXPLAYERS_BHOP 64 + 1 // Change according to your player count. As long as it's not lower than (slots + 1) count it's fine... Def. 64
+// I really don't know what I was thinking when I started to use this instead of the default MAXPLAYERS which is 65.
+// I guess I was really paranoid about optimization. Keep in mind, I didn't really intend to share this plugin with anybody else.
+
+
+#define RECORDS_PRINT_MAXPLAYERS 16 // Maximum records to print in the console. Def. 16
+
 
 // HEX color codes
 //
@@ -34,66 +50,118 @@
 //
 // You can then put your own text after it:
 // \x07FFFFFFThis text is white!
-#define CHAT_PREFIX "\x072F2F2F[\x07D01265OpenTimer\x072F2F2F]\x07FFFFFF" // Used only for chat
-#define CONSOLE_PREFIX "[OpenTimer]" // Used only for console/server.
-
-#define PLUGIN_NAME "OpenTimer" // Name of the plugin. Please don't change this.
-#define PLUGIN_VERSION "1.2.1"
-
 #define COLOR_PURPLE "\x07E71470"
 #define COLOR_TEAL "\x0766CCCC"
 #define COLOR_GRAY "\x07434343"
-#define COLOR_TEXT "\x07FFFFFF" // Default text color. Must be changed in CHAT_PREFIX too!!
 
-////////////////////////////////
-// All shared variables here. //
-////////////////////////////////
+#define COLOR_TEXT "\x07FFFFFF" // Default text color.
+
+#define CHAT_PREFIX "\x072F2F2F[\x07D01265OpenTimer\x072F2F2F]\x07FFFFFF" // Remember to edit this one too if you want to change the text color!
+// God damn compiler won't let me add 2 preprocessed strings together... :/
+// It would make things much more easier...
+
+#define CONSOLE_PREFIX "[OpenTimer]" // Used only for console/server.
+
+// Don't change things under this unless you know what you are doing!!
+// -------------------------------------------------------------------
+#if defined CHAT
+	#include <basecomm> // To check if client is gagged.
+#endif
+
+#if defined RECORD
+	// ------------------------------------------------------------------------------------------------------------------------------------------------
+	// DHOOKS is required to compile this plugin! However, it is not required while running this plugin or if you don't want to compile with recording!
+	// ------------------------------------------------------------------------------------------------------------------------------------------------
+	#undef REQUIRE_EXTENSIONS
+	#include <dhooks>
+
+#endif
+
+// This has to be AFTER include files because not all natives are translated to 1.7!!!
+#pragma semicolon 1
+#pragma newdecls required
+
+// --------------------------
+// All shared variables here.
+// --------------------------
 ///////////////
 // RECORDING //
 ///////////////
 #if defined RECORD
-/*
-	Huge thanks to Peace-Maker. A lot was learned from his movement recorder plugin.
-*/
-enum FrameInfo {
-	FRAME_BUTTONS = 0,
-	//FRAME_IMPULSE,
-	//FRAME_SEED,
+	/*
+		Huge thanks to Peace-Maker. A lot was learned from his movement recorder plugin.
+	*/
+	enum FrameInfo {
+		float:FRAME_ANGLES[2],
+		float:FRAME_ABSVELOCITY[3],
+		float:FRAME_POS[3],
+		
+		FRAME_FLAGS // Combined FRAME_BUTTONS and FRAME_FLAGS. See FRAMEFLAG_*
+	};
+	#define FRAME_SIZE 9
 	
-	Float:FRAME_ANGLES[2],
-	Float:FRAME_VELOCITY[3],
-	Float:FRAME_ABSVELOCITY[3],
+	#define FRAMEFLAG_TELEPORT	( 1 << 0 )
+	#define FRAMEFLAG_CROUCH	( 1 << 1 )
 	
-	Float:FRAME_POS[3],
-	FRAME_FLAGS
-};
-#define FRAME_SIZE 13
-
-#define FRAMEFLAG_SNAPSHOT	( 1 << 0 ) // Doesn't break backwards compatibility :D
-#define FRAMEFLAG_TELEPORT	( 1 << 1 )
-
-#define SNAPSHOT_INTERVAL 100
-#define MIN_REC_SIZE 10
-
-enum HeaderInfo {
-	HEADER_BINARYFORMAT = 0,
-	HEADER_TICKCOUNT,
+	#define MIN_REC_SIZE 10
 	
-	Float:HEADER_INITPOS[3],
-	Float:HEADER_INITANGLES[2]
-};
-#define HEADER_SIZE 7
-
-#define MAGIC_NUMBER 0x4B1D
-#define BINARY_FORMAT 0x01
+	enum HeaderInfo {
+		HEADER_BINARYFORMAT = 0,
+		
+		HEADER_TICKCOUNT,
+		float:HEADER_TIME, // Just in case our database loses the record information!!
+		
+		
+		float:HEADER_INITPOS[3],
+		float:HEADER_INITANGLES[2]
+	};
+	#define HEADER_SIZE 8
+	
+	#define MAGIC_NUMBER 0x4B1F // Old: 0x4B1D
+	
+	#define BINARY_FORMAT 0x01
+	
+	#define TICK_PRE_PLAYBLACK -1
 #endif
+
+///////////////////
+// MISC. DEFINES //
+///////////////////
+#define HIDEHUD_HUD			( 1 << 0 )
+#define HIDEHUD_VM			( 1 << 1 )
+#define HIDEHUD_PLAYERS		( 1 << 2 )
+#define HIDEHUD_TIMER		( 1 << 3 )
+#define HIDEHUD_SIDEINFO	( 1 << 4 )
+#define HIDEHUD_CHAT		( 1 << 5 )
+
+#define HIDE_FLAGS 3946
+
+#define STRAFE_INVALID 0
+#define STRAFE_LEFT 1
+#define STRAFE_RIGHT 2
+
+#define TIME_INVALID 0.0
+
+#define TIMER_UPDATE_INTERVAL 0.1
+#define BOUNDS_UPDATE_INTERVAL 3.0
+
+// How many samples we take to determine our sync.
+#define SYNC_MAX_SAMPLES 100
+
+// Default "grid size" for editing zones.
+#define BUILDER_DEF_GRIDSIZE 8
+
+#define STEAMID_MAXLENGTH 32
+
+#define MAX_MAP_NAME_LENGTH 32
 
 ////////////
 // VOTING //
 ////////////
 #if defined VOTING
-#define MAX_MAP_NAME_LENGTH 32
-enum MapInfo { String:MAP_NAME[MAX_MAP_NAME_LENGTH] };
+	
+	enum MapInfo { String:MAP_NAME[MAX_MAP_NAME_LENGTH] };
+	
 #endif
 ////////////////////////
 // BOUNDS/MODES ENUMS //
@@ -125,12 +193,7 @@ enum {
 	MAX_RUNS
 };
 
-enum {
-	INSIDE_START = 0,
-	INSIDE_END,
-	
-	INSIDE_MAX
-}
+enum { INSIDE_START = 0, INSIDE_END, INSIDE_MAX };
 
 enum { NAME_LONG = 0, NAME_SHORT };
 
@@ -144,148 +207,128 @@ enum {
 	MAX_STYLES // 5
 };
 
-///////////////////
-// MISC. DEFINES //
-///////////////////
-#define HIDEHUD_HUD			( 1 << 0 )
-#define HIDEHUD_VM			( 1 << 1 )
-#define HIDEHUD_PLAYERS		( 1 << 2 )
-#define HIDEHUD_TIMER		( 1 << 3 )
-#define HIDEHUD_SIDEINFO	( 1 << 4 )
-#define HIDEHUD_CHAT		( 1 << 5 )
-
-#define HIDE_FLAGS 3946
-
-#define STRAFE_INVALID 0
-#define STRAFE_LEFT 1
-#define STRAFE_RIGHT 2
-
-#define TIMER_UPDATE_INTERVAL 0.1
-#define BOUNDS_UPDATE_INTERVAL 3.0
-
-#define SYNC_MAX_SAMPLES 100
-
-#define BUILDER_DEF_GRIDSIZE 8
-
 // Zones
-new bool:bIsLoaded[MAX_RUNS]; // Do we have start and end bounds for main/bonus at least?
-new bool:bZoneExists[MAX_BOUNDS]; // Are we going to check if the player is inside these bounds in the first place?
-new Float:vecBoundsMin[MAX_BOUNDS][3];
-new Float:vecBoundsMax[MAX_BOUNDS][3];
+bool g_bIsLoaded[MAX_RUNS]; // Do we have start and end bounds for main/bonus at least?
+bool g_bZoneExists[MAX_BOUNDS]; // Are we going to check if the player is inside these bounds in the first place?
+float g_vecBoundsMin[MAX_BOUNDS][3];
+float g_vecBoundsMax[MAX_BOUNDS][3];
 
-new const String:ZoneNames[MAX_BOUNDS][] = {
-	"Start",
-	"End",
-	"Bonus #1 Start",
-	"Bonus #1 End",
-	"Bonus #2 Start",
-	"Bonus #2 End",
-	"Freestyle #1",
-	"Freestyle #2",
-	"Freestyle #3",
-	"Block #1",
-	"Block #2",
-	"Block #3"
+char g_szZoneNames[MAX_BOUNDS][15] = {
+	"Start", "End",
+	"Bonus #1 Start", "Bonus #1 End",
+	"Bonus #2 Start", "Bonus #2 End",
+	"Freestyle #1", "Freestyle #2", "Freestyle #3",
+	"Block #1", "Block #2", "Block #3"
 };
 
 // Building
-new iBuilderIndex;
-new iBuilderZone = -1;
-new iBuilderGridSize = BUILDER_DEF_GRIDSIZE;
+int g_iBuilderIndex;
+int g_iBuilderZone = -1;
+int g_iBuilderGridSize = BUILDER_DEF_GRIDSIZE;
 
 // Running
-new iClientState[MAXPLAYERS_BHOP];
-new iClientStyle[MAXPLAYERS_BHOP];
-new iClientRun[MAXPLAYERS_BHOP]; // Which run client is doing (main/bonus)?
-new Float:flClientStartTime[MAXPLAYERS_BHOP];
-new Float:flClientFinishTime[MAXPLAYERS_BHOP];
-new Float:flClientBestTime[MAXPLAYERS_BHOP][MAX_RUNS][MAX_STYLES];
-//new bool:bIsClientSaving[MAXPLAYERS_BHOP];
+int g_iClientState[MAXPLAYERS_BHOP];
+int g_iClientStyle[MAXPLAYERS_BHOP];
+int g_iClientRun[MAXPLAYERS_BHOP]; // Which run client is doing (main/bonus)?
+float g_flClientStartTime[MAXPLAYERS_BHOP];
+float g_flClientFinishTime[MAXPLAYERS_BHOP];
+float g_flClientBestTime[MAXPLAYERS_BHOP][MAX_RUNS][MAX_STYLES];
+//bool g_bIsClientSaving[MAXPLAYERS_BHOP];
 
 // Player stats
-new iClientJumpCount[MAXPLAYERS_BHOP];
-new iClientStrafeCount[MAXPLAYERS_BHOP];
-new iClientGoodSync[MAXPLAYERS_BHOP][SYNC_MAX_SAMPLES];
-new iClientLastStrafe[MAXPLAYERS_BHOP]; // Which direction did the client strafe to last time?
+int g_iClientJumpCount[MAXPLAYERS_BHOP];
+int g_iClientStrafeCount[MAXPLAYERS_BHOP];
+int g_iClientGoodSync[MAXPLAYERS_BHOP][SYNC_MAX_SAMPLES];
+int g_iClientLastStrafe[MAXPLAYERS_BHOP]; // Which direction did the client strafe to last time?
 
 // Practice
-// To-Do: Add multiple save points.
-new bool:bIsClientPractising[MAXPLAYERS_BHOP];
-new Float:vecClientSavePos[MAXPLAYERS_BHOP][3];
-new Float:vecClientSaveAng[MAXPLAYERS_BHOP][3];
-new Float:vecClientSaveVel[MAXPLAYERS_BHOP][3];
-new Float:flClientSaveTime[MAXPLAYERS_BHOP];
+// TODO: Add multiple save points.
+bool g_bIsClientPractising[MAXPLAYERS_BHOP];
+float g_vecClientSavePos[MAXPLAYERS_BHOP][3];
+float g_vecClientSaveAng[MAXPLAYERS_BHOP][3];
+float g_vecClientSaveVel[MAXPLAYERS_BHOP][3];
+float g_flClientSaveTime[MAXPLAYERS_BHOP];
 
 // Recording
 #if defined RECORD
-new Handle:hClientRecording[MAXPLAYERS_BHOP];
-new bool:bIsClientRecording[MAXPLAYERS_BHOP];
-new bool:bIsClientMimicing[MAXPLAYERS_BHOP];
-new iClientSnapshot[MAXPLAYERS_BHOP];
-new iClientTick[MAXPLAYERS_BHOP];
+	Handle g_hClientRecording[MAXPLAYERS_BHOP];
+	bool g_bIsClientRecording[MAXPLAYERS_BHOP];
+	bool g_bIsClientMimicing[MAXPLAYERS_BHOP];
+	int g_iClientSnapshot[MAXPLAYERS_BHOP];
+	int g_iClientTick[MAXPLAYERS_BHOP];
 
-new Float:vecInitPos[MAXPLAYERS_BHOP][3];
-new Float:angInitAngles[MAXPLAYERS_BHOP][3];
+	float g_vecInitPos[MAXPLAYERS_BHOP][3];
+	float g_angInitAngles[MAXPLAYERS_BHOP][3];
 
-// Mimic stuff
-new Float:vecInitMimicPos[MAX_RUNS][MAX_STYLES][3];
-new Float:angInitMimicAngles[MAX_RUNS][MAX_STYLES][3];
-new iMimic[MAX_RUNS][MAX_STYLES];
-new iNumMimic;
-new iMimicTickMax[MAX_RUNS][MAX_STYLES];
-new Handle:hMimicRecording[MAX_RUNS][MAX_STYLES];
-new String:MimicName[MAX_RUNS][MAX_STYLES][MAX_NAME_LENGTH];
+	// Mimic stuff
+	float g_vecInitMimicPos[MAX_RUNS][MAX_STYLES][3];
+	float g_angInitMimicAngles[MAX_RUNS][MAX_STYLES][3];
+	int g_iMimic[MAX_RUNS][MAX_STYLES];
+	int g_iNumMimic;
+	int g_iMimicTickMax[MAX_RUNS][MAX_STYLES];
+	Handle g_hMimicRecording[MAX_RUNS][MAX_STYLES];
+	char g_szMimicName[MAX_RUNS][MAX_STYLES][MAX_NAME_LENGTH];
 
-new Handle:hHookTele; // DHOOKS
-new bool:b_DHOOKS_Exists;
+	Handle g_hHookTele; // DHOOKS
+	bool g_b_DHOOKS_Exists;
 #endif
 
 // Client settings (bonus stuff)
-new iClientFOV[MAXPLAYERS_BHOP] = { 90, ... };
-new iClientHideFlags[MAXPLAYERS_BHOP];
+int g_iClientFOV[MAXPLAYERS_BHOP] = { 90, ... };
+int g_iClientHideFlags[MAXPLAYERS_BHOP];
 
 // Other
-new String:CurrentMap[32];
-new Float:vecSpawnPos[MAX_RUNS][3], Float:angSpawnAngles[MAX_RUNS][3];
-new Float:flMapBestTime[MAX_RUNS][MAX_STYLES];
-new iBeam;
-new iPreferedTeam = CS_TEAM_T;
+char g_szCurrentMap[MAX_MAP_NAME_LENGTH];
+float g_vecSpawnPos[MAX_RUNS][3];
+float g_angSpawnAngles[MAX_RUNS][3];
+float g_flMapBestTime[MAX_RUNS][MAX_STYLES];
+int g_iBeam;
+int g_iPreferedTeam = CS_TEAM_T;
 
+// Voting stuff
 #if defined VOTING
-new Handle:hMapList;
-new String:NextMap[MAX_MAP_NAME_LENGTH];
-new iClientVote[MAXPLAYERS_BHOP] = { -1, ... };
+	ArrayList g_hMapList;
+	char g_szNextMap[MAX_MAP_NAME_LENGTH];
+
+	int g_iClientVote[MAXPLAYERS_BHOP] = { -1, ... };
 #endif
 
-new const String:StyleName[][][] = { { "Normal", "Sideways", "W-Only", "Real HSW", "Half-Sideways" } , { "N", "SW", "W", "RHSW", "HSW" } };
-new const String:RunName[][][8] = { { "Main", "Bonus 1", "Bonus 2" }, { "M", "B1", "B2" } };
-new const Float:vecNull[] = { 0.0, 0.0, 0.0 };
-new const String:WinningSounds[][] = {
-	"buttons/button16.wav",
-	"bot/i_am_on_fire.wav",
-	"bot/its_a_party.wav",
-	"bot/made_him_cry.wav",
-	"bot/this_is_my_house.wav",
-	"bot/yea_baby.wav",
-	"bot/yesss.wav",
-	"bot/yesss2.wav"
+// Constants
+char g_szStyleName[][][14] = {
+	{ "Normal", "Sideways", "W-Only", "Real HSW", "Half-Sideways" },
+	{ "N", "SW", "W", "RHSW", "HSW" }
+};
+char g_szRunName[][][8] = {
+	{ "Main", "Bonus 1", "Bonus 2" },
+	{ "M", "B1", "B2" }
+};
+char g_szWinningSounds[][25] = {
+	"buttons/button16.wav", "bot/i_am_on_fire.wav",
+	"bot/its_a_party.wav", "bot/made_him_cry.wav",
+	"bot/this_is_my_house.wav", "bot/yea_baby.wav",
+	"bot/yesss.wav", "bot/yesss2.wav"
 };
 
+float g_vecNull[3] = { 0.0, 0.0, 0.0 };
+
 // ConVars
-new Handle:ConVar_AirAccelerate; // To tell the client what aa we have.
-static Handle:ConVar_PreSpeed;
-new Handle:ConVar_AutoHop;
-new Handle:ConVar_LeftRight;
+ConVar g_ConVar_AirAccelerate; // To tell the client what aa we have.
+static ConVar g_ConVar_PreSpeed;
+ConVar g_ConVar_AutoHop;
+ConVar g_ConVar_EZHop;
+ConVar g_ConVar_LeftRight;
 
 // Settings (Convars)
-new bool:bPreSpeed;
-new bool:bForbiddenCommands;
-//new bool:bClientAutoHop[MAXPLAYERS_BHOP] = { true, ... };
-new bool:bAutoHop = true;
+// WARNING: Must be initialized as the default value or it will not register when executing it!!
+bool g_bPreSpeed = false;
+bool g_bForbiddenCommands = true;
+bool g_bAutoHop = true;
+bool g_bEZHop = true;
+//bool g_bClientAutoHop[MAXPLAYERS_BHOP] = { true, ... };
 
-//////////////////////////////
-// End of shared variables. //
-//////////////////////////////
+// ---------------------------------------------
+// End of shared variables.
+// ---------------------------------------------
 
 #include "opentimer/stocks.sp"
 #include "opentimer/database.sp"
@@ -294,15 +337,15 @@ new bool:bAutoHop = true;
 #include "opentimer/timers.sp"
 #include "opentimer/menus.sp"
 
-public Plugin:Info = {
+public Plugin OpenTimerInfo = {
 	author = "Mehis",
-	name = PLUGIN_NAME,
+	name = "OpenTimer",
 	description = "For servers that want to go the fastest.",
-	url = "http://steamcommunity.com/id/mehis/",
+	url = "http://steamcommunity.com/profiles/76561198021256769",
 	version = PLUGIN_VERSION
 };
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	// HOOKS
 	HookEvent( "player_spawn", Event_ClientSpawn );
@@ -408,11 +451,12 @@ public OnPluginStart()
 	//RegConsoleCmd( "sm_s", Command_Practise_SavePoint );
 	
 	RegConsoleCmd( "sm_cp", Command_Practise_GotoPoint );
+	RegConsoleCmd( "sm_checkpoint", Command_Practise_GotoPoint );
 	RegConsoleCmd( "sm_gotocp", Command_Practise_GotoPoint );
 	
 	// HELP
 	RegConsoleCmd( "sm_commands", Command_Help );
-	RegConsoleCmd( "sm_help", Command_Help );
+	//RegConsoleCmd( "sm_help", Command_Help );
 	
 	// VOTING
 #if defined VOTING
@@ -433,20 +477,22 @@ public OnPluginStart()
 	RegAdminCmd( "sm_deletezone", Command_Admin_ZoneDelete, ZONE_EDIT_ADMFLAG, "Delete a zone." ); // Menu
 	
 	// CONVARS
-	ConVar_AirAccelerate = FindConVar( "sv_airaccelerate" );
+	g_ConVar_AirAccelerate = FindConVar( "sv_airaccelerate" );
 	
-	ConVar_AutoHop = CreateConVar( "sm_autohopping", "1", "Is autobunnyhopping allowed? (hold space)", FCVAR_PLUGIN | FCVAR_NOTIFY, true, 0.0, true, 1.0 );
+	g_ConVar_AutoHop = CreateConVar( "sm_autobhop", "1", "Is autobunnyhopping allowed? (hold space)", FCVAR_PLUGIN | FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	
-	ConVar_PreSpeed = CreateConVar( "sm_prespeed", "0", "Is prespeeding allowed in the starting area?", FCVAR_PLUGIN | FCVAR_NOTIFY, true, 0.0, true, 1.0 );
+	g_ConVar_EZHop = CreateConVar( "sm_ezhop", "1", "Is ezhop enabled?", FCVAR_PLUGIN | FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	
-	ConVar_LeftRight = CreateConVar( "sm_forbidden_commands", "1", "Is +left and +right allowed?", FCVAR_PLUGIN | FCVAR_NOTIFY, true, 0.0, true, 1.0 );
+	g_ConVar_PreSpeed = CreateConVar( "sm_prespeed", "0", "Is prespeeding allowed in the starting area?", FCVAR_PLUGIN | FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	
-	HookConVarChange( ConVar_AutoHop, Event_ConVar_AutoHop );
-	HookConVarChange( ConVar_PreSpeed, Event_ConVar_PreSpeed );
-	HookConVarChange( ConVar_LeftRight, Event_ConVar_LeftRight );
+	g_ConVar_LeftRight = CreateConVar( "sm_forbidden_commands", "1", "Is +left and +right allowed?", FCVAR_PLUGIN | FCVAR_NOTIFY, true, 0.0, true, 1.0 );
+	
+	HookConVarChange( g_ConVar_AutoHop, Event_ConVar_AutoHop );
+	HookConVarChange( g_ConVar_EZHop, Event_ConVar_EZHop );
+	HookConVarChange( g_ConVar_PreSpeed, Event_ConVar_PreSpeed );
+	HookConVarChange( g_ConVar_LeftRight, Event_ConVar_LeftRight );
 	
 	InitializeDatabase();
-	
 	
 #if defined RECORD
 	//HookEvent( "base_player_teleported", Event_ClientTeleport ); // Doesn't work.
@@ -454,69 +500,99 @@ public OnPluginStart()
 
 	if( LibraryExists( "dhooks" ) )
 	{
-		b_DHOOKS_Exists = true;
+		g_b_DHOOKS_Exists = true;
 		
-		new Handle:hGameConfig = LoadGameConfigFile( "sdktools.games" );
-		if ( hGameConfig == INVALID_HANDLE ) return;
+		Handle hGameConfig = LoadGameConfigFile( "sdktools.games" );
+		if ( hGameConfig == null ) return;
 		
-		new iOffset = GameConfGetOffset( hGameConfig, "Teleport" );
+		int iOffset = GameConfGetOffset( hGameConfig, "Teleport" );
+		
+		delete hGameConfig;
+		
 		if ( iOffset == -1 ) return;
 		
-		hHookTele = DHookCreate( iOffset, HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity, Event_OnTeleport );
-		if ( hHookTele == INVALID_HANDLE ) return;
+		g_hHookTele = DHookCreate( iOffset, HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity, Event_OnTeleport );
+		if ( g_hHookTele == null ) return;
 		
-		DHookAddParam( hHookTele, HookParamType_VectorPtr ); // Can't take any of these away or it will crash.
-		DHookAddParam( hHookTele, HookParamType_ObjectPtr );
-		DHookAddParam( hHookTele, HookParamType_VectorPtr );
+		DHookAddParam( g_hHookTele, HookParamType_VectorPtr ); // Can't take any of these away or it will crash.
+		DHookAddParam( g_hHookTele, HookParamType_ObjectPtr );
+		DHookAddParam( g_hHookTele, HookParamType_VectorPtr );
 	}
 	else
 	{
-		b_DHOOKS_Exists = false;
+		g_b_DHOOKS_Exists = false;
+		
+		if ( g_hHookTele != null )
+		{
+			delete g_hHookTele;
+			g_hHookTele = null;
+		}
+		
 		PrintToServer( "%s DHOOKS extension not found!", CONSOLE_PREFIX );
 	}
 #endif
+	
+	LoadTranslations( "common.phrases" ); // So FindTarget() can work.
 }
 
-public Event_ConVar_AutoHop( Handle:hConVar, const String:oldValue[], const String:newValue[] )
-	bAutoHop = GetConVarBool( hConVar );
-	
-public Event_ConVar_PreSpeed( Handle:hConVar, const String:oldValue[], const String:newValue[] )
-	bPreSpeed = GetConVarBool( hConVar );
+public void Event_ConVar_AutoHop( Handle hConVar, const char[] szOldValue, const char[] szNewValue )
+{
+	g_bAutoHop = GetConVarBool( hConVar );
+}
 
-public Event_ConVar_LeftRight( Handle:hConVar, const String:oldValue[], const String:newValue[] )
-	bForbiddenCommands = GetConVarBool( hConVar );
+public void Event_ConVar_EZHop( Handle hConVar, const char[] szOldValue, const char[] szNewValue )
+{
+	g_bEZHop = GetConVarBool( hConVar );
+}
 
-public OnMapStart()
+public void Event_ConVar_PreSpeed( Handle hConVar, const char[] szOldValue, const char[] szNewValue )
+{
+	g_bPreSpeed = GetConVarBool( hConVar );
+}
+
+public void Event_ConVar_LeftRight( Handle hConVar, const char[] szOldValue, const char[] szNewValue )
+{
+	g_bForbiddenCommands = GetConVarBool( hConVar );
+}
+
+public void OnMapStart()
 {
 	ServerCommand( "bot_quota 0" ); // No bots until we have records.
 	
 	// Just incase there are maps that use uppercase letters.
-	GetCurrentMap( CurrentMap, sizeof( CurrentMap ) );
+	GetCurrentMap( g_szCurrentMap, sizeof( g_szCurrentMap ) );
 	
-	new len = strlen( CurrentMap );
-	for ( new i; i < len; i++ )
-		if ( IsCharUpper( CurrentMap[i] ) )
-			CharToLower( CurrentMap[i] );
+	int len = strlen( g_szCurrentMap );
+	
+	for ( int i; i < len; i++ )
+		if ( IsCharUpper( g_szCurrentMap[i] ) )
+		{
+			CharToLower( g_szCurrentMap[i] );
+		}
 	
 	// Rest is just resetting/precaching stuff.
-	iBuilderIndex = 0;
-	iBuilderZone = -1;
-	iBuilderGridSize = BUILDER_DEF_GRIDSIZE;
+	g_iBuilderIndex = 0;
+	g_iBuilderZone = -1;
+	g_iBuilderGridSize = BUILDER_DEF_GRIDSIZE;
 
 #if defined RECORD
-	iNumMimic = 0;
+	g_iNumMimic = 0;
 	
-	for ( new run; run < MAX_RUNS; run++ )
+	for ( int run; run < MAX_RUNS; run++ )
 	{
-		ArrayFill( flMapBestTime[run], 0.0, MAX_STYLES );
+		ArrayFill( g_flMapBestTime[run], TIME_INVALID, MAX_STYLES );
 		
-		for ( new i; i < MAX_STYLES; i++ )
+		for ( int style; style < MAX_STYLES; style++ )
 		{
-			iMimic[run][i] = 0;
-			iMimicTickMax[run][i] = 0;
+			g_iMimic[run][style] = 0;
+			g_iMimicTickMax[run][style] = 0;
 			
-			if ( hMimicRecording[run][i] != INVALID_HANDLE )
-				ClearArray( hMimicRecording[run][i] );
+			if ( g_hMimicRecording[run][style] != null )
+			{
+				delete g_hMimicRecording[run][style];
+				g_hMimicRecording[run][style] = null;
+				//ClearArray( g_hMimicRecording[run][style] );
+			}
 		}
 	}
 #endif
@@ -527,16 +603,13 @@ public OnMapStart()
 	FindMaps();
 #endif
 	
-	iBeam = PrecacheModel( "materials/sprites/plasma.vmt" );
+	g_iBeam = PrecacheModel( "materials/sprites/plasma.vmt" );
 	
-	PrecacheSound( WinningSounds[0] );
-	PrecacheSound( WinningSounds[1] );
-	PrecacheSound( WinningSounds[2] );
-	PrecacheSound( WinningSounds[3] );
-	PrecacheSound( WinningSounds[4] );
-	PrecacheSound( WinningSounds[5] );
-	PrecacheSound( WinningSounds[6] );
-	PrecacheSound( WinningSounds[7] );
+	
+	for ( int i; i < sizeof( g_szWinningSounds ); i++ )
+	{
+		PrecacheSound( g_szWinningSounds[i] );
+	}
 	
 	CreateTimer( BOUNDS_UPDATE_INTERVAL, Timer_DrawZoneBeams, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE );
 	
@@ -546,88 +619,103 @@ public OnMapStart()
 }
 
 // Release client's vote or bot's record.
-public OnClientDisconnect( client )
+public void OnClientDisconnect( int client )
 {
 #if defined RECORD
-	if ( IsFakeClient( client ) && iMimic[ iClientRun[client] ][ iClientStyle[client] ] == client )
+	if ( IsFakeClient( client ) && g_iMimic[ g_iClientRun[client] ][ g_iClientStyle[client] ] == client )
 	{
-		iMimic[ iClientRun[client] ][ iClientStyle[client] ] = 0;
+		g_iMimic[ g_iClientRun[client] ][ g_iClientStyle[client] ] = 0;
 		return;
 	}
 #endif
 
 #if defined VOTING
-	iClientVote[client] = -1;
+	g_iClientVote[client] = -1;
 	CalcVotes();
 #endif
 }
 
-public OnClientConnected( client )
+public void OnClientPutInServer( int client )
 {
-	// Reset per client is done while connecting.
-	iClientState[client] = STATE_RUNNING;
-	iClientStyle[client] = STYLE_NORMAL;
-	iClientRun[client] = RUN_MAIN;
-	flClientStartTime[client] = 0.0;
+	// -----------------
+	// Reset everything!
+	// -----------------
 	
-	//bClientAutoHop[client] = true;
+	// States
+	g_iClientState[client] = STATE_RUNNING;
+	g_iClientStyle[client] = STYLE_NORMAL;
+	g_iClientRun[client] = RUN_MAIN;
 	
-	flClientFinishTime[client] = 0.0;
+	// Times
+	g_flClientStartTime[client] = TIME_INVALID;
+	g_flClientFinishTime[client] = TIME_INVALID;
 	
-	for ( new i; i < MAX_RUNS; i++ )
-		ArrayFill( flClientBestTime[client][i], 0.0, MAX_STYLES );
+	for ( int i; i < MAX_RUNS; i++ )
+		ArrayFill( g_flClientBestTime[client][i], TIME_INVALID, MAX_STYLES );
 	
-	iClientJumpCount[client] = 0;
-	iClientStrafeCount[client] = 0;	
+	// Other data
+	g_iClientJumpCount[client] = 0;
+	g_iClientStrafeCount[client] = 0;	
 	
-	bIsClientPractising[client] = false;
-	ArrayFill( vecClientSavePos[client], 0.0, 3 );
-	ArrayFill( vecClientSaveAng[client], 0.0, 3 );
-	ArrayFill( vecClientSaveVel[client], 0.0, 3 );
+	// Practicing
+	g_bIsClientPractising[client] = false;
+	ArrayFill( g_vecClientSavePos[client], TIME_INVALID, 3 );
+	ArrayFill( g_vecClientSaveAng[client], TIME_INVALID, 3 );
+	ArrayFill( g_vecClientSaveVel[client], TIME_INVALID, 3 );
 	
-	flClientSaveTime[client] = 0.0;
+	g_flClientSaveTime[client] = TIME_INVALID;
 	
 #if defined RECORD
-	bIsClientRecording[client] = false;
-	bIsClientMimicing[client] = false;
-	iClientSnapshot[client] = 0;
-	iClientTick[client] = 0;
+	// Recording
+	g_bIsClientRecording[client] = false;
+	g_bIsClientMimicing[client] = false;
+	g_iClientSnapshot[client] = 0;
+	g_iClientTick[client] = 0;
+	
+	if ( g_hClientRecording[client] != null )
+	{
+		delete g_hClientRecording[client];
+		g_hClientRecording[client] = null;
+	}
 #endif
 	
-	iClientFOV[client] = 90;
-	iClientHideFlags[client] = 0;
-}
-
-public OnClientPostAdminCheck( client )
-{
-// Assign records to bots, fetch client info from DB and hook stuff.
+	// Misc. settings
+	g_iClientFOV[client] = 90;
+	g_iClientHideFlags[client] = 0;
+	
+	// --------------------------------------------------------------------------------
+	// Reset is done, now we assign stuff. Fetch client data from DB and hook stuff...
+	// --------------------------------------------------------------------------------
 #if defined RECORD
 	if ( IsFakeClient( client ) )
 	{
-		iClientState[client] = STATE_START;
-		
-		for ( new run; run < MAX_RUNS; run++ )
-			for ( new i; i < MAX_STYLES; i++ )
+		// -----------------------------------------------
+		// Assign records for bots and make them mimic it.
+		// -----------------------------------------------
+		for ( int run; run < MAX_RUNS; run++ )
+			for ( int style; style < MAX_STYLES; style++ )
 			{
-				if ( iMimic[run][i] != 0 || iMimicTickMax[run][i] < 1 ) continue;
+				// We already have a mimic in this slot? Continue.
+				if ( g_iMimic[run][style] != 0 || g_iMimicTickMax[run][style] < 1 ) continue;
 				
-				decl String:Name[MAX_NAME_LENGTH];
-				Format( Name, sizeof( Name ), "REC* %s [%s|%s]", MimicName[run][i], RunName[NAME_SHORT][run], StyleName[NAME_SHORT][i] );
-				SetClientInfo( client, "name", Name );
+				char szName[MAX_NAME_LENGTH];
+				Format( szName, sizeof( szName ), "REC* %s [%s|%s]", g_szMimicName[run][style], g_szRunName[NAME_SHORT][run], g_szStyleName[NAME_SHORT][style] );
+				SetClientInfo( client, "name", szName );
 				
-				decl String:FormattedTime[13];
-				FormatSeconds( flMapBestTime[run][i], FormattedTime, false );
-				CS_SetClientClanTag( client, FormattedTime );
+				char szFormTime[12];
+				FormatSeconds( g_flMapBestTime[run][style], szFormTime, sizeof( szFormTime ), false );
+				CS_SetClientClanTag( client, szFormTime );
 				
-				iClientTick[client] = -1;
+				// Get the bot ready for playback.
+				g_iClientTick[client] = -1;
 				
-				TeleportEntity( client, vecInitMimicPos[run][i], angInitMimicAngles[run][i], vecNull );
+				TeleportEntity( client, g_vecInitMimicPos[run][style], g_angInitMimicAngles[run][style], g_vecNull );
 				CreateTimer( 2.0, Timer_Rec_Start, client );
 				
-				iClientStyle[client] = i;
-				iClientRun[client] = run;
+				g_iClientStyle[client] = style;
+				g_iClientRun[client] = run;
 				
-				iMimic[run][i] = client;
+				g_iMimic[run][style] = client;
 				
 				return;
 			}
@@ -638,12 +726,15 @@ public OnClientPostAdminCheck( client )
 	
 	RetrieveClientInfo( client );
 	
-	// Timer and welcome msg
-	CreateTimer( 5.0, Timer_Connected, client );
+	
+	// Welcome message
+	CreateTimer( 5.0, Timer_Connected, GetClientUserId( client ) );
+	
+	// Timer's timer function :^)
 	CreateTimer( TIMER_UPDATE_INTERVAL, Timer_ShowClientInfo, client, TIMER_REPEAT );
 	
 	// Hooks
-	if ( iClientHideFlags[client] & HIDEHUD_PLAYERS )
+	if ( g_iClientHideFlags[client] & HIDEHUD_PLAYERS )
 		SDKHook( client, SDKHook_SetTransmit, Event_ClientTransmit );
 	
 	SDKHook( client, SDKHook_WeaponDropPost, Event_WeaponDrop ); // No more weapon dropping.
@@ -651,146 +742,201 @@ public OnClientPostAdminCheck( client )
 	SDKHook( client, SDKHook_PreThinkPost, Event_ClientThink );
 	
 #if defined RECORD
-	if ( b_DHOOKS_Exists && hHookTele != INVALID_HANDLE ) // DHOOKS only on real players.
-		DHookEntity( hHookTele, false, client );
+	if ( g_b_DHOOKS_Exists && g_hHookTele != null ) // DHOOKS hooked only on real players.
+		DHookEntity( g_hHookTele, false, client );
 #endif
-	
+}
+
+// People don't necessarily want this.
+/*public void OnClientPostAdminCheck( int client )
+{
 	// Join sound
-	if ( !IsSoundPrecached( WinningSounds[0] ) )
-		PrecacheSound( WinningSounds[0] );
+	if ( !IsSoundPrecached( g_szWinningSounds[0] ) )
+		PrecacheSound( g_szWinningSounds[0] );
 	
-	EmitSoundToClient( client, WinningSounds[0] );
+	EmitSoundToClient( client, g_szWinningSounds[0] );
+}*/
+
+public void Event_WeaponSwitchPost( int client )
+{
+	SetEntProp( client, Prop_Data, "m_iFOV", g_iClientFOV[client] );
+	SetEntProp( client, Prop_Data, "m_iDefaultFOV", g_iClientFOV[client] );
 }
 
-public Event_WeaponSwitchPost( client )
+public void Event_WeaponDrop( int client, int weapon ) // REMOVE THOSE WEAPONS GOD DAMN IT!
 {
-	SetEntProp( client, Prop_Data, "m_iFOV", iClientFOV[client] );
-	SetEntProp( client, Prop_Data, "m_iDefaultFOV", iClientFOV[client] );
+	// This doesn't delete all the weapons.
+	// In fact, this doesn't get called when player suicides.
+	if ( IsValidEntity( weapon ) )
+		AcceptEntityInput( weapon, "Kill" );
 }
-
-public Event_WeaponDrop( client, weapon ) // REMOVE THOSE WEAPONS GOD DAMN IT!
-	if ( IsValidEntity( weapon ) ) AcceptEntityInput( weapon, "Kill" );
-
-//////////////////////////////////////////////////////////////
-// Main component of the zones. Does everything, basically. //
-//////////////////////////////////////////////////////////////
-public Event_ClientThink( client )
+// ---------------------------------------------------------
+// Main component of the zones. Does everything, basically.
+// ---------------------------------------------------------
+public void Event_ClientThink( int client )
 {
-	if ( !bIsLoaded[ iClientRun[client] ] || !IsPlayerAlive( client ) ) return;
+	if ( !g_bIsLoaded[ g_iClientRun[client] ] || !IsPlayerAlive( client ) ) return;
 	
-	static bool:bInsideBounds[MAXPLAYERS_BHOP][INSIDE_MAX];
+	static bool bInsideBounds[MAXPLAYERS_BHOP][INSIDE_MAX];
 	
-	if ( iClientRun[client] == RUN_MAIN )
+	// First we find out if our client is in his own zone areas.
+	switch ( g_iClientRun[client] )
 	{
-		bInsideBounds[client][INSIDE_START] = IsInsideBounds( client, BOUNDS_START );
-		bInsideBounds[client][INSIDE_END] = IsInsideBounds( client, BOUNDS_END );
-	}
-	else if ( iClientRun[client] == RUN_BONUS_1 )
-	{
-		bInsideBounds[client][INSIDE_START] = IsInsideBounds( client, BOUNDS_BONUS_1_START );
-		bInsideBounds[client][INSIDE_END] = IsInsideBounds( client, BOUNDS_BONUS_1_END );
-	}
-	else if ( iClientRun[client] == RUN_BONUS_2 )
-	{
-		bInsideBounds[client][INSIDE_START] = IsInsideBounds( client, BOUNDS_BONUS_2_START );
-		bInsideBounds[client][INSIDE_END] = IsInsideBounds( client, BOUNDS_BONUS_2_END );
-	}
-	
-	if ( iClientState[client] == STATE_START && !bInsideBounds[client][INSIDE_START] )
-	{
-		if ( GetEntityMoveType( client ) == MOVETYPE_NOCLIP )
+		case RUN_BONUS_1 :
 		{
-			PrintColorChat( client, client, "%s You're now in practice mode! Type \x03!prac%s again to toggle.", CHAT_PREFIX, COLOR_TEXT );
-			bIsClientPractising[client] = true;
+			bInsideBounds[client][INSIDE_START] = IsInsideBounds( client, BOUNDS_BONUS_1_START );
+			bInsideBounds[client][INSIDE_END] = IsInsideBounds( client, BOUNDS_BONUS_1_END );
 		}
-		else if ( !bPreSpeed && ( GetClientVelocity( client ) > 300.0 || iClientJumpCount[client] > 1 ) )
+		case RUN_BONUS_2 :
+		{
+			bInsideBounds[client][INSIDE_START] = IsInsideBounds( client, BOUNDS_BONUS_2_START );
+			bInsideBounds[client][INSIDE_END] = IsInsideBounds( client, BOUNDS_BONUS_2_END );
+		}
+		default :
+		{
+			bInsideBounds[client][INSIDE_START] = IsInsideBounds( client, BOUNDS_START );
+			bInsideBounds[client][INSIDE_END] = IsInsideBounds( client, BOUNDS_END );
+		}
+	}
+	
+	// We then compare that:
+	if ( g_iClientState[client] == STATE_START && !bInsideBounds[client][INSIDE_START] )
+	{
+		// We were in start but we're not anymore.
+		// Start to run!
+		
+		// Don't allow players to cheat by noclipping around...
+		if ( GetEntityMoveType( client ) == MOVETYPE_NOCLIP && !g_bIsClientPractising[client] )
+		{
+			PrintColorChat( client, client, "%s You are now in practice mode! Type \x03!prac%s again to toggle.", CHAT_PREFIX, COLOR_TEXT );
+			g_bIsClientPractising[client] = true;
+		}
+		// No prespeeding or multiple jumps in the starting zone!
+		else if ( !g_bPreSpeed && ( GetClientVelocity( client ) > 300.0 || g_iClientJumpCount[client] > 1 ) )
 		{
 			PrintColorChat( client, client, "%s No prespeeding allowed! (\x03300vel/2 jump cap%s)", CHAT_PREFIX, COLOR_TEXT );
-			TeleportEntity( client, NULL_VECTOR, NULL_VECTOR, vecNull );
+			
+			TeleportEntity( client, NULL_VECTOR, NULL_VECTOR, g_vecNull );
+			
+			// Not setting this would cause people to float, lol
+			// Basically, the function keeps resetting their speed but not their jump count.
+			// It would then keep on looping forever until players got inside the starting zone again.
+			g_iClientJumpCount[client] = 0;
 			
 			return;
 		}
 		
-		flClientStartTime[client] = GetEngineTime();
+		g_flClientStartTime[client] = GetEngineTime();
 		
-		ArrayFill( iClientGoodSync[client], 1, 100 );
+		ArrayFill( g_iClientGoodSync[client], 1, 100 );
 		
 #if defined RECORD
-		if ( !bIsClientPractising[client] )
+		// Start to record if we're not practising...
+		if ( !g_bIsClientPractising[client] )
 		{
-			iClientTick[client] = 0;
-			bIsClientRecording[client] = true;
+			g_iClientTick[client] = 0;
+			g_bIsClientRecording[client] = true;
 			
-			hClientRecording[client] = CreateArray( _:FrameInfo );
+			g_hClientRecording[client] = CreateArray( view_as<int>FrameInfo );
 			
-			GetClientEyeAngles( client, angInitAngles[client] );
-			GetClientAbsOrigin( client, vecInitPos[client] );
+			GetClientEyeAngles( client, g_angInitAngles[client] );
+			GetClientAbsOrigin( client, g_vecInitPos[client] );
 		}
 #endif
-		iClientState[client] = STATE_RUNNING;
+		g_iClientState[client] = STATE_RUNNING;
 	}
-	else if ( iClientState[client] == STATE_RUNNING && bInsideBounds[client][INSIDE_END] )
+	else if ( g_iClientState[client] == STATE_RUNNING && bInsideBounds[client][INSIDE_END] )
 	{
 		// Inside the end bounds from running! :D
-		if ( flClientStartTime[client] == 0.0 )
-			return;
 		
-		iClientState[client] = STATE_END;
+		// We haven't even started to run or we already came in to the start!!
+		if ( g_flClientStartTime[client] == TIME_INVALID ) return;
 		
-		new Float:flNewTime = GetEngineTime() - flClientStartTime[client];
+		g_iClientState[client] = STATE_END;
 		
-		flClientStartTime[client] = 0.0;
-		
-		if ( bIsClientPractising[client] )
-			return;
-		
-		flClientFinishTime[client] = flNewTime;
-		
-		if ( !SaveClientRecord( client, flNewTime ) )
-			PrintColorChat( client, client, "%s Couldn't save your record to the database!", CHAT_PREFIX );
-		
-#if defined RECORD
-		if ( bIsClientRecording[client] && hClientRecording[client] != INVALID_HANDLE )
+		// Save the time if we're not practising.
+		if ( !g_bIsClientPractising[client] )
 		{
-			iClientTick[client] = 0;
-			bIsClientRecording[client] = false;
-		}
+			float flNewTime = GetEngineTime() - g_flClientStartTime[client];
+			
+			g_flClientFinishTime[client] = flNewTime;
+			
+			if ( !SaveClientRecord( client, flNewTime ) )
+			{
+				PrintColorChat( client, client, "%s Couldn't save your record to the database!", CHAT_PREFIX );
+			}
+			
+#if defined RECORD
+			if ( g_bIsClientRecording[client] && g_hClientRecording[client] != null )
+			{
+				g_iClientTick[client] = 0;
+				g_bIsClientRecording[client] = false;
+			}
 #endif
+		}
+
+		g_flClientStartTime[client] = TIME_INVALID;
 	}
 	else if ( bInsideBounds[client][INSIDE_START] )
 	{
+		// We have been in the starting zone for a while...
 		// Reset everything if we're inside the starting zone.
+		
+		
 		// Did we come in just now or did we not jump when we were on the ground?
-		if ( iClientState[client] != STATE_START || ( GetEntityFlags( client ) & FL_ONGROUND && !( GetClientButtons( client ) & IN_JUMP ) ) )
-			iClientJumpCount[client] = 0;
-		
-		iClientState[client] = STATE_START;
-		flClientSaveTime[client] = 0.0;
-		
-		iClientStrafeCount[client] = 0;
-		iClientLastStrafe[client] = STRAFE_INVALID;
-	}
-	else if ( !bIsClientPractising[client] )
-	{
-		// We're running, so let's check for potential block zones and stuff.
-#if defined RECORD
-		if ( ( GetEngineTime() - flClientStartTime[client] ) > RECORDING_MAX_LENGTH && bIsClientRecording[client] )
+		if ( g_iClientState[client] != STATE_START || ( GetEntityFlags( client ) & FL_ONGROUND && !( GetClientButtons( client ) & IN_JUMP ) ) )
 		{
-			iClientTick[client] = 0;
-			bIsClientRecording[client] = false;
+			g_iClientJumpCount[client] = 0;
+		}
+		
+		g_iClientState[client] = STATE_START;
+		g_flClientSaveTime[client] = TIME_INVALID;
+		
+		g_iClientStrafeCount[client] = 0;
+		g_iClientLastStrafe[client] = STRAFE_INVALID;
+		
+/*#if defined VOTING
+		static float flClientKick[MAXPLAYERS_BHOP];
+		
+		if ( GetEntProp( client, Prop_Data, "m_nButtons" ) == 0 && flClientKick[client] == 0.0 )
+			flClientKick[client] = GetEngineTime() + 120.0;
+		
+		if ( GetEngineTime() > flClientLastAway[client] )
+		{
+			flClientKick[client] = 0.0;
+			ChangeClientTeam( client, CS_TEAM_SPECTATOR );
+		}
+#endif*/
+	}
+	else if ( !g_bIsClientPractising[client] )
+	{
+		// We're running!
+		
+		// Have we been running for too long?
+#if defined RECORD
+		if ( g_iClientTick[client] > RECORDING_MAX_LENGTH && g_bIsClientRecording[client] )
+		{
+			g_iClientTick[client] = 0;
+			g_bIsClientRecording[client] = false;
 			
-			PrintColorChat( client, client, "%s Your time is too long to be recorded!", CHAT_PREFIX );
+			if ( g_hClientRecording[client] != null )
+			{
+				delete g_hClientRecording[client];
+				g_hClientRecording[client] = null;
+			}
+			
+			PrintColorChat( client, client, "%s Your time was too long to be recorded!", CHAT_PREFIX );
 		}
 #endif
-		
-		for ( new i = BOUNDS_BLOCK_1; i < MAX_BOUNDS; i++ )
+		// Let's check for potential block zones and stuff.
+		for ( int i = BOUNDS_BLOCK_1; i <= BOUNDS_BLOCK_3; i++ )
 		{
-			if ( !bZoneExists[i] ) continue;
+			if ( !g_bZoneExists[i] ) continue;
 			
 			if ( IsInsideBounds( client, i ) )
 			{
 				PrintColorChat( client, client, "%s You are not allowed to go there!", CHAT_PREFIX );
-				TeleportEntity( client, vecSpawnPos[ iClientRun[client] ], angSpawnAngles[ iClientRun[client] ], vecNull );
+				TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 				
 				return;
 			}

@@ -1,0 +1,42 @@
+Ignore me!
+
+------------
+Update log:
+------------
+
+-------------
+	v1.3
+-------------
+
+	- Moved to SourceMod 1.7.
+		* 1.7 syntax, yay!
+			* const bug?
+		* Will require 1.7 version of DHOOKS (v2.0) to compile.
+			* You will have to do some changes in the dhooks.inc file in order to get it to work.
+			* ^ There is an updated version in the DHOOKS thread if you're lazy.
+			
+	- Recording overhauled!
+		* 1.2 records are not compatible with this new update!! Let me put this out there first.
+		* Finally on par with other recording plugins. At least I think so :>
+			* Recording is more precise. In fact, I'd say it's pretty much perfect now.
+			* File sizes are smaller due to smaller frame size.
+		* In case of the database being deleted, we now store the record time in the file header. Just in case...
+		
+	- Fixes:
+		* People could leave the starting zone and start to float. No more...
+		* There was a problem with one of the convars not working correctly. No more...
+		* Made the plugin just generally more reliable.
+		* Custom chat should show up now. It wasn't reliable.
+	
+	- Some components are disabled by default. (People don't necessarily want them.)
+		* Map voting.
+		* Custom chat processing.
+		* Connect sound.
+		
+	- Other:
+		* Added a new cvar 'sm_ezhop' to toggle EZHop. (def. 1)
+		* Changed 'sm_autohopping' to 'sm_autobhop'.
+		* Bots are now invisible.
+		* Internal maximum players is now the default 64.
+		* Made more SQL queries threaded. Meaning less hangups if at all.
+		* Maximum recording changed to 45 minutes.
