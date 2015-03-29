@@ -8,7 +8,6 @@ SourceMod timer plugin for *CSS* bunnyhop servers.
 **Dependencies (Optional):**
 - For 260vel weapons: https://forums.alliedmods.net/showthread.php?t=166468
 - For multihop (Maps with func_door platforms.): https://forums.alliedmods.net/showthread.php?t=90467
-- For smoother mimic teleporting **(Strongly recommended)**: https://forums.alliedmods.net/showthread.php?t=180114 (Download v2.0 for SM 1.7)
 
 **Things to remember:**
 
