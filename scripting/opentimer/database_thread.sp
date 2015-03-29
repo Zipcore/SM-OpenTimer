@@ -86,7 +86,7 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 		
 		PrintToConsole( client, "----------------" );
 		
-		PrintColorChat( client, client, "%s Printed all (%i) records in your console.", CHAT_PREFIX, ply );
+		PrintColorChat( client, client, "%s Printed (\x03%i%s) records in your console.", CHAT_PREFIX, ply, COLOR_TEXT );
 	}
 }
 
@@ -142,6 +142,9 @@ public void Threaded_RetrieveClientInfo( Handle hOwner, Handle hQuery, const cha
 		SQL_FieldNameToNum( hQuery, "hideflags", field );
 		g_iClientHideFlags[client] = SQL_FetchInt( hQuery, field );
 	}
+	
+	if ( g_iClientHideFlags[client] & HIDEHUD_PLAYERS )
+		SDKHook( client, SDKHook_SetTransmit, Event_ClientTransmit );
 	
 	Format( szQuery, sizeof( szQuery ), "SELECT time, style, run FROM '%s' WHERE steamid = '%s' ORDER BY run;", g_szCurrentMap, szSteamId );
 	SQL_TQuery( g_Database, Threaded_RetrieveClientTimes, szQuery, GetClientUserId( client ) );
