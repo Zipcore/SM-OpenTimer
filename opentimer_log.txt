@@ -5,10 +5,40 @@ Update log:
 ------------
 
 -------------
+	v1.4
+-------------
+	- Recording changed and file backwards compatibility breaks yet again (hence why version is 1.4 and not 1.3.x)!
+		* DHOOKS is gone for good!
+		* Recordings should be a lot smoother now.
+		* Smaller frame size yet again.
+		* Hopefully the last change made to the file structure.
+
+	- Practice mode changes
+		* Multiple checkpoints (five by default).
+			* Commands !last/!lastcp to go back to the latest checkpoint.
+			* !cp/!checkpoint <num 1-5> will bring you to the specific checkpoint. If user inputs no number, they get a menu.
+		* Players can noclip using the command !no-clip/!fly. (I know the name sucks, but I don't want to override an already existing command.)
+		
+	- Anti-Doublestep Technology(TM)
+		* Tired of your client-side autobhop failing? Don't worry, because we have a solution!
+		* Usually the client-autobhop presses a separate jump key when you hold down your spacebar, etc. 
+		* By simply binding your spacebar to '+ds', you can prevent doublesteps completely!
+		* Do note that this is for those that doublestep (lose speed randomly when bhopping.)
+		
+	- Other:
+		* Added more helpful commands like !version and !ds
+		* Divided code into smaller files. Makes things easier to find.
+		* Previously mentioned !cp and !lastcp changes.
+		* Sync isn't super dumb anymore. It's just dumb now.
+		* Again, made things more reliable and stable.
+		* Menus aren't dumb anymore either.
+		* Made !commands more easier to read, and to edit in code.
+
+-------------
 	v1.3
 -------------
 
-	- Moved to SourceMod 1.7.
+	- Moved to SourceMod 1.7 .
 		* 1.7 syntax, yay!
 			* const bug?
 		* Will require 1.7 version of DHOOKS (v2.0) to compile.
