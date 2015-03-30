@@ -1,7 +1,7 @@
 SM-OpenTimer (Read this!)
 ============
 
-SourceMod timer plugin for *CSS* bunnyhop servers.
+SourceMod timer plugin for *CSS* bunnyhop servers. Yes, it is free as in freedom.
 
 **Read opentimer_log.txt if you want to know what changes have been made!**
 
@@ -33,24 +33,25 @@ SourceMod timer plugin for *CSS* bunnyhop servers.
 - sm_ezhop 0/1
 - sm_forbidden_commands 0/1 (+left/+right allowed?)
 - sm_prespeed 0/1 (Can go over 300vel when leaving starting zone?)
+- sm_smoothplayback 0/1 (If false, show more accurate but not as smooth playback.)
 
 **Creating a .nav file for maps:** (Required for record bots. Tell Valve how much you hate it.)
 - Local server and the map you want to generate the .nav file for.
-- *sv_cheats 1; nav_edit 1; nav_mark_walkable* and aim at the floor. This should generate .nav file in your maps folder.
+- Aim at the floor and type this in your console: *sv_cheats 1; nav_edit 1; nav_mark_walkable*. This should generate .nav file in your maps folder.
 - Move that into your server's maps folder. Potentially put it in your fast-dl. ;)
 
 **Features:**
 - Timer with records and playback.
-- Times saved with SQLite.
+- Times saved with SQLite and recordings saved in binary.
 - Toggle HUD elements, change FOV, etc.
 - Zone building (Starting-Ending/Block/Freestyle/Bonus1-2 Zones)
-- Practising (not fully implemented.)
+- Practising with multiple checkpoints.
+- Anti-doublestepping Technology(TM)
 - Simple map voting. **(Optional)**
 - Chat processing. (Custom colors for chat.) **(Optional)**
 
 **TO-DO LIST:**
-- Use better sync, lol. The current one is shitty.
-- Fix menus.
-- More tweaks.
-- More everything.
+- More admin tools to remove/modify records.
+- Better database structure.
+- Better sync.
 - Fix everything.
