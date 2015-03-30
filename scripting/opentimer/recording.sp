@@ -11,8 +11,10 @@ public Action OnPlayerRunCmd(
 	
 	
 	// Shared between recording and mimicing.
+#if defined RECORD
 	static int		iFrame[FRAME_SIZE];
 	static float	vecPos[3];
+#endif
 	
 	if ( !IsFakeClient( client ) )
 	{

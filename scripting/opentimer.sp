@@ -347,8 +347,9 @@ static ConVar	g_ConVar_PreSpeed;
 ConVar			g_ConVar_AutoHop;
 ConVar			g_ConVar_EZHop;
 ConVar			g_ConVar_LeftRight;
-ConVar			g_ConVar_SmoothPlayback;
-
+#if defined RECORD
+	ConVar		g_ConVar_SmoothPlayback;
+#endif
 
 // Settings (Convars)
 // WARNING: Must be initialized as the default value or it will not register when executing it(?)!!
@@ -356,7 +357,9 @@ bool g_bPreSpeed = false;
 bool g_bForbiddenCommands = true;
 bool g_bAutoHop = true;
 bool g_bEZHop = true;
-bool g_bSmoothPlayback = true;
+#if defined RECORD
+	bool g_bSmoothPlayback = true;
+#endif
 //bool g_bClientAutoHop[MAXPLAYERS_BHOP] = { true, ... };
 
 // ------------------------
@@ -553,15 +556,19 @@ public void OnPluginStart()
 	
 	g_ConVar_LeftRight = CreateConVar( "sm_forbidden_commands", "1", "Is +left and +right allowed?", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	
+#if defined RECORD
 	g_ConVar_SmoothPlayback = CreateConVar( "sm_smoothplayback", "1", "If false, playback movement will appear more responsive but choppy and teleporting will not be affected by ping.", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
+#endif
 	
 	
 	HookConVarChange( g_ConVar_AutoHop, Event_ConVar_AutoHop );
 	HookConVarChange( g_ConVar_EZHop, Event_ConVar_EZHop );
 	HookConVarChange( g_ConVar_PreSpeed, Event_ConVar_PreSpeed );
 	HookConVarChange( g_ConVar_LeftRight, Event_ConVar_LeftRight );
+#if defined RECORD
 	HookConVarChange( g_ConVar_SmoothPlayback, Event_ConVar_SmoothPlayback );
-	
+#endif
+
 	
 	InitializeDatabase();
 	
@@ -598,10 +605,12 @@ public void Event_ConVar_LeftRight( Handle hConVar, const char[] szOldValue, con
 	g_bForbiddenCommands = GetConVarBool( hConVar );
 }
 
-public void Event_ConVar_SmoothPlayback( Handle hConVar, const char[] szOldValue, const char[] szNewValue )
-{
-	g_bSmoothPlayback = GetConVarBool( hConVar );
-}
+#if defined RECORD
+	public void Event_ConVar_SmoothPlayback( Handle hConVar, const char[] szOldValue, const char[] szNewValue )
+	{
+		g_bSmoothPlayback = GetConVarBool( hConVar );
+	}
+#endif
 
 public void OnMapStart()
 {
