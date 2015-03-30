@@ -2,11 +2,11 @@ public Action Command_ToggleHUD( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
+	
 	SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
 	Menu mMenu = CreateMenu( Handler_Hud );
 	SetMenuTitle( mMenu, "HUD Menu\n " );
 
-	
 	AddMenuItem( mMenu, "_", ( g_iClientHideFlags[client] & HIDEHUD_HUD )		? "HUD: OFF" : "HUD: ON" );
 	AddMenuItem( mMenu, "_", ( g_iClientHideFlags[client] & HIDEHUD_VM )			? "Viewmodel: OFF" : "Viewmodel: ON" );
 	AddMenuItem( mMenu, "_", ( g_iClientHideFlags[client] & HIDEHUD_PLAYERS )	? "Players: OFF" : "Players: ON" );
@@ -17,8 +17,7 @@ public Action Command_ToggleHUD( int client, int args )
 	AddMenuItem( mMenu, "_", ( g_iClientHideFlags[client] & HIDEHUD_CHAT )		? "Chat: OFF" : "Chat: ON" );
 #endif
 	
-	
-	SetMenuExitButton( mMenu, true );
+	//SetMenuExitButton( mMenu, true );
 	DisplayMenu( mMenu, client, 8 );
 	
 	return Plugin_Handled;
@@ -161,7 +160,7 @@ public int Handler_Hud( Menu mMenu, MenuAction action, int client, int item )
 #endif
 			}
 			
-			if ( !SaveClientInfo( client ) )
+			if ( !SaveClientData( client ) )
 				PrintColorChat( client, client, "%s Couldn't save your settings!", CHAT_PREFIX );
 		}
 	}
@@ -186,6 +185,7 @@ public int Handler_Hud( Menu mMenu, MenuAction action, int client, int item )
 			return Plugin_Handled;
 		}
 		
+		
 		int len = GetArraySize( g_hMapList );
 		
 		if ( len < 1 )
@@ -194,10 +194,9 @@ public int Handler_Hud( Menu mMenu, MenuAction action, int client, int item )
 			return Plugin_Handled;
 		}
 		
+		
 		SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
-		
 		Menu mMenu = CreateMenu( Handler_Vote );
-		
 		SetMenuTitle( mMenu, "Vote\n " );
 		
 		int iMap[MAX_MAP_NAME_LENGTH];
@@ -211,8 +210,7 @@ public int Handler_Hud( Menu mMenu, MenuAction action, int client, int item )
 			AddMenuItem( mMenu, "_", MapName );
 		}
 		
-		SetMenuExitButton( mMenu, true );
-		
+		//SetMenuExitButton( mMenu, true );
 		DisplayMenu( mMenu, client, MENU_TIME_FOREVER );
 		
 		return Plugin_Handled;
@@ -283,10 +281,10 @@ public Action Command_Style( int client, int args )
 		return Plugin_Handled;
 	}
 	
+	
 	SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
 	Menu mMenu = CreateMenu( Handler_Mode );
 	SetMenuTitle( mMenu, "Choose Style\n " );
-	
 	
 	for ( int i; i < MAX_STYLES; i++ )
 	{
@@ -300,7 +298,7 @@ public Action Command_Style( int client, int args )
 		}
 	}
 	
-	SetMenuExitButton( mMenu, true );
+	//SetMenuExitButton( mMenu, true );
 	DisplayMenu( mMenu, client, 8 );
 	
 	return Plugin_Handled;
@@ -353,7 +351,7 @@ public Action Command_Practise_GotoPoint( int client, int args )
 	
 	if ( !IsPlayerAlive( client ) )
 	{
-		PrintColorChat( client, client, "%s You have to be alive to use this command!", CHAT_PREFIX );
+		PrintColorChat( client, client, "%s You must be alive to use this command!", CHAT_PREFIX );
 		return Plugin_Handled;
 	}
 	
@@ -364,10 +362,11 @@ public Action Command_Practise_GotoPoint( int client, int args )
 		return Plugin_Handled;
 	}
 	
+	
 	// Format: sm_cp 1-9000, etc.
 	if ( args > 0 )
 	{
-		char szArg[3]; // For double digits.
+		char szArg[3]; // For double digits. (just in case some nutjob changes PRAC_MAX_SAVES. Including you. YES, YOU! I see you reading this...)
 		GetCmdArgString( szArg, sizeof( szArg ) );
 		
 		int index = StringToInt( szArg );
@@ -379,6 +378,7 @@ public Action Command_Practise_GotoPoint( int client, int args )
 			return Plugin_Handled;
 		}
 		
+		
 		index = g_iClientCurSave[client] - index;
 		
 		if ( index < 0 ) index = PRAC_MAX_SAVES + index;
@@ -388,6 +388,7 @@ public Action Command_Practise_GotoPoint( int client, int args )
 			PrintColorChat( client, client, "%s You don't have a checkpoint there!", CHAT_PREFIX );
 			return Plugin_Handled;
 		}
+		
 		
 		// Valid checkpoint!
 		g_flClientStartTime[client] = GetEngineTime() - g_flClientSaveDif[client][index];
@@ -403,9 +404,7 @@ public Action Command_Practise_GotoPoint( int client, int args )
 	Menu mMenu = CreateMenu( Handler_Check );
 	SetMenuTitle( mMenu, "Checkpoints\n " );
 	
-	
 	AddMenuItem( mMenu, "_", "Last CP" );
-	
 	
 	char	szSlot[7]; // "#XX CP"
 	int		iSlot = 2;
@@ -419,7 +418,7 @@ public Action Command_Practise_GotoPoint( int client, int args )
 		if ( g_flClientSaveDif[client][index] == TIME_INVALID ) break;
 		
 		
-		// Add that shit to the mMenu!
+		// Add it to the menu!
 		Format( szSlot, sizeof( szSlot ), "#%i CP", iSlot );
 		
 		AddMenuItem( mMenu, "_", szSlot );
@@ -428,8 +427,7 @@ public Action Command_Practise_GotoPoint( int client, int args )
 		iSlot++;
 	}
 	
-	
-	SetMenuExitButton( mMenu, true );
+	//SetMenuExitButton( mMenu, true );
 	DisplayMenu( mMenu, client, MENU_TIME_FOREVER );
 	
 	return Plugin_Handled;

@@ -74,6 +74,7 @@ stock void UpdateScoreboard( int client )
 		return;
 	}
 	
+	
 	char szNewTime[11];
 	FormatSeconds( g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ], szNewTime, sizeof( szNewTime ), false );
 	CS_SetClientClanTag( client, szNewTime );
@@ -102,6 +103,7 @@ stock void SetClientFOV( int client, int fov )
 		int iClients = GetActivePlayers();
 		
 		if ( iClients < 1 || g_hMapList == null ) return;
+		
 		
 		int len = GetArraySize( g_hMapList );
 		int[] iMapVotes = new int[len];
@@ -135,9 +137,10 @@ stock void SetClientFOV( int client, int fov )
 	}
 #endif
 // Used for players and other entities.
-stock bool IsInsideBounds( int ent, int bounds )
+stock bool IsInsideZone( int ent, int zone )
 {
-	if ( !g_bZoneExists[bounds] ) return false;
+	if ( !g_bZoneExists[zone] ) return false;
+	
 	
 	static float vecPos[3];
 	GetEntPropVector( ent, Prop_Data, "m_vecOrigin", vecPos );
@@ -145,9 +148,9 @@ stock bool IsInsideBounds( int ent, int bounds )
 	// Basically, a shit ton of checking if the entity is between coordinates.
 	// This allows mins and maxs to be "switched", meaning that mins can actually be bigger than maxs.
 	return (
-		( ( vecPos[0] >= g_vecBoundsMin[bounds][0] && vecPos[0] <= g_vecBoundsMax[bounds][0] ) || ( vecPos[0] <= g_vecBoundsMin[bounds][0] && vecPos[0] >= g_vecBoundsMax[bounds][0] ) )
+		( ( vecPos[0] >= g_vecZoneMins[zone][0] && vecPos[0] <= g_vecZoneMaxs[zone][0] ) || ( vecPos[0] <= g_vecZoneMins[zone][0] && vecPos[0] >= g_vecZoneMaxs[zone][0] ) )
 		&&
-		( ( vecPos[1] >= g_vecBoundsMin[bounds][1] && vecPos[1] <= g_vecBoundsMax[bounds][1] ) || ( vecPos[1] <= g_vecBoundsMin[bounds][1] && vecPos[1] >= g_vecBoundsMax[bounds][1] ) )
+		( ( vecPos[1] >= g_vecZoneMins[zone][1] && vecPos[1] <= g_vecZoneMaxs[zone][1] ) || ( vecPos[1] <= g_vecZoneMins[zone][1] && vecPos[1] >= g_vecZoneMaxs[zone][1] ) )
 		&&
-		( ( vecPos[2] >= g_vecBoundsMin[bounds][2] && vecPos[2] <= g_vecBoundsMax[bounds][2] ) || ( vecPos[2] <= g_vecBoundsMin[bounds][2] && vecPos[2] >= g_vecBoundsMax[bounds][2] ) ) );
+		( ( vecPos[2] >= g_vecZoneMins[zone][2] && vecPos[2] <= g_vecZoneMaxs[zone][2] ) || ( vecPos[2] <= g_vecZoneMins[zone][2] && vecPos[2] >= g_vecZoneMaxs[zone][2] ) ) );
 }

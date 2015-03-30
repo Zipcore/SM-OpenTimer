@@ -14,14 +14,15 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 		return;
 	}
 	
-	int field, ply;
 	
-	int iJumps[RECORDS_PRINT_MAXPLAYERS + 1], iStyle[RECORDS_PRINT_MAXPLAYERS + 1];
-	static float flSeconds[RECORDS_PRINT_MAXPLAYERS + 1];
-	
-	char szSteamId[RECORDS_PRINT_MAXPLAYERS + 1][STEAMID_MAXLENGTH];
-	char szName[RECORDS_PRINT_MAXPLAYERS + 1][MAX_NAME_LENGTH];
-	char szFormTime[RECORDS_PRINT_MAXPLAYERS + 1][12];
+	int				field;
+	int				ply; // Record count.
+	int				iJumps[RECORDS_PRINT_MAXPLAYERS + 1];
+	int				iStyle[RECORDS_PRINT_MAXPLAYERS + 1];
+	static float	flSeconds[RECORDS_PRINT_MAXPLAYERS + 1];
+	static char		szSteamId[RECORDS_PRINT_MAXPLAYERS + 1][STEAMID_MAXLENGTH];
+	static char		szName[RECORDS_PRINT_MAXPLAYERS + 1][MAX_NAME_LENGTH];
+	static char		szFormTime[RECORDS_PRINT_MAXPLAYERS + 1][12];
 	
 	bool bInConsole = GetArrayCell( hData, 0, 1 );
 	
@@ -34,6 +35,9 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 		
 			SQL_FieldNameToNum( hQuery, "jumps", field );
 			iJumps[ply] = SQL_FetchInt( hQuery, field );
+			
+			SQL_FieldNameToNum( hQuery, "style", field );
+			iStyle[ply] = SQL_FetchInt( hQuery, field );
 		}
 		
 		SQL_FieldNameToNum( hQuery, "name", field );
@@ -43,54 +47,87 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 		flSeconds[ply] = SQL_FetchFloat( hQuery, field );
 		//flSeconds[ply] += 0.0001; // Just to make sure...
 		
-		SQL_FieldNameToNum( hQuery, "style", field );
-		iStyle[ply] = SQL_FetchInt( hQuery, field );
-		
 		FormatSeconds( flSeconds[ply], szFormTime[ply], sizeof( szFormTime[] ), true );
 		
 		ply++;
 	}
 	
-	int index = 1;
+	
+	// Print them to a menu.
 	if ( !bInConsole )
 	{
-		static char szText[200];
+		SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
+		Menu mMenu = CreateMenu( Handler_Records );
+		SetMenuTitle( mMenu, "Records\n " );
+		
+		char szRec[32];
 		
 		if ( ply > 0 )
 		{
-			Format( szText, sizeof( szText ), "!printrecords for detailed version." );
-			
 			for ( int i; i < ply; i++ )
 			{
-				Format( szText, sizeof( szText ), "%s\n%i. %s - %s - %s", szText, index, szName[i], szFormTime[i], g_szStyleName[NAME_SHORT][ iStyle[i] ] );
-				index++;
+				Format( szRec, sizeof( szRec ), "%s - %s", szName[i], szFormTime[i] );
+				AddMenuItem( mMenu, "_", szRec, ITEMDRAW_DISABLED );
 			}
 		}
-		else Format( szText, sizeof( szText ), "No one has beaten the map yet... :(" );
+		else
+		{
+			Format( szRec, sizeof( szRec ), "No one has beaten the map yet." );
+			AddMenuItem( mMenu, "_", szRec, ITEMDRAW_DISABLED );
+		}
 		
-		ShowMOTDPanel( client, "Top 5 (All modes)", szText, MOTDPANEL_TYPE_TEXT );
+		//SetMenuExitButton( mMenu, true );
+		DisplayMenu( mMenu, client, MENU_TIME_FOREVER );
 	}
 	else
 	{
-		PrintToConsole( client, "\nRecords (Max. %i):\n!printrecord <style> for specific modes. (\"normal\", \"sideways\", \"w\", \"b1/b2\")\n----------------", RECORDS_PRINT_MAXPLAYERS );
+		PrintToConsole( client, "--------------------" );
+		PrintToConsole( client, ">> !printrecords <style/run> for specific styles and runs. (\"normal\", \"sideways\", \"w\", \"b1/b2\", etc.)" );
+		PrintToConsole( client, ">> Records (Max. %i):", RECORDS_PRINT_MAXPLAYERS );
 		
 		if ( ply > 0 )
 		{
 			for ( int i; i < ply; i++ )
 			{
-				PrintToConsole( client, "%i. %s - %s - %s - %s - %i jumps", index, szSteamId[i], szName[i], szFormTime[i], g_szStyleName[NAME_LONG][ iStyle[i] ], iJumps[i] );
-				index++;
+				PrintToConsole( client, "%i. %s - %s - %s - %s - %i jumps", i + 1, szSteamId[i], szName[i], szFormTime[i], g_szStyleName[NAME_LONG][ iStyle[i] ], iJumps[i] );
 			}
 		}
 		else PrintToConsole( client, "No one has beaten the map yet... :(" );
 		
-		PrintToConsole( client, "----------------" );
+		PrintToConsole( client, "--------------------" );
 		
 		PrintColorChat( client, client, "%s Printed (\x03%i%s) records in your console.", CHAT_PREFIX, ply, COLOR_TEXT );
 	}
 }
 
-public void Threaded_RetrieveClientInfo( Handle hOwner, Handle hQuery, const char[] szError, any data )
+public int Handler_Records( Menu mMenu, MenuAction action, int client, int item )
+{
+	switch ( action )
+	{
+		case MenuAction_End :
+		{
+			if ( client > 0 && g_iClientHideFlags[client] & HIDEHUD_HUD )
+			{
+				SetEntProp( client, Prop_Data, "m_iHideHUD", HIDE_FLAGS );
+			}
+			
+			delete mMenu;
+		}
+		/*case MenuAction_Select :
+		{
+			char szItem[2];
+			
+			if ( !GetMenuItem( mMenu, item, szItem, sizeof( szItem ) ) || szItem[0] != '_' )
+			{
+				return 0;
+			}
+		}*/
+	}
+	
+	return 0;
+}
+
+public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const char[] szError, any data )
 {
 	if ( hQuery == null )
 	{
@@ -99,6 +136,7 @@ public void Threaded_RetrieveClientInfo( Handle hOwner, Handle hQuery, const cha
 		
 		return;
 	}
+	
 	
 	int client;
 	
@@ -111,6 +149,7 @@ public void Threaded_RetrieveClientInfo( Handle hOwner, Handle hQuery, const cha
 		LogError( "%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.", CONSOLE_PREFIX, client );
 		return;
 	}
+	
 	
 	static char szQuery[128];
 	
@@ -132,6 +171,7 @@ public void Threaded_RetrieveClientInfo( Handle hOwner, Handle hQuery, const cha
 		
 		return;
 	}
+	
 	
 	int field;
 	while ( SQL_FetchRow( hQuery ) )
@@ -159,24 +199,22 @@ public void Threaded_RetrieveClientTimes( Handle hOwner, Handle hQuery, const ch
 		
 		return;
 	}
-
+	
+	
 	int client;
 	if ( ( client = GetClientOfUserId( data ) ) == 0 ) return;
 	
-	if ( hQuery != null )
+	int field, iStyle, iRun;
+	while ( SQL_FetchRow( hQuery ) )
 	{
-		int field, iStyle, iRun;
-		while ( SQL_FetchRow( hQuery ) )
-		{
-			SQL_FieldNameToNum( hQuery, "run", field );
-			iRun = SQL_FetchInt( hQuery, field );
-			
-			SQL_FieldNameToNum( hQuery, "style", field );
-			iStyle = SQL_FetchInt( hQuery, field );
+		SQL_FieldNameToNum( hQuery, "run", field );
+		iRun = SQL_FetchInt( hQuery, field );
 		
-			SQL_FieldNameToNum( hQuery, "time", field );
-			g_flClientBestTime[client][iRun][iStyle] = SQL_FetchFloat( hQuery, field );
-		}
+		SQL_FieldNameToNum( hQuery, "style", field );
+		iStyle = SQL_FetchInt( hQuery, field );
+	
+		SQL_FieldNameToNum( hQuery, "time", field );
+		g_flClientBestTime[client][iRun][iStyle] = SQL_FetchFloat( hQuery, field );
 	}
 	
 	UpdateScoreboard( client );

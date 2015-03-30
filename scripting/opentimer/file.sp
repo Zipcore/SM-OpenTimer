@@ -22,6 +22,7 @@ stock bool SaveRecording( int client, float flTime, int iLength )
 	if ( !GetClientAuthId( client, AuthId_Engine, szSteamID, sizeof( szSteamID ) ) )
 		return false;
 	
+	
 	ReplaceString( szSteamID, sizeof( szSteamID ), "STEAM_", "" );
 	
 	// STEAM_0:1:30495520 to 0_1_30495520
@@ -32,8 +33,9 @@ stock bool SaveRecording( int client, float flTime, int iLength )
 	
 	static char szPath[PLATFORM_MAX_PATH];
 	BuildPath( Path_SM, szPath, sizeof( szPath ), "records" );
-	if ( !ExCreateDir( szPath ) ) return false;
 	
+	
+	if ( !ExCreateDir( szPath ) ) return false;
 	
 	Format( szPath, sizeof( szPath ), "%s/%s", szPath, g_szCurrentMap ); // records/bhop_map
 	if ( !ExCreateDir( szPath ) ) return false;
@@ -53,6 +55,7 @@ stock bool SaveRecording( int client, float flTime, int iLength )
 		PrintToServer( "%s Couldn't open file! (%s)", CONSOLE_PREFIX, szPath );
 		return false;
 	}
+	
 	
 	// Save file header
 	int iHeader[HEADER_SIZE];
@@ -115,6 +118,7 @@ stock bool LoadRecording( char szSteamID[STEAMID_MAXLENGTH], int iRun, int iStyl
 	if ( hFile == null )
 		return false;
 	
+	
 	// GET HEADER
 	int iMagic;
 	ReadFileCell( hFile, iMagic, 4 );
@@ -127,6 +131,7 @@ stock bool LoadRecording( char szSteamID[STEAMID_MAXLENGTH], int iRun, int iStyl
 		return false;
 	}
 	
+	
 	int iFormat;
 	ReadFileCell( hFile, iFormat, 1 );
 	
@@ -138,6 +143,7 @@ stock bool LoadRecording( char szSteamID[STEAMID_MAXLENGTH], int iRun, int iStyl
 		return false;
 	}
 	
+	
 	ReadFileCell( hFile, g_iMimicTickMax[iRun][iStyle], 4 );
 	
 	if ( g_iMimicTickMax[iRun][iStyle] < 1 )
@@ -145,6 +151,7 @@ stock bool LoadRecording( char szSteamID[STEAMID_MAXLENGTH], int iRun, int iStyl
 		delete hFile;
 		return false;
 	}
+	
 	
 	int iHeader[HEADER_SIZE];
 	
@@ -182,6 +189,7 @@ stock bool LoadRecording( char szSteamID[STEAMID_MAXLENGTH], int iRun, int iStyl
 	return true;
 }
 
+// Pretty much useless functions.
 stock bool RemoveAllRecords( int iRun, int iStyle )
 {
 	static char szPath[PLATFORM_MAX_PATH];
@@ -191,6 +199,7 @@ stock bool RemoveAllRecords( int iRun, int iStyle )
 	
 	if ( hDir == null )
 		return false;
+	
 	
 	static char	szFile[64];
 	static char	szFilePath[PLATFORM_MAX_PATH];
@@ -221,6 +230,7 @@ stock bool RemoveRecord( char szSteamID[STEAMID_MAXLENGTH], int iRun, int iStyle
 	
 	if ( !FileExists( szPath ) )
 		return false;
+	
 	
 	return DeleteFile( szPath );
 }

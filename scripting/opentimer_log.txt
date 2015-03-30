@@ -5,13 +5,14 @@ Update log:
 ------------
 
 -------------
-	v1.4
+	v1.4 & v1.4.1
 -------------
 	- Recording changed and file backwards compatibility breaks yet again (hence why version is 1.4 and not 1.3.x)!
-		* DHOOKS is gone for good!
+		* DHOOKS is gone for good! < Server no longer stops responding after trying close it down.
 		* Recordings should be a lot smoother now.
 		* Smaller frame size yet again.
 		* Hopefully the last change made to the file structure.
+		* Added 'sm_smoothplayback' (def. 1) for those that want an option between smooth and accurate playback.
 
 	- Practice mode changes
 		* Multiple checkpoints (five by default).
@@ -26,13 +27,20 @@ Update log:
 		* Do note that this is for those that doublestep (lose speed randomly when bhopping.)
 		
 	- Other:
-		* Added more helpful commands like !version and !ds
+		* Instead of an MOTD page for the records, you get a menu.
+		* Added help commands !doublestep and !version.
 		* Divided code into smaller files. Makes things easier to find.
 		* Previously mentioned !cp and !lastcp changes.
 		* Sync isn't super dumb anymore. It's just dumb now.
 		* Again, made things more reliable and stable.
 		* Menus aren't dumb anymore either.
 		* Made !commands more easier to read, and to edit in code.
+		* Block zones now use triggers instead of normal zones.
+		* You can no longer keep recording after you've gone past the best time.
+		* Made bots show speed instead of completion time.
+		* Misc. HUD changes.
+		* Made sure the plugin doesn't search for recordings of runs of which don't have any zones.
+		* Bots will now stop doing a playback if you delete the zone. (to-do: kick the bot.)
 
 -------------
 	v1.3

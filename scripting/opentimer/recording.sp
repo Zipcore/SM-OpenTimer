@@ -9,6 +9,7 @@ public Action OnPlayerRunCmd(
 {
 	if ( !IsPlayerAlive( client ) ) return Plugin_Continue;
 	
+	
 	// Shared between recording and mimicing.
 	static int		iFrame[FRAME_SIZE];
 	static float	vecPos[3];
@@ -87,7 +88,6 @@ public Action OnPlayerRunCmd(
 			SetClientFOV( client, g_iClientFOV[client] );
 		}
 		
-		
 		int iFlags = GetEntityFlags( client );
 		
 		/////////////
@@ -99,7 +99,6 @@ public Action OnPlayerRunCmd(
 			iOldButtons &= ~IN_JUMP;
 			
 			SetEntProp( client, Prop_Data, "m_nOldButtons", iOldButtons );
-			
 			
 			// Anti-doublestepping
 			if ( g_bClientHoldingJump[client] && iFlags & FL_ONGROUND ) buttons |= IN_JUMP;
@@ -147,7 +146,6 @@ public Action OnPlayerRunCmd(
 		
 		static float flClientLastVel[MAXPLAYERS_BHOP];
 		
-		
 		// JUMP COUNT
 		if ( iFlags & FL_ONGROUND && !( buttons & IN_JUMP ) )
 		{
@@ -169,7 +167,6 @@ public Action OnPlayerRunCmd(
 			
 			flClientLastVel[client] = flCurVel;
 
-			
 			
 			// If we haven't strafed to the left and mouse is going to the left, etc.
 			if ( g_iClientLastStrafe[client] != STRAFE_LEFT && mouse[0] < 0 )
@@ -199,14 +196,11 @@ public Action OnPlayerRunCmd(
 	{
 		GetArrayArray( g_hMimicRecording[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_iClientTick[client], iFrame, view_as<int>FrameInfo );
 		
-		
 		// Take care of the buttons.
 		buttons = ( iFrame[FRAME_FLAGS] & FRAMEFLAG_CROUCH ) ? IN_DUCK : 0;
 		
-		
 		vel = g_vecNull;
 		ArrayCopy( iFrame[FRAME_ANGLES], angles, 2 );
-		
 		
 		
 		ArrayCopy( iFrame[FRAME_POS], vecPos, 3 );
@@ -215,7 +209,7 @@ public Action OnPlayerRunCmd(
 		GetEntPropVector( client, Prop_Data, "m_vecOrigin", vecPrevPos );
 		
 		
-		// The problem with this system is that the spectator's view will be delayed and when the mimic gets teleported, the view fucks up.
+		// The problem with this system is that the spectator's view will be delayed and when the mimic gets teleported, the rest of the r.
 		// Sure, it gets rid of DHOOKS, but I just don't like how the spectating works.
 		
 		if ( GetVectorDistance( vecPrevPos, vecPos, true ) > 370.0 )
@@ -228,18 +222,17 @@ public Action OnPlayerRunCmd(
 		{
 			// Make the velocity!
 			static float vecDirVel[3];
-			
 			vecDirVel[0] = vecPos[0] - vecPrevPos[0];
 			vecDirVel[1] = vecPos[1] - vecPrevPos[1];
 			vecDirVel[2] = vecPos[2] - vecPrevPos[2];
 			
-			
 			ScaleVector( vecDirVel, 100.0 );
 			
-			
 			TeleportEntity( client, NULL_VECTOR, angles, vecDirVel );
+			
+			// If server ops want more responsive but choppy view, here it is.
+			if ( !g_bSmoothPlayback ) SetEntPropVector( client, Prop_Send, "m_vecOrigin", vecPos );
 		}
-		
 		
 		
 		g_iClientTick[client]++;
@@ -254,6 +247,7 @@ public Action OnPlayerRunCmd(
 		
 		return Plugin_Changed;
 	}
+	
 	
 	if ( g_iClientTick[client] == TICK_PRE_PLAYBLACK )
 	{
@@ -273,6 +267,6 @@ public Action OnPlayerRunCmd(
 	}
 #endif
 	
-	// Freezes bots when they don't need to do anything.
+	// Freezes bots when they don't need to do anything. I.e. at the end of the run.
 	return Plugin_Handled;
 }

@@ -2,6 +2,7 @@ public Action Command_Admin_ZoneMenu( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
+	
 	SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
 	Handle mMenu = CreateMenu( Handler_ZoneMain );
 	SetMenuTitle( mMenu, "Zone Menu\n " );
@@ -12,26 +13,24 @@ public Action Command_Admin_ZoneMenu( int client, int args )
 	if ( g_iBuilderIndex == 0 )
 	{
 		// We haven't started to build a zone yet. Show them the option for it.
-		
 		AddMenuItem( mMenu, "_", "New Zone" );
 		AddMenuItem( mMenu, "_", "End Zone", ITEMDRAW_DISABLED );
-		AddMenuItem( mMenu, "", szGridTxt );
+		AddMenuItem( mMenu, "_", szGridTxt );
 	}
 	else
 	{
-		// We have a builder! Might not be the same client who has this mMenu open, though...
-		
+		// We have a builder! Might not be the same client who has this menu open, though...
 		AddMenuItem( mMenu, "_", "New Zone", ITEMDRAW_DISABLED );
 		
 		if ( g_iBuilderIndex == client )
 		{
 			AddMenuItem( mMenu, "_", "End Zone" );
-			AddMenuItem( mMenu, "", szGridTxt );
+			AddMenuItem( mMenu, "_", szGridTxt );
 		}
 		else
 		{
 			AddMenuItem( mMenu, "_", "End Zone", ITEMDRAW_DISABLED );
-			AddMenuItem( mMenu, "", szGridTxt, ITEMDRAW_DISABLED );
+			AddMenuItem( mMenu, "_", szGridTxt, ITEMDRAW_DISABLED );
 		}
 	}
 	
@@ -86,13 +85,14 @@ public Action Command_Admin_ZoneStart( int client, int args )
 		return Plugin_Handled;
 	}
 	
+	
 	SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
 	Menu mMenu = CreateMenu( Handler_ZoneCreate );
 	SetMenuTitle( mMenu, "Zone Creation\n " );
 	
 	bool bFound;
 	
-	for ( int i; i < MAX_BOUNDS; i++ )
+	for ( int i; i < MAX_ZONES; i++ )
 		if ( !g_bZoneExists[i] )
 		{
 			AddMenuItem( mMenu, "_", g_szZoneNames[i] );
@@ -107,6 +107,7 @@ public Action Command_Admin_ZoneStart( int client, int args )
 		delete mMenu;
 		return Plugin_Handled;
 	}
+	
 	
 	SetMenuExitButton( mMenu, true );
 	DisplayMenu( mMenu, client, MENU_TIME_FOREVER );
@@ -127,15 +128,15 @@ public int Handler_ZoneCreate( Menu mMenu, MenuAction action, int client, int zo
 		}
 		case MenuAction_Select :
 		{
-			if ( zone < 0 || zone >= MAX_BOUNDS ) return 0;
+			if ( zone < 0 || zone >= MAX_ZONES ) return 0;
 			
 			
 			float vecClientPos[3];
 			GetClientAbsOrigin( client, vecClientPos );
 			
-			g_vecBoundsMin[zone][0] = vecClientPos[0] - ( RoundFloat( vecClientPos[0] ) % g_iBuilderGridSize );
-			g_vecBoundsMin[zone][1] = vecClientPos[1] - ( RoundFloat( vecClientPos[1] ) % g_iBuilderGridSize );
-			g_vecBoundsMin[zone][2] = float( RoundFloat( vecClientPos[2] - 0.5 ) );
+			g_vecZoneMins[zone][0] = vecClientPos[0] - ( RoundFloat( vecClientPos[0] ) % g_iBuilderGridSize );
+			g_vecZoneMins[zone][1] = vecClientPos[1] - ( RoundFloat( vecClientPos[1] ) % g_iBuilderGridSize );
+			g_vecZoneMins[zone][2] = float( RoundFloat( vecClientPos[2] - 0.5 ) );
 			
 			g_iBuilderZone = zone;
 			g_iBuilderIndex = client;
@@ -156,14 +157,14 @@ public Action Command_Admin_ZoneDelete( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
+	
 	SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
 	Menu mMenu = CreateMenu( Handler_ZoneDelete );
 	SetMenuTitle( mMenu, "Zone Delete\n " );
 	
-	
 	bool bFound;
 	
-	for ( int i; i < MAX_BOUNDS; i++ )
+	for ( int i; i < MAX_ZONES; i++ )
 	{
 		if ( g_bZoneExists[i] )
 		{
@@ -202,26 +203,27 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 		}
 		case MenuAction_Select :
 		{
-			if ( zone < 0 || zone >= MAX_BOUNDS ) return 0;
+			if ( zone < 0 || zone >= MAX_ZONES ) return 0;
 			
-			if ( zone == BOUNDS_START || zone == BOUNDS_END )
+			
+			if ( zone == ZONE_START || zone == ZONE_END )
 			{
 				g_bIsLoaded[RUN_MAIN] = false;
 				PrintColorChatAll( client, false, "%s \x03%s%s is no longer available for running!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_MAIN], COLOR_TEXT );
 			}
-			else if ( zone == BOUNDS_BONUS_1_START || zone == BOUNDS_BONUS_1_END )
+			else if ( zone == ZONE_BONUS_1_START || zone == ZONE_BONUS_1_END )
 			{
 				g_bIsLoaded[RUN_BONUS_1] = false;
 				PrintColorChatAll( client, false, "%s \x03%s%s is no longer available for running!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
 			}
-			else if ( zone == BOUNDS_BONUS_2_START || zone == BOUNDS_BONUS_2_END )
+			else if ( zone == ZONE_BONUS_2_START || zone == ZONE_BONUS_2_END )
 			{
 				g_bIsLoaded[RUN_BONUS_2] = false;
 				PrintColorChatAll( client, false, "%s \x03%s%s is no longer available for running!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_2], COLOR_TEXT );
 			}
 			// Delete the actual block zone entities!
-			// The hook should be deleted with it.
-			else if ( zone == BOUNDS_BLOCK_1 )
+			// The hook should be deleted with it automatically.
+			else if ( zone == ZONE_BLOCK_1 )
 			{
 				if ( g_iBlockZoneIndex[0] == 0 || !IsValidEntity( g_iBlockZoneIndex[0] ) )
 				{
@@ -229,10 +231,11 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 					return 0;
 				}
 				
+				
 				RemoveEdict( g_iBlockZoneIndex[0] );
 				g_iBlockZoneIndex[0] = 0;
 			}
-			else if ( zone == BOUNDS_BLOCK_2 )
+			else if ( zone == ZONE_BLOCK_2 )
 			{
 				if ( g_iBlockZoneIndex[1] == 0 || !IsValidEntity( g_iBlockZoneIndex[1] ) )
 				{
@@ -240,16 +243,18 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 					return 0;
 				}
 				
+				
 				RemoveEdict( g_iBlockZoneIndex[1] );
 				g_iBlockZoneIndex[1] = 0;
 			}
-			else if ( zone == BOUNDS_BLOCK_3 )
+			else if ( zone == ZONE_BLOCK_3 )
 			{
 				if ( g_iBlockZoneIndex[2] == 0 || !IsValidEntity( g_iBlockZoneIndex[2] ) )
 				{
 					PrintColorChat( client, client, "%s Couldn't remove \x03%s%s!!!", CHAT_PREFIX, g_szZoneNames[zone], COLOR_TEXT );
 					return 0;
 				}
+				
 				
 				RemoveEdict( g_iBlockZoneIndex[2] );
 				g_iBlockZoneIndex[2] = 0;
@@ -259,7 +264,7 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 			PrintColorChat( client, client, "%s %s deleted.", CHAT_PREFIX, g_szZoneNames[zone] );
 			
 			// Erase them from the database.
-			EraseCurMapCoords( zone );
+			EraseCurMapZone( zone );
 			
 			
 			ClientCommand( client, "sm_zone" );
@@ -273,13 +278,14 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
+	
 	SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
 	Menu mMenu = CreateMenu( Handler_RecordDelete );
 	SetMenuTitle( mMenu, "Zone Delete\n " );
 	
 	bool bFound;
 	
-	for ( int i; i < MAX_BOUNDS; i++ )
+	for ( int i; i < MAX_ZONES; i++ )
 	{
 		if ( g_bZoneExists[i] )
 		{
@@ -297,8 +303,8 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 		delete mMenu;
 		return Plugin_Handled;
 	}
-	
 
+	
 	SetMenuExitButton( mMenu, true );
 	DisplayMenu( mMenu, client, 5 );
 	

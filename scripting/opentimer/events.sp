@@ -11,12 +11,11 @@ public Action Event_ClientDeath( Handle hEvent, const char[] szEvent, bool bDont
 {
 	int client;
 
-	if ( ( client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) ) ) < 1 )
-		return;
+	if ( ( client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) ) ) < 1 ) return;
+	
 	
 	PrintColorChat( client, client, "%s Type !respawn to spawn again.", CHAT_PREFIX );
 }
-
 
 // Hide player name changes. Doesn't work.
 /*
@@ -40,8 +39,25 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 	}
 	
-	
-	
+	// -----------------------------------------------------------------------------------------------
+	// Story time!
+	// 
+	// Once upon a time I had a great idea of making a timer plugin. I started to experiment with movement recording and playback.
+	// I was pretty happy what I had at the time. It followed you pretty well, not perfect, though.
+	// The bot movement was really choppy, so I tried to perfect the movement. I recorded the player's velocity. That didn't change a thing.
+	// I tried recording absolute velocity... didn't work.
+	// I couldn't figure it out and months flew by... still didn't find a solution.
+	// Fast forward to today! I decided to make the bots visible again since I wanted to debug the movement.
+	// I was surprised how smooth it looked. I thought I had accidentally discovered the secret of smooth recording(TM).
+	// Then I realized what I changed.
+	// 
+	// Moral of the story: DO NOT SET PLAYERS' RENDER MODE TO RENDER_NONE!
+	// If you do that, all movement smoothing will be thrown out of the window.
+	// This cost me almost a year of suffering, trying to figure out why my bots looked so choppy.
+	// You can't imagine how enraged I was to learn that it was a simple fix.
+	// I can't. I've lost the ability to can.
+	// BUT YOU LEARN SOMETHING EVERY DAY! :^)
+	// -----------------------------------------------------------------------------------------------
 	SetEntityRenderMode( client, RENDER_TRANSALPHA );
 	
 	if ( !IsFakeClient( client ) )
@@ -52,7 +68,7 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 	else
 	{
 		SetEntProp( client, Prop_Data, "m_CollisionGroup", 1 ); // Same + no trigger collision for bots.
-		SetEntityRenderColor( client, _, _, _, 0 );
+		SetEntityRenderColor( client, _, _, _, 0 ); // The bot is still technically there, but you cannot see it.
 	}
 	
 	CreateTimer( 0.1, Timer_ClientSpawn, GetClientUserId( client ), TIMER_FLAG_NO_MAPCHANGE );
@@ -63,6 +79,7 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 public Action Timer_ClientSpawn( Handle hTimer, any client )
 {
 	if ( ( client = GetClientOfUserId( client ) ) < 1 ) return Plugin_Handled;
+	
 	
 	// Hides deathnotices, health and weapon.
 	// Radar and crosshair stuff can be disabled client side. Disabling those server-side won't allow you to switch between weapons.
@@ -88,6 +105,7 @@ public Action Timer_ClientSpawn( Handle hTimer, any client )
 		return Plugin_Handled;
 	}
 	
+	
 	SetClientFOV( client, g_iClientFOV[client] );
 	
 	return Plugin_Handled;
@@ -101,6 +119,7 @@ public Action Event_ClientJump( Handle hEvent, const char[] szEvent, bool bDontB
 {
 	if ( !g_bEZHop ) return;
 	
+	
 	SetEntPropFloat( GetClientOfUserId( GetEventInt( hEvent, "userid" ) ), Prop_Send, "m_flStamina", 0.0 );
 }
 
@@ -111,6 +130,7 @@ public Action Event_ClientDamage( int victim, int &attacker, int &inflictor, flo
 		//SetEntPropFloat( client, Prop_Send, "m_flVelocityModifier", 1.0 );
 		return Plugin_Handled;
 	}
+	
 	
 	damage = 0.0;
 	return Plugin_Continue;
@@ -127,8 +147,8 @@ public Action Listener_Say( int client, const char[] szCommand, int argc )
 	
 	if ( BaseComm_IsClientGagged( client ) ) return Plugin_Handled;
 	
+	
 #if defined CHAT
-
 	static char szArg[131]; // MAX MESSAGE LENGTH (SayText) + QUOTES
 	GetCmdArgString( szArg, sizeof( szArg ) );
 	
@@ -144,7 +164,6 @@ public Action Listener_Say( int client, const char[] szCommand, int argc )
 		return Plugin_Handled;
 	}
 #endif
-	
 	
 	
 	if ( !IsPlayerAlive( client ) )
@@ -167,7 +186,7 @@ public Action Listener_Say( int client, const char[] szCommand, int argc )
 	return Plugin_Handled;
 #else
 	
-	// Just to check if client typed out ! in front of the message. This is so god damn annoying...
+	// Just to check if client typed out ! in front of the message. This is so god damn annoying to see...
 	char szArg[4];
 	GetCmdArgString( szArg, sizeof( szArg ) );
 	
@@ -197,7 +216,7 @@ public void Event_TouchBlock( int trigger, int activator )
 	}
 }
 
-// Anti-doublestep pls
+// Anti-doublestep
 public Action Listener_AntiDoublestep_On( int client, const char[] szCommand, int argc )
 {
 	g_bClientHoldingJump[client] = true;

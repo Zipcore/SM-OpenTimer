@@ -61,7 +61,6 @@ stock void ShowKeyHintText( int client, int target )
 		
 		if ( g_iClientState[target] != STATE_START )
 		{
-			
 			// Please, don't divide by zero :(
 			if ( g_iClientSync_Max[target] < 1 ) g_iClientSync_Max[target] = 1;
 			

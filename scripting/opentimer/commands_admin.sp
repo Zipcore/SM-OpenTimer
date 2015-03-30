@@ -30,37 +30,38 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 		return Plugin_Handled;
 	}
 	
+	
 	static float vecClientPos[3];
 	GetClientAbsOrigin( client, vecClientPos );
 	
-	g_vecBoundsMax[g_iBuilderZone][0] = vecClientPos[0] - ( RoundFloat( vecClientPos[0] ) % g_iBuilderGridSize );
-	g_vecBoundsMax[g_iBuilderZone][1] = vecClientPos[1] - ( RoundFloat( vecClientPos[1] ) % g_iBuilderGridSize );
+	g_vecZoneMaxs[g_iBuilderZone][0] = vecClientPos[0] - ( RoundFloat( vecClientPos[0] ) % g_iBuilderGridSize );
+	g_vecZoneMaxs[g_iBuilderZone][1] = vecClientPos[1] - ( RoundFloat( vecClientPos[1] ) % g_iBuilderGridSize );
 	
 	
-	float flDif = vecClientPos[2] - g_vecBoundsMin[g_iBuilderZone][2];
+	float flDif = vecClientPos[2] - g_vecZoneMins[g_iBuilderZone][2];
 	
 	// If player built the mins on the ground and just walks to the other side, we will then automatically make it higher.
-	g_vecBoundsMax[g_iBuilderZone][2] = ( flDif <= 4.0 && flDif >= -4.0 ) ? ( vecClientPos[2] + BOUNDS_DEF_HEIGHT ) : float( RoundFloat( vecClientPos[2] ) );
+	g_vecZoneMaxs[g_iBuilderZone][2] = ( flDif <= 4.0 && flDif >= -4.0 ) ? ( vecClientPos[2] + ZONE_DEF_HEIGHT ) : float( RoundFloat( vecClientPos[2] ) );
 	
 	
 	
-	// This was used for precise min bounds that would always be on the ground, so our origin cannot be under the mins.
-	// E.g player is standing on ground but our mins are higher than player's origin meaning that the player is outside of the bounds.
-	// It is unneccesary now because our bounds are rounded. The player will always be 0.1 - 2.0 units higher.
+	// This was used for precise mins for zones that would always be on the ground, so our origin cannot be under the mins.
+	// E.g player is standing on ground but our mins are higher than player's origin meaning that the player is outside of the zone.
+	// It is unneccesary now because our zones are rounded. The player will always be 0.1 - 2.0 units higher.
 	
 	/*
 	static const float angDown[] = { 90.0, 0.0, 0.0 };
 	
-	TR_TraceRay( g_vecBoundsMin[g_iBuilderZone], angDown, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite );
+	TR_TraceRay( g_vecZoneMins[g_iBuilderZone], angDown, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite );
 	
 	if ( TR_DidHit( null ) )
 		if ( TR_GetEntityIndex( null ) != client )
-			TR_GetEndPosition( g_vecBoundsMin[g_iBuilderZone], null );
+			TR_GetEndPosition( g_vecZoneMins[g_iBuilderZone], null );
 	*/
 	
 	
 	// Save to database.
-	if ( SaveMapCoords( g_iBuilderZone ) )
+	if ( SaveMapZone( g_iBuilderZone ) )
 	{
 		PrintColorChat( client, client, "%s Saved the zone!", CHAT_PREFIX );
 	}
@@ -71,29 +72,29 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 	
 	
 	// Notify clients of the change!
-	if ( ( g_iBuilderZone == BOUNDS_START || g_iBuilderZone == BOUNDS_END ) && ( g_bZoneExists[BOUNDS_START] && g_bZoneExists[BOUNDS_END] ) )
+	if ( ( g_iBuilderZone == ZONE_START || g_iBuilderZone == ZONE_END ) && ( g_bZoneExists[ZONE_START] && g_bZoneExists[ZONE_END] ) )
 	{
 		DoMapStuff();
 		
 		g_bIsLoaded[RUN_MAIN] = true;
-		PrintColorChatAll( client, false, "%s Main zones are back!", CHAT_PREFIX );
+		PrintColorChatAll( client, false, "%s \x03%s%s is now available!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_MAIN], COLOR_TEXT );
 	}
-	else if ( ( g_iBuilderZone == BOUNDS_BONUS_1_START || g_iBuilderZone == BOUNDS_BONUS_1_END ) && ( g_bZoneExists[BOUNDS_BONUS_1_START] && g_bZoneExists[BOUNDS_BONUS_1_END] ) )
+	else if ( ( g_iBuilderZone == ZONE_BONUS_1_START || g_iBuilderZone == ZONE_BONUS_1_END ) && ( g_bZoneExists[ZONE_BONUS_1_START] && g_bZoneExists[ZONE_BONUS_1_END] ) )
 	{
 		DoMapStuff();
 		
 		g_bIsLoaded[RUN_BONUS_1] = true;
-		PrintColorChatAll( client, false, "%s \x03%s%s is now back!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
+		PrintColorChatAll( client, false, "%s \x03%s%s is now available!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
 	}
-	else if ( ( g_iBuilderZone == BOUNDS_BONUS_2_START || g_iBuilderZone == BOUNDS_BONUS_2_END ) && ( g_bZoneExists[BOUNDS_BONUS_2_START] && g_bZoneExists[BOUNDS_BONUS_2_END] ) )
+	else if ( ( g_iBuilderZone == ZONE_BONUS_2_START || g_iBuilderZone == ZONE_BONUS_2_END ) && ( g_bZoneExists[ZONE_BONUS_2_START] && g_bZoneExists[ZONE_BONUS_2_END] ) )
 	{
 		DoMapStuff();
 		
 		g_bIsLoaded[RUN_BONUS_2] = true;
-		PrintColorChatAll( client, false, "%s \x03%s%s is now back!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_2], COLOR_TEXT );
+		PrintColorChatAll( client, false, "%s \x03%s%s is now available!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_2], COLOR_TEXT );
 	}
 	// Block zones must be spawned!
-	else if ( g_iBuilderZone >= BOUNDS_BLOCK_1 && g_iBuilderZone <= BOUNDS_BLOCK_3 )
+	else if ( g_iBuilderZone >= ZONE_BLOCK_1 && g_iBuilderZone <= ZONE_BLOCK_3 )
 	{
 		CreateBlockZoneEntity( g_iBuilderZone );
 	}
