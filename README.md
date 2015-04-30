@@ -1,7 +1,8 @@
-SM-OpenTimer (Read this!)
+OpenTimer (Read this!)
 ============
 
 SourceMod timer plugin for *CSS* bunnyhop servers. Yes, it is free as in freedom.
+Test it out @ 98.166.119.99:27016
 
 **Read opentimer_log.txt if you want to know what changes have been made!**
 
