@@ -34,7 +34,7 @@ SourceMod timer plugin for *CSS* bunnyhop servers. Yes, it is free as in freedom
 - sm_forbidden_commands 0/1 (+left/+right allowed?)
 - sm_prespeed 0/1 (Can go over 300vel when leaving starting zone?)
 - sm_smoothplayback 0/1 (If false, show more accurate but not as smooth playback.)
-- sm_allow_sw (Allow sideways-style?)
+- sm_allow_sw (Allow Sideways-style?)
 - sm_allow_w (Allow W-Only-style?)
 - sm_allow_hsw (Allow HSW-style?)
 - sm_allow_rhsw (Allow Real HSW-style?)
