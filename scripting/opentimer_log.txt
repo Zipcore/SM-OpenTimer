@@ -5,6 +5,34 @@ Update log:
 ------------
 
 -------------
+	v1.4.2
+-------------
+	- New sync that actually makes sense.
+		* Works with controllers :D
+		
+	- Added Vel-Cap-style. Defaults to 400.
+		* Can be changed with sm_vel_limit-cvar.
+	
+	- Added cvars for enabling/disabling styles.
+		* sm_allow_sw
+		* sm_allow_w
+		* sm_allow_hsw
+		* sm_allow_rhsw
+		* sm_allow_vel
+	
+	- Fixed some dumb mistakes.
+		* Changing cvars should actually work now.
+		* RHSW works now.
+		* Zones no longer translate to the next map if no zones were found from the database.
+		* Made a fail safe for recording's tick count being too long but shorter than best time, therefore not being saved.
+		* Prefixing and chat colors are now done in compilation instead of runtime. < faster
+		* Bots and players won't die from falldamage anymore, lol. This is why testing is an actual job.
+		* Bots have weapons again.
+		* Disabled hiding players for now.
+	
+	Soz for not fixing these sooner.
+
+-------------
 	v1.4 & v1.4.1
 -------------
 	- Recording changed and file backwards compatibility breaks yet again (hence why version is 1.4 and not 1.3.x)!

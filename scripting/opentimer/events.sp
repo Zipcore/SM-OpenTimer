@@ -1,10 +1,10 @@
 // Hide other players (doesn't work with bots?)
-public Action Event_ClientTransmit( int ent, int client )
+/*public Action Event_ClientTransmit( int ent, int client )
 {
-	if ( !IsPlayerAlive( client ) ) return Plugin_Continue;
+	if ( !IsPlayerAlive( client ) ) return Plugin_Handled;
 	
-	return ( client != ent ) ? Plugin_Handled : Plugin_Continue;
-}
+	return ( client != ent ) ? Plugin_Continue : Plugin_Handled;
+}*/
 
 // Tell the client to respawn!
 public Action Event_ClientDeath( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
@@ -14,7 +14,7 @@ public Action Event_ClientDeath( Handle hEvent, const char[] szEvent, bool bDont
 	if ( ( client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) ) ) < 1 ) return;
 	
 	
-	PrintColorChat( client, client, "%s Type !respawn to spawn again.", CHAT_PREFIX );
+	PrintColorChat( client, client, CHAT_PREFIX ... "Type \x03!respawn"...CLR_TEXT..." to spawn again." );
 }
 
 // Hide player name changes. Doesn't work.
@@ -27,6 +27,20 @@ public Action Event_ClientName( Handle hEvent, const char[] szEvent, bool bDontB
 	return Plugin_Handled;
 }*/
 
+public void Event_WeaponSwitchPost( int client )
+{
+	// Higher the ping, the longer the transition period will be.
+	SetClientFOV( client, g_iClientFOV[client] );
+}
+
+public void Event_WeaponDropPost( int client, int weapon )
+{
+	// This doesn't delete all the weapons.
+	// In fact, this doesn't get called when player suicides.
+	if ( IsValidEntity( weapon ) )
+		AcceptEntityInput( weapon, "Kill" );
+}
+
 // Set client ready for the map. Collision groups, bots, transparency, etc.
 public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
 {
@@ -36,7 +50,7 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 
 	if ( g_bIsLoaded[ g_iClientRun[client] ] )
 	{
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 	}
 	
 	// -----------------------------------------------------------------------------------------------
@@ -74,7 +88,6 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 	CreateTimer( 0.1, Timer_ClientSpawn, GetClientUserId( client ), TIMER_FLAG_NO_MAPCHANGE );
 }
 
-
 // Continued from above event.
 public Action Timer_ClientSpawn( Handle hTimer, any client )
 {
@@ -83,8 +96,11 @@ public Action Timer_ClientSpawn( Handle hTimer, any client )
 	
 	// Hides deathnotices, health and weapon.
 	// Radar and crosshair stuff can be disabled client side. Disabling those server-side won't allow you to switch between weapons.
-	if ( g_iClientHideFlags[client] & HIDEHUD_HUD ) SetEntProp( client, Prop_Data, "m_iHideHUD", HIDE_FLAGS );
-	if ( g_iClientHideFlags[client] & HIDEHUD_VM ) SetEntProp( client, Prop_Data, "m_bDrawViewmodel", 0 );
+	if ( g_fClientHideFlags[client] & HIDEHUD_HUD )
+		SetEntProp( client, Prop_Data, "m_iHideHUD", HIDE_FLAGS );
+	
+	if ( g_fClientHideFlags[client] & HIDEHUD_VM )
+		SetEntProp( client, Prop_Data, "m_bDrawViewmodel", 0 );
 	
 	SetEntProp( client, Prop_Data, "m_nHitboxSet", 2 ); // Don't get damaged from weapons.
 	
@@ -98,8 +114,10 @@ public Action Timer_ClientSpawn( Handle hTimer, any client )
 		int wep;
 		for ( int i; i < 5; i++ ) // Slot count (5)
 			if ( ( wep = GetPlayerWeaponSlot( client, i ) ) > 0 )
-				AcceptEntityInput( wep, "Kill" );
-				//SetEntityRenderMode( wep, RENDER_NONE );
+			{
+				SetEntityRenderMode( wep, RENDER_TRANSALPHA );
+				SetEntityRenderColor( wep, _, _, _, 0 );
+			}
 #endif
 
 		return Plugin_Handled;
@@ -123,17 +141,25 @@ public Action Event_ClientJump( Handle hEvent, const char[] szEvent, bool bDontB
 	SetEntPropFloat( GetClientOfUserId( GetEventInt( hEvent, "userid" ) ), Prop_Send, "m_flStamina", 0.0 );
 }
 
-public Action Event_ClientDamage( int victim, int &attacker, int &inflictor, float &damage, int &damagetype )
+/*public Action Event_ClientHurt( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
 {
+	static int client;
+	if ( ( client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) ) ) < 1 ) return;
+	
 	if ( g_bEZHop )
 	{
-		//SetEntPropFloat( client, Prop_Send, "m_flVelocityModifier", 1.0 );
-		return Plugin_Handled;
+		SetEntPropFloat( client, Prop_Send, "m_flVelocityModifier", 1.0 );
 	}
 	
+	SetEntProp( client, Prop_Data, "m_iHealth", 100 );
+}*/
+
+public Action Event_OnTakeDamage( int victim, int &attacker, int &inflictor, float &flDamage, int &fDamage)
+{
+	if ( g_bEZHop ) return Plugin_Handled;
 	
-	damage = 0.0;
-	return Plugin_Continue;
+	flDamage = 0.0;
+	return Plugin_Changed;
 }
 
 
@@ -143,13 +169,13 @@ public Action Event_ClientDamage( int victim, int &attacker, int &inflictor, flo
 public Action Listener_Say( int client, const char[] szCommand, int argc )
 {
 	// Let the server talk :^)
-	if ( client == 0 || !IsClientInGame( client ) ) return Plugin_Continue;
+	if ( client == INVALID_INDEX || !IsClientInGame( client ) ) return Plugin_Continue;
 	
 	if ( BaseComm_IsClientGagged( client ) ) return Plugin_Handled;
 	
 	
 #if defined CHAT
-	static char szArg[131]; // MAX MESSAGE LENGTH (SayText) + QUOTES
+	static char szArg[131]; // MAX MESSAGE LENGTH (SayText) + QUOTES (?)
 	GetCmdArgString( szArg, sizeof( szArg ) );
 	
 	if ( szArg[1] == '@' || szArg[1] == '/' || szArg[1] == '!' ) return Plugin_Handled;
@@ -163,16 +189,16 @@ public Action Listener_Say( int client, const char[] szCommand, int argc )
 		ClientCommand( client, "sm_choosemap" );
 		return Plugin_Handled;
 	}
-#endif
+#endif // VOTING
 	
 	
 	if ( !IsPlayerAlive( client ) )
 	{
-		PrintColorChatAll( client, true, "%s[%sSPEC%s] \x03%N\x01: %s%s", COLOR_TEXT, COLOR_PURPLE, COLOR_TEXT, client, COLOR_TEXT, szArg );
+		PrintColorChatAll( client, true, CLR_TEXT ... "["...CLR_PURPLE..."SPEC"...CLR_TEXT..."] \x03%N\x01: "...CLR_TEXT..."%s", client, szArg );
 	}
 	else
 	{
-		PrintColorChatAll( client, true, "\x03%N\x01: %s%s", client, COLOR_TEXT, szArg );
+		PrintColorChatAll( client, true, "\x03%N\x01: "...CLR_TEXT..."%s", client, szArg );
 	}
 	
 	
@@ -184,8 +210,8 @@ public Action Listener_Say( int client, const char[] szCommand, int argc )
 	
 	
 	return Plugin_Handled;
-#else
 	
+#else // CHAT
 	// Just to check if client typed out ! in front of the message. This is so god damn annoying to see...
 	char szArg[4];
 	GetCmdArgString( szArg, sizeof( szArg ) );
@@ -193,7 +219,7 @@ public Action Listener_Say( int client, const char[] szCommand, int argc )
 	if ( szArg[1] == '!' ) return Plugin_Handled;
 	
 	return Plugin_Continue;
-#endif
+#endif // CHAT
 }
 
 // For block zones.
@@ -207,12 +233,13 @@ public void Event_TouchBlock( int trigger, int activator )
 	if ( IsClientInGame( activator ) )
 	{
 		if ( g_flClientWarning[activator] < GetEngineTime() )
-			PrintColorChat( activator, activator, "%s You are not allowed to go there!", CHAT_PREFIX );
+		{
+			PrintColorChat( activator, activator, CHAT_PREFIX ... "You are not allowed to go there!" );
+			
+			g_flClientWarning[activator] = GetEngineTime() + WARNING_INTERVAL;
+		}
 		
-		
-		TeleportEntity( activator, g_vecSpawnPos[ g_iClientRun[activator] ], g_angSpawnAngles[ g_iClientRun[activator] ], g_vecNull );
-		
-		g_flClientWarning[activator] = GetEngineTime() + WARNING_INTERVAL;
+		TeleportEntity( activator, g_vecSpawnPos[ g_iClientRun[activator] ], g_vecSpawnAngles[ g_iClientRun[activator] ], g_vecNull );
 	}
 }
 

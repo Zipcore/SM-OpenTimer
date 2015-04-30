@@ -6,7 +6,7 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 	{
 		if ( g_iBuilderIndex == 0 )
 		{
-			PrintColorChat( client, client, "%s You haven't even started a zone! (\x03!startzone%s)", CHAT_PREFIX, COLOR_TEXT );
+			PrintColorChat( client, client, CHAT_PREFIX ... "You haven't even started a zone! (\x03!startzone"...CLR_TEXT...")" );
 			return Plugin_Handled;
 		}
 		
@@ -14,19 +14,19 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 		{
 			g_iBuilderIndex = 0;
 			
-			PrintColorChat( client, client, "%s You haven't even started a zone! (\x03!startzone%s)", CHAT_PREFIX, COLOR_TEXT );
+			PrintColorChat( client, client, CHAT_PREFIX ... "You haven't even started a zone! (\x03!startzone"...CLR_TEXT...")" );
 			
 			return Plugin_Handled;
 		}
 		
 		
-		PrintColorChat( client, client, "%s Somebody else is building the zone!", CHAT_PREFIX );
+		PrintColorChat( client, client, CHAT_PREFIX ... "Somebody else is building the zone!" );
 		return Plugin_Handled;
 	}
 	
 	if ( g_iBuilderZone < 0 )
 	{
-		PrintColorChat( client, client, "%s You haven't even started a zone! (\x03!startzone%s)", CHAT_PREFIX, COLOR_TEXT );
+		PrintColorChat( client, client, CHAT_PREFIX ... "You haven't even started a zone! (\x03!startzone"...CLR_TEXT...")" );
 		return Plugin_Handled;
 	}
 	
@@ -61,13 +61,13 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 	
 	
 	// Save to database.
-	if ( SaveMapZone( g_iBuilderZone ) )
+	if ( DB_SaveMapZone( g_iBuilderZone ) )
 	{
-		PrintColorChat( client, client, "%s Saved the zone!", CHAT_PREFIX );
+		PrintColorChat( client, client, CHAT_PREFIX ... "Saved the zone!" );
 	}
 	else
 	{
-		PrintColorChat( client, client, "%s Couldn't save the zone!", CHAT_PREFIX );
+		PrintColorChat( client, client, CHAT_PREFIX ... "Couldn't save the zone!" );
 	}
 	
 	
@@ -77,21 +77,21 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 		DoMapStuff();
 		
 		g_bIsLoaded[RUN_MAIN] = true;
-		PrintColorChatAll( client, false, "%s \x03%s%s is now available!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_MAIN], COLOR_TEXT );
+		PrintColorChatAll( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is now available!", g_szRunName[NAME_LONG][RUN_MAIN] );
 	}
 	else if ( ( g_iBuilderZone == ZONE_BONUS_1_START || g_iBuilderZone == ZONE_BONUS_1_END ) && ( g_bZoneExists[ZONE_BONUS_1_START] && g_bZoneExists[ZONE_BONUS_1_END] ) )
 	{
 		DoMapStuff();
 		
 		g_bIsLoaded[RUN_BONUS_1] = true;
-		PrintColorChatAll( client, false, "%s \x03%s%s is now available!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_1], COLOR_TEXT );
+		PrintColorChatAll( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is now available!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
 	}
 	else if ( ( g_iBuilderZone == ZONE_BONUS_2_START || g_iBuilderZone == ZONE_BONUS_2_END ) && ( g_bZoneExists[ZONE_BONUS_2_START] && g_bZoneExists[ZONE_BONUS_2_END] ) )
 	{
 		DoMapStuff();
 		
 		g_bIsLoaded[RUN_BONUS_2] = true;
-		PrintColorChatAll( client, false, "%s \x03%s%s is now available!", CHAT_PREFIX, g_szRunName[NAME_LONG][RUN_BONUS_2], COLOR_TEXT );
+		PrintColorChatAll( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is now available!", g_szRunName[NAME_LONG][RUN_BONUS_2] );
 	}
 	// Block zones must be spawned!
 	else if ( g_iBuilderZone >= ZONE_BLOCK_1 && g_iBuilderZone <= ZONE_BLOCK_3 )

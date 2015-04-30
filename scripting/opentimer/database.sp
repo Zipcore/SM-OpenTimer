@@ -11,7 +11,7 @@ static char g_szQuery_Big[300];
 
 // Print server times to client. This can be done to console (max. 15 records) or to MOTD page (max. 5 records)
 // Client can also request individual modes.
-stock void PrintRecords( int client, bool bInConsole, int iReqStyle = -1, int iRun = 0 )
+stock void DB_PrintRecords( int client, bool bInConsole, int iReqStyle = -1, int iRun = 0 )
 {
 	int amt;
 	
@@ -20,12 +20,12 @@ stock void PrintRecords( int client, bool bInConsole, int iReqStyle = -1, int iR
 	
 	if ( iReqStyle != -1 )
 	{
-		Format( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM '%s' WHERE style = %i AND run = %i ORDER BY time LIMIT %i;", g_szCurrentMap, iReqStyle, iRun, amt );
+		FormatEx( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM '%s' WHERE style = %i AND run = %i ORDER BY time LIMIT %i", g_szCurrentMap, iReqStyle, iRun, amt );
 	}
 	else
 	{
 		// No requested style.
-		Format( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM '%s' WHERE style = 0 AND run = %i ORDER BY time LIMIT %i;", g_szCurrentMap, iRun, amt );
+		FormatEx( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM '%s' WHERE style = 0 AND run = %i ORDER BY time LIMIT %i", g_szCurrentMap, iRun, amt );
 	}
 	
 	Handle hData = CreateArray( 2 );
@@ -40,13 +40,13 @@ stock void PrintRecords( int client, bool bInConsole, int iReqStyle = -1, int iR
 }
 
 // We save the record if needed and print a notification to the chat.
-stock bool SaveClientRecord( int client, float flNewTime )
+stock bool DB_SaveClientRecord( int client, float flNewTime )
 {
 	char szSteamID[STEAMID_MAXLENGTH];
 	
 	if ( !GetClientAuthId( client, AuthId_Engine, szSteamID, sizeof( szSteamID ) ) )
 	{
-		LogError( "%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.", CONSOLE_PREFIX, client );
+		LogError( CONSOLE_PREFIX ... "There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.", client );
 		return false;
 	}
 	
@@ -55,15 +55,15 @@ stock bool SaveClientRecord( int client, float flNewTime )
 	if ( g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] <= TIME_INVALID || flNewTime < g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] )
 	{
 		char szName[MAX_NAME_LENGTH];
-		Format( szName, sizeof( szName ), "%N", client );
+		GetClientName( client, szName, sizeof( szName ) );
 		
 		// I can't believe I forgot about this.
 		SQL_EscapeString( g_Database, szName, szName, sizeof( szName ) );
 		
 		// Insert new if we haven't beaten this one yet. Replace otherwise.
-		Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "INSERT OR REPLACE INTO '%s' ( steamid, name, time, jumps, style, strafes, run ) VALUES ( '%s', '%s', '%.3f', %i, %i, %i, %i );", g_szCurrentMap, szSteamID, szName, flNewTime, g_iClientJumpCount[client], g_iClientStyle[client], g_iClientStrafeCount[client], g_iClientRun[client] );
+		FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "INSERT OR REPLACE INTO '%s' (steamid, name, time, jumps, style, strafes, run) VALUES ('%s', '%s', %.3f, %i, %i, %i, %i)", g_szCurrentMap, szSteamID, szName, flNewTime, g_iClientJumpCount[client], g_iClientStyle[client], g_iClientStrafeCount[client], g_iClientRun[client] );
 		
-		SQL_TQuery( g_Database, Threaded_Empty, g_szQuery_Med, _, DBPrio_High );
+		SQL_TQuery( g_Database, Threaded_Empty, g_szQuery_Big, _, DBPrio_High );
 	}
 	
 	
@@ -86,15 +86,15 @@ stock bool SaveClientRecord( int client, float flNewTime )
 	
 	static char		szTxt[192];
 	bool			bIsBest;
-	char			szFormTime[17];
-	FormatSeconds( flNewTime, szFormTime, sizeof( szFormTime ), true, true );
+	char			szFormTime[SIZE_TIME_CHAT];
+	FormatSeconds( flNewTime, szFormTime, sizeof( szFormTime ), FORMAT_COLORED );
 	
 	// New time if under or equal to 0
 	if ( g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] <= TIME_INVALID ) 
 	{
 		if ( flNewTime > g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
 		{
-			Format( szTxt, sizeof( szTxt ), "%s \x03%N%s finished \x03%s%s for the first time [%s%s%s]!\n\x06(%s\x06)", CHAT_PREFIX, client, COLOR_TEXT, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT, COLOR_GRAY, g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], COLOR_TEXT, szFormTime );
+			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." for the first time ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06)", client, g_szRunName[NAME_LONG][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], szFormTime );
 			
 			if ( g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] <= TIME_INVALID )
 			{
@@ -103,7 +103,7 @@ stock bool SaveClientRecord( int client, float flNewTime )
 		}
 		else
 		{
-			Format( szTxt, sizeof( szTxt ), "%s \x03%N%s broke \x03%s%s record [%s%s%s]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", CHAT_PREFIX, client, COLOR_TEXT, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT, COLOR_GRAY, g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], COLOR_TEXT, szFormTime, flLeftSeconds );
+			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." broke \x03%s"...CLR_TEXT..." record ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], szFormTime, flLeftSeconds );
 			bIsBest = true;
 		}
 	}
@@ -113,16 +113,16 @@ stock bool SaveClientRecord( int client, float flNewTime )
 		{
 			if ( flNewTime > g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] )
 			{
-				Format( szTxt, sizeof( szTxt ), "%s \x03%N%s finished \x03%s%s [%s%s%s]!\n\x06(%s\x06)", CHAT_PREFIX, client, COLOR_TEXT, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT, COLOR_GRAY, g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], COLOR_TEXT, szFormTime );
+				FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06)", client, g_szRunName[NAME_LONG][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], szFormTime );
 			}
 			else
 			{
-				Format( szTxt, sizeof( szTxt ), "%s \x03%N%s finished \x03%s%s [%s%s%s]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", CHAT_PREFIX, client, COLOR_TEXT, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT, COLOR_GRAY, g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], COLOR_TEXT, szFormTime, g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] - flNewTime );
+				FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], szFormTime, g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] - flNewTime );
 			}
 		}
 		else
 		{
-			Format( szTxt, sizeof( szTxt ), "%s \x03%N%s broke \x03%s%s record [%s%s%s]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", CHAT_PREFIX, client, COLOR_TEXT, g_szRunName[NAME_LONG][ g_iClientRun[client] ], COLOR_TEXT, COLOR_GRAY, g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], COLOR_TEXT, szFormTime, flLeftSeconds );
+			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." broke \x03%s"...CLR_TEXT..." record ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], szFormTime, flLeftSeconds );
 			bIsBest = true;
 		}
 	}
@@ -164,61 +164,14 @@ stock bool SaveClientRecord( int client, float flNewTime )
 		g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] = flNewTime;
 		
 #if defined RECORD
-		if ( g_bIsClientRecording[client] && g_hClientRecording[client] != null )
+		if ( g_bClientRecording[client] && g_hClientRecording[client] != null )
 		{
-			int len = GetArraySize( g_hClientRecording[client] );
+			// Save the recording to disk.
+			if ( !SaveRecording( client, flNewTime ) ) return false;
 			
-			if ( len > MIN_REC_SIZE )
-			{
-				// Save!
-				if ( !SaveRecording( client, flNewTime, len ) )
-					return false;
-				
-				
-				// We did it, hurray! Now let's update the bot!
-				
-				
-				// Reset stuff just in case we happen to fuck up something.
-				g_bIsClientMimicing[ g_iMimic[ g_iClientRun[client] ][ g_iClientStyle[client] ] ] = false;
-				g_iClientTick[ g_iMimic[ g_iClientRun[client] ][ g_iClientStyle[client] ] ] = TICK_PRE_PLAYBLACK;
-				
-				// Clone client's recording to the mimic.
-				g_hMimicRecording[ g_iClientRun[client] ][ g_iClientStyle[client] ] = CloneArray( g_hClientRecording[client] );
-				g_iMimicTickMax[ g_iClientRun[client] ][ g_iClientStyle[client] ] = len;
-				
-				// Then we change mimic's name...
-				Format( g_szMimicName[ g_iClientRun[client] ][ g_iClientStyle[client] ], sizeof( g_szMimicName[][] ), "%N", client );
-				
-				// Copy player's initial position and angles to mimic.
-				ArrayCopy( g_vecInitPos[client], g_vecInitMimicPos[ g_iClientRun[client] ][ g_iClientStyle[client] ], 3 );
-				ArrayCopy( g_angInitAngles[client], g_angInitMimicAngles[ g_iClientRun[client] ][ g_iClientStyle[client] ], 2 );
-				
-				
-				if ( g_iMimic[ g_iClientRun[client] ][ g_iClientStyle[client] ] != INVALID_INDEX ) // We already have a bot? Let's use him instead.
-				{
-					char szName[MAX_NAME_LENGTH];
-					Format( szName, sizeof( szName ), "REC* %s [%s|%s]", g_szMimicName[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_szRunName[NAME_SHORT][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ] );
-					SetClientInfo( g_iMimic[ g_iClientRun[client] ][ g_iClientStyle[client] ], "name", szName );
-					
-					// Set the mimic's time in the scoreboard.
-					char szTime[12];
-					FormatSeconds( g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ], szTime, sizeof( szTime ), false );
-					CS_SetClientClanTag( g_iMimic[ g_iClientRun[client] ][ g_iClientStyle[client] ], szTime );
-					
-					// Teleport 'em to the starting position and start the countdown!
-					TeleportEntity( g_iMimic[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_vecInitMimicPos[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_angInitMimicAngles[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_vecNull );
-					
-					CreateTimer( 2.0, Timer_Rec_Start, g_iMimic[ g_iClientRun[client] ][ g_iClientStyle[client] ] );
-				}
-				else
-				{
-					// Create new if one doesn't exist.
-					// Check OnClientPutInServer() for that.
-					
-					g_iNumMimic++;
-					ServerCommand( "bot_quota %i", g_iNumMimic );
-				}
-			}
+			
+			// We did it, hurray! Now let's copy the record for playback.
+			CopyRecordToPlayback( client );
 		}
 #endif
 	}
@@ -228,7 +181,7 @@ stock bool SaveClientRecord( int client, float flNewTime )
 	return true;
 }
 
-stock bool SaveClientData( int client )
+stock bool DB_SaveClientData( int client )
 {
 	if ( g_Database == null ) return false;
 	
@@ -236,38 +189,38 @@ stock bool SaveClientData( int client )
 	
 	if ( !GetClientAuthId( client, AuthId_Engine, szSteamID, sizeof( szSteamID ) ) )
 	{
-		LogError( "%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save data.", CONSOLE_PREFIX, client );
+		LogError( CONSOLE_PREFIX ... "There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save data.", client );
 		return false;
 	}
 	
 	
-	Format( g_szQuery_Small, sizeof( g_szQuery_Small ), "UPDATE player_data SET fov = %i, hideflags = %i WHERE steamid = '%s';", g_iClientFOV[client], g_iClientHideFlags[client], szSteamID );
+	FormatEx( g_szQuery_Small, sizeof( g_szQuery_Small ), "UPDATE player_data SET fov = %i, hideflags = %i WHERE steamid = '%s'", g_iClientFOV[client], g_fClientHideFlags[client], szSteamID );
 	
-	SQL_TQuery( g_Database, Threaded_Empty, g_szQuery_Small, _, DBPrio_Low );
+	SQL_TQuery( g_Database, Threaded_Empty, g_szQuery_Small, _, DBPrio_Normal );
 	
 	return true;
 }
 
 // Get client options (fov and hideflags) and time it took him/her to beat the map in all modes.
-stock void RetrieveClientData( int client )
+stock void DB_RetrieveClientData( int client )
 {
 	char szSteamID[STEAMID_MAXLENGTH];
 	
 	if ( !GetClientAuthId( client, AuthId_Engine, szSteamID, sizeof( szSteamID ) ) )
 	{
-		LogError( "%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot retrieve data.", CONSOLE_PREFIX, client );
+		LogError( CONSOLE_PREFIX ... "There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot retrieve data.", client );
 		return;
 	}
 	
 	
-	Format( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM player_data WHERE steamid = '%s';", szSteamID );
+	FormatEx( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM player_data WHERE steamid = '%s'", szSteamID );
 	
-	SQL_TQuery( g_Database, Threaded_RetrieveClientData, g_szQuery_Small, GetClientUserId( client ), DBPrio_High );
+	SQL_TQuery( g_Database, Threaded_RetrieveClientData, g_szQuery_Small, GetClientUserId( client ), DBPrio_Normal );
 }
 
 // Initialize sounds so important. I'm so cool.
 // Create connection with database!
-stock void InitializeDatabase()
+stock void DB_InitializeDatabase()
 {
 	// Creates opentimer.sq3 in the data folder.
 	Handle kv = CreateKeyValues( "" );
@@ -280,19 +233,19 @@ stock void InitializeDatabase()
 	
 	if ( g_Database == null )
 	{
-		SetFailState( "%s Unable to establish connection to database!\n g_szError: %s", CONSOLE_PREFIX, g_szError );
+		SetFailState( CONSOLE_PREFIX ... "Unable to establish connection to database! Error: %s", g_szError );
 		return;
 	}
 	
 	
 	SQL_LockDatabase( g_Database );
 	
-	if ( !SQL_FastQuery( g_Database, "CREATE TABLE IF NOT EXISTS player_data ( steamid VARCHAR( 32 ) PRIMARY KEY, fov INTEGER, hideflags INTEGER );" ) )
+	if ( !SQL_FastQuery( g_Database, "CREATE TABLE IF NOT EXISTS player_data (steamid VARCHAR(32) PRIMARY KEY, fov INTEGER, hideflags INTEGER)" ) )
 	{
 		SQL_UnlockDatabase( g_Database );
 		
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-		SetFailState( "%s Plugin was unable to create table for player profiles!\nError: %s", CONSOLE_PREFIX, g_szError );
+		SetFailState( CONSOLE_PREFIX ... "Plugin was unable to create table for player profiles! Error: %s", g_szError );
 		
 		return;
 	}
@@ -300,49 +253,49 @@ stock void InitializeDatabase()
 	SQL_UnlockDatabase( g_Database );
 	
 	
-	PrintToServer( "%s Established connection with database!", CONSOLE_PREFIX );
+	PrintToServer( CONSOLE_PREFIX ... "Established connection with database!" );
 }
 
 // Get map zones, mimics and vote-able maps
-stock void InitializeMapZones()
+stock void DB_InitializeMapZones()
 {
 	if ( g_Database == null )
-		SetFailState( "%s No connection to database. Unable to retrieve map data!", CONSOLE_PREFIX );
+		SetFailState( CONSOLE_PREFIX ... "No connection to database. Unable to retrieve map data!" );
 	
 	
 	SQL_LockDatabase( g_Database );
 	
-	if ( !SQL_FastQuery( g_Database, "CREATE TABLE IF NOT EXISTS _mapbounds ( map VARCHAR( 32 ) PRIMARY KEY, smin0 REAL, smin1 REAL, smin2 REAL, smax0 REAL, smax1 REAL, smax2 REAL, emin0 REAL, emin1 REAL, emin2 REAL, emax0 REAL, emax1 REAL, emax2 REAL, bl1min0 REAL, bl1min1 REAL, bl1min2 REAL, bl1max0 REAL, bl1max1 REAL, bl1max2 REAL, bl2min0 REAL, bl2min1 REAL, bl2min2 REAL, bl2max0 REAL, bl2max1 REAL, bl2max2 REAL, bl3min0 REAL, bl3min1 REAL, bl3min2 REAL, bl3max0 REAL, bl3max1 REAL, bl3max2 REAL, b1_smin0 REAL, b1_smin1 REAL, b1_smin2 REAL, b1_smax0 REAL, b1_smax1 REAL, b1_smax2 REAL, b1_emin0 REAL, b1_emin1 REAL, b1_emin2 REAL, b1_emax0 REAL, b1_emax1 REAL, b1_emax2 REAL, b2_smin0 REAL, b2_smin1 REAL, b2_smin2 REAL, b2_smax0 REAL, b2_smax1 REAL, b2_smax2 REAL, b2_emin0 REAL, b2_emin1 REAL, b2_emin2 REAL, b2_emax0 REAL, b2_emax1 REAL, b2_emax2 REAL, fs1min0 REAL, fs1min1 REAL, fs1min2 REAL, fs1max0 REAL, fs1max1 REAL, fs1max2 REAL, fs2min0 REAL, fs2min1 REAL, fs2min2 REAL, fs2max0 REAL, fs2max1 REAL, fs2max2 REAL, fs3min0 REAL, fs3min1 REAL, fs3min2 REAL, fs3max0 REAL, fs3max1 REAL, fs3max2 REAL );" ) )
+	if ( !SQL_FastQuery( g_Database, "CREATE TABLE IF NOT EXISTS _mapbounds (map VARCHAR(32) PRIMARY KEY, smin0 REAL, smin1 REAL, smin2 REAL, smax0 REAL, smax1 REAL, smax2 REAL, emin0 REAL, emin1 REAL, emin2 REAL, emax0 REAL, emax1 REAL, emax2 REAL, bl1min0 REAL, bl1min1 REAL, bl1min2 REAL, bl1max0 REAL, bl1max1 REAL, bl1max2 REAL, bl2min0 REAL, bl2min1 REAL, bl2min2 REAL, bl2max0 REAL, bl2max1 REAL, bl2max2 REAL, bl3min0 REAL, bl3min1 REAL, bl3min2 REAL, bl3max0 REAL, bl3max1 REAL, bl3max2 REAL, b1_smin0 REAL, b1_smin1 REAL, b1_smin2 REAL, b1_smax0 REAL, b1_smax1 REAL, b1_smax2 REAL, b1_emin0 REAL, b1_emin1 REAL, b1_emin2 REAL, b1_emax0 REAL, b1_emax1 REAL, b1_emax2 REAL, b2_smin0 REAL, b2_smin1 REAL, b2_smin2 REAL, b2_smax0 REAL, b2_smax1 REAL, b2_smax2 REAL, b2_emin0 REAL, b2_emin1 REAL, b2_emin2 REAL, b2_emax0 REAL, b2_emax1 REAL, b2_emax2 REAL, fs1min0 REAL, fs1min1 REAL, fs1min2 REAL, fs1max0 REAL, fs1max1 REAL, fs1max2 REAL, fs2min0 REAL, fs2min1 REAL, fs2min2 REAL, fs2max0 REAL, fs2max1 REAL, fs2max2 REAL, fs3min0 REAL, fs3min1 REAL, fs3min2 REAL, fs3max0 REAL, fs3max1 REAL, fs3max2 REAL)" ) )
 	{
 		SQL_UnlockDatabase( g_Database );
 		
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-		SetFailState( "%s Couldn't create map zone table!\nError: %s", CONSOLE_PREFIX, g_szError );
+		SetFailState( CONSOLE_PREFIX ... "Couldn't create map zone table! Error: %s", g_szError );
 		return;
 	}
 	
 	
-	Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "CREATE TABLE IF NOT EXISTS '%s' ( steamid VARCHAR( 32 ) NOT NULL, run INTEGER NOT NULL, style INTEGER NOT NULL, name VARCHAR( 64 ), time REAL, jumps INTEGER , strafes INTEGER, PRIMARY KEY ( steamid, run, style ) );", g_szCurrentMap );
+	FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "CREATE TABLE IF NOT EXISTS '%s' (steamid VARCHAR(32) NOT NULL, run INTEGER NOT NULL, style INTEGER NOT NULL, name VARCHAR(64), time REAL, jumps INTEGER , strafes INTEGER, PRIMARY KEY (steamid, run, style))", g_szCurrentMap );
 	
 	if ( !SQL_FastQuery( g_Database, g_szQuery_Big ) )
 	{
 		SQL_UnlockDatabase( g_Database );
 		
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-		SetFailState( "%s Couldn't create map record table!\nError: %s", CONSOLE_PREFIX, g_szError );
+		SetFailState( CONSOLE_PREFIX ... "Couldn't create map record table! Error: %s", g_szError );
 		return;
 	}
 	
 	
-	Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "SELECT * FROM _mapbounds WHERE map = '%s';", g_szCurrentMap );
-	Handle hQuery = SQL_Query( g_Database, g_szQuery_Big );
+	FormatEx( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM _mapbounds WHERE map = '%s'", g_szCurrentMap );
+	Handle hQuery = SQL_Query( g_Database, g_szQuery_Small );
 	
 	if ( hQuery == null )
 	{
 		SQL_UnlockDatabase( g_Database );
 		
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-		SetFailState( "%s Unable to retrieve map zones!\nError: %s", CONSOLE_PREFIX, g_szError );
+		SetFailState( CONSOLE_PREFIX ... "Unable to retrieve map zones! Error: %s", g_szError );
 		return;
 	}
 	
@@ -351,16 +304,16 @@ stock void InitializeMapZones()
 	
 	if ( SQL_GetRowCount( hQuery ) == 0 )
 	{
-		Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "INSERT INTO _mapbounds ( map ) VALUES ( '%s' );", g_szCurrentMap );
+		FormatEx( g_szQuery_Small, sizeof( g_szQuery_Small ), "INSERT INTO _mapbounds (map) VALUES ('%s')", g_szCurrentMap );
 		
-		if ( !SQL_FastQuery( g_Database, g_szQuery_Big ) )
+		if ( !SQL_FastQuery( g_Database, g_szQuery_Small ) )
 		{
 			delete hQuery;
 			
 			SQL_UnlockDatabase( g_Database );
 			
 			SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-			SetFailState( "%s Couldn't create map zones table!\nError: %s", CONSOLE_PREFIX, g_szError );
+			SetFailState( CONSOLE_PREFIX ... "Couldn't create map zones table! Error: %s", g_szError );
 			return;
 		}
 		
@@ -694,7 +647,7 @@ stock void InitializeMapZones()
 
 	if ( !g_bZoneExists[ZONE_START] || !g_bZoneExists[ZONE_END] )
 	{
-		PrintToServer( "%s Map is lacking zones...", CONSOLE_PREFIX );
+		PrintToServer( CONSOLE_PREFIX ... "Map is lacking zones..." );
 		g_bIsLoaded[RUN_MAIN] = false;
 	}
 	else g_bIsLoaded[RUN_MAIN] = true;
@@ -707,9 +660,9 @@ stock void InitializeMapZones()
 	
 	// Get map data for records and votes!
 #if defined RECORD
-	Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "SELECT run, style, MIN( time ), steamid, name FROM %s GROUP BY run, style ORDER BY run;", g_szCurrentMap );
+	FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "SELECT run, style, MIN(time), steamid, name FROM '%s' GROUP BY run, style ORDER BY run", g_szCurrentMap );
 #else
-	Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "SELECT run, style, MIN( time ) FROM %s GROUP BY run, style ORDER BY run;", g_szCurrentMap );
+	FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "SELECT run, style, MIN(time) FROM '%s' GROUP BY run, style ORDER BY run", g_szCurrentMap );
 #endif
 	
 	hQuery = SQL_Query( g_Database, g_szQuery_Big );
@@ -719,7 +672,7 @@ stock void InitializeMapZones()
 		SQL_UnlockDatabase( g_Database );
 		
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-		SetFailState( "%s Unable to retrieve map best times!\nError: %s", CONSOLE_PREFIX, g_szError );
+		SetFailState( CONSOLE_PREFIX ... "Unable to retrieve map best times! Error: %s", g_szError );
 		return;
 	}
 	
@@ -751,8 +704,8 @@ stock void InitializeMapZones()
 		
 		if ( LoadRecording( szSteamID, iRun, iStyle ) )
 		{
-			strcopy( g_szMimicName[iRun][iStyle], sizeof( g_szMimicName[][] ), szName );
-			g_iNumMimic++;
+			strcopy( g_szRecName[iRun][iStyle], sizeof( g_szRecName[][] ), szName );
+			g_iNumRec++;
 		}
 #endif
 	}
@@ -761,8 +714,8 @@ stock void InitializeMapZones()
 	SQL_UnlockDatabase( g_Database );
 	
 #if defined RECORD
-	ServerCommand( "bot_quota %i", g_iNumMimic );
-	PrintToServer( "%s Spawning %i record bots...", CONSOLE_PREFIX, g_iNumMimic );
+	ServerCommand( "bot_quota %i", g_iNumRec );
+	PrintToServer( CONSOLE_PREFIX ... "Spawning %i record bots...", g_iNumRec );
 #endif
 	
 	DoMapStuff();
@@ -770,18 +723,18 @@ stock void InitializeMapZones()
 
 // Get maps from database that have start and end zones and start with bhop_ or kz_.
 #if defined VOTING
-	stock void FindMaps()
+	stock void DB_FindMaps()
 	{
 		SQL_LockDatabase( g_Database );
 		
-		Handle hQuery = SQL_Query( g_Database, "SELECT map FROM _mapbounds WHERE smin0 IS NOT NULL AND emin0 IS NOT NULL AND ( map LIKE 'bhop_%' OR map LIKE 'kz_%' ) ORDER BY map;" );
+		Handle hQuery = SQL_Query( g_Database, "SELECT map FROM _mapbounds WHERE smin0 IS NOT NULL AND emin0 IS NOT NULL AND (map LIKE 'bhop_%' OR map LIKE 'kz_%') ORDER BY map" );
 
 		if ( hQuery == null )
 		{
 			SQL_UnlockDatabase( g_Database );
 			
 			SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-			SetFailState( "%s Plugin was unable to receive tables (map names) from database!!\nError: %s", CONSOLE_PREFIX, g_szError );
+			SetFailState( CONSOLE_PREFIX ... "Plugin was unable to receive tables (map names) from database! Error: %s", g_szError );
 		}
 		
 		
@@ -803,79 +756,79 @@ stock void InitializeMapZones()
 	}
 #endif
 
-stock bool SaveMapZone( int zone )
+stock bool DB_SaveMapZone( int zone )
 {
 	switch ( zone )
 	{
 		case ZONE_START :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET smin0 = %.0f, smin1 = %.0f, smin2 = %.0f, smax0 = %.0f, smax1 = %.0f, smax2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET smin0 = %.0f, smin1 = %.0f, smin2 = %.0f, smax0 = %.0f, smax1 = %.0f, smax2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_START][0], g_vecZoneMins[ZONE_START][1], g_vecZoneMins[ZONE_START][2],
 				g_vecZoneMaxs[ZONE_START][0], g_vecZoneMaxs[ZONE_START][1], g_vecZoneMaxs[ZONE_START][2], g_szCurrentMap );
 		}
 		case ZONE_END :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET emin0 = %.0f, emin1 = %.0f, emin2 = %.0f, emax0 = %.0f, emax1 = %.0f, emax2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET emin0 = %.0f, emin1 = %.0f, emin2 = %.0f, emax0 = %.0f, emax1 = %.0f, emax2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_END][0], g_vecZoneMins[ZONE_END][1], g_vecZoneMins[ZONE_END][2],
 				g_vecZoneMaxs[ZONE_END][0], g_vecZoneMaxs[ZONE_END][1], g_vecZoneMaxs[ZONE_END][2], g_szCurrentMap );
 		}
 		case ZONE_BLOCK_1 :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET bl1min0 = %.0f, bl1min1 = %.0f, bl1min2 = %.0f, bl1max0 = %.0f, bl1max1 = %.0f, bl1max2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET bl1min0 = %.0f, bl1min1 = %.0f, bl1min2 = %.0f, bl1max0 = %.0f, bl1max1 = %.0f, bl1max2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_BLOCK_1][0], g_vecZoneMins[ZONE_BLOCK_1][1], g_vecZoneMins[ZONE_BLOCK_1][2],
 				g_vecZoneMaxs[ZONE_BLOCK_1][0], g_vecZoneMaxs[ZONE_BLOCK_1][1], g_vecZoneMaxs[ZONE_BLOCK_1][2], g_szCurrentMap );
 		}
 		case ZONE_BLOCK_2 :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET bl2min0 = %.0f, bl2min1 = %.0f, bl2min2 = %.0f, bl2max0 = %.0f, bl2max1 = %.0f, bl2max2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET bl2min0 = %.0f, bl2min1 = %.0f, bl2min2 = %.0f, bl2max0 = %.0f, bl2max1 = %.0f, bl2max2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_BLOCK_2][0], g_vecZoneMins[ZONE_BLOCK_2][1], g_vecZoneMins[ZONE_BLOCK_2][2],
 				g_vecZoneMaxs[ZONE_BLOCK_2][0], g_vecZoneMaxs[ZONE_BLOCK_2][1], g_vecZoneMaxs[ZONE_BLOCK_2][2], g_szCurrentMap );
 		}
 		case ZONE_BLOCK_3 :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET bl3min0 = %.0f, bl3min1 = %.0f, bl3min2 = %.0f, bl3max0 = %.0f, bl3max1 = %.0f, bl3max2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET bl3min0 = %.0f, bl3min1 = %.0f, bl3min2 = %.0f, bl3max0 = %.0f, bl3max1 = %.0f, bl3max2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_BLOCK_3][0], g_vecZoneMins[ZONE_BLOCK_3][1], g_vecZoneMins[ZONE_BLOCK_3][2],
 				g_vecZoneMaxs[ZONE_BLOCK_3][0], g_vecZoneMaxs[ZONE_BLOCK_3][1], g_vecZoneMaxs[ZONE_BLOCK_3][2], g_szCurrentMap );
 		}
 		case ZONE_BONUS_1_START :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET b1_smin0 = %.0f, b1_smin1 = %.0f, b1_smin2 = %.0f, b1_smax0 = %.0f, b1_smax1 = %.0f, b1_smax2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET b1_smin0 = %.0f, b1_smin1 = %.0f, b1_smin2 = %.0f, b1_smax0 = %.0f, b1_smax1 = %.0f, b1_smax2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_BONUS_1_START][0], g_vecZoneMins[ZONE_BONUS_1_START][1], g_vecZoneMins[ZONE_BONUS_1_START][2],
 				g_vecZoneMaxs[ZONE_BONUS_1_START][0], g_vecZoneMaxs[ZONE_BONUS_1_START][1], g_vecZoneMaxs[ZONE_BONUS_1_START][2], g_szCurrentMap );
 		}
 		case ZONE_BONUS_1_END :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET b1_emin0 = %.0f, b1_emin1 = %.0f, b1_emin2 = %.0f, b1_emax0 = %.0f, b1_emax1 = %.0f, b1_emax2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET b1_emin0 = %.0f, b1_emin1 = %.0f, b1_emin2 = %.0f, b1_emax0 = %.0f, b1_emax1 = %.0f, b1_emax2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_BONUS_1_END][0], g_vecZoneMins[ZONE_BONUS_1_END][1], g_vecZoneMins[ZONE_BONUS_1_END][2],
 				g_vecZoneMaxs[ZONE_BONUS_1_END][0], g_vecZoneMaxs[ZONE_BONUS_1_END][1], g_vecZoneMaxs[ZONE_BONUS_1_END][2], g_szCurrentMap );
 		}
 		case ZONE_BONUS_2_START :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET b2_smin0 = %.0f, b2_smin1 = %.0f, b2_smin2 = %.0f, b2_smax0 = %.0f, b2_smax1 = %.0f, b2_smax2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET b2_smin0 = %.0f, b2_smin1 = %.0f, b2_smin2 = %.0f, b2_smax0 = %.0f, b2_smax1 = %.0f, b2_smax2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_BONUS_2_START][0], g_vecZoneMins[ZONE_BONUS_2_START][1], g_vecZoneMins[ZONE_BONUS_2_START][2],
 				g_vecZoneMaxs[ZONE_BONUS_2_START][0], g_vecZoneMaxs[ZONE_BONUS_2_START][1], g_vecZoneMaxs[ZONE_BONUS_2_START][2], g_szCurrentMap );
 		}
 		case ZONE_BONUS_2_END :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET b2_emin0 = %.0f, b2_emin1 = %.0f, b2_emin2 = %.0f, b2_emax0 = %.0f, b2_emax1 = %.0f, b2_emax2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET b2_emin0 = %.0f, b2_emin1 = %.0f, b2_emin2 = %.0f, b2_emax0 = %.0f, b2_emax1 = %.0f, b2_emax2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_BONUS_2_END][0], g_vecZoneMins[ZONE_BONUS_2_END][1], g_vecZoneMins[ZONE_BONUS_2_END][2],
 				g_vecZoneMaxs[ZONE_BONUS_2_END][0], g_vecZoneMaxs[ZONE_BONUS_2_END][1], g_vecZoneMaxs[ZONE_BONUS_2_END][2], g_szCurrentMap );
 		}
 		case ZONE_FREESTYLE_1 :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET fs1min0 = %.0f, fs1min1 = %.0f, fs1min2 = %.0f, fs1max0 = %.0f, fs1max1 = %.0f, fs1max2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET fs1min0 = %.0f, fs1min1 = %.0f, fs1min2 = %.0f, fs1max0 = %.0f, fs1max1 = %.0f, fs1max2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_FREESTYLE_1][0], g_vecZoneMins[ZONE_FREESTYLE_1][1], g_vecZoneMins[ZONE_FREESTYLE_1][2],
 				g_vecZoneMaxs[ZONE_FREESTYLE_1][0], g_vecZoneMaxs[ZONE_FREESTYLE_1][1], g_vecZoneMaxs[ZONE_FREESTYLE_1][2], g_szCurrentMap );
 		}
 		case ZONE_FREESTYLE_2 :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET fs2min0 = %.0f, fs2min1 = %.0f, fs2min2 = %.0f, fs2max0 = %.0f, fs2max1 = %.0f, fs2max2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET fs2min0 = %.0f, fs2min1 = %.0f, fs2min2 = %.0f, fs2max0 = %.0f, fs2max1 = %.0f, fs2max2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_FREESTYLE_2][0], g_vecZoneMins[ZONE_FREESTYLE_2][1], g_vecZoneMins[ZONE_FREESTYLE_2][2],
 				g_vecZoneMaxs[ZONE_FREESTYLE_2][0], g_vecZoneMaxs[ZONE_FREESTYLE_2][1], g_vecZoneMaxs[ZONE_FREESTYLE_2][2], g_szCurrentMap );
 		}
 		case ZONE_FREESTYLE_3 :
 		{
-			Format( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET fs3min0 = %.0f, fs3min1 = %.0f, fs3min2 = %.0f, fs3max0 = %.0f, fs3max1 = %.0f, fs3max2 = %.0f WHERE map = '%s';",
+			FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "UPDATE _mapbounds SET fs3min0 = %.0f, fs3min1 = %.0f, fs3min2 = %.0f, fs3max0 = %.0f, fs3max1 = %.0f, fs3max2 = %.0f WHERE map = '%s'",
 				g_vecZoneMins[ZONE_FREESTYLE_3][0], g_vecZoneMins[ZONE_FREESTYLE_3][1], g_vecZoneMins[ZONE_FREESTYLE_3][2],
 				g_vecZoneMaxs[ZONE_FREESTYLE_3][0], g_vecZoneMaxs[ZONE_FREESTYLE_3][1], g_vecZoneMaxs[ZONE_FREESTYLE_3][2], g_szCurrentMap );
 		}
@@ -888,7 +841,7 @@ stock bool SaveMapZone( int zone )
 	if ( !SQL_FastQuery( g_Database, g_szQuery_Big ) )
 	{
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-		LogError( "%s Couldn't save a zone!\nError: %s", CONSOLE_PREFIX, g_szError );
+		LogError( CONSOLE_PREFIX ... "Couldn't save a zone!\nError: %s", g_szError );
 		
 		SQL_UnlockDatabase( g_Database );
 		return false;
@@ -901,63 +854,63 @@ stock bool SaveMapZone( int zone )
 	return true;
 }
 
-stock bool EraseCurMapZone( int zone )
+stock bool DB_EraseCurMapZone( int zone )
 {
 	switch ( zone )
 	{
 		case ZONE_START :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET smin0 = NULL, smin1 = NULL, smin2 = NULL, smax0 = NULL, smax1 = NULL, smax2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET smin0 = NULL, smin1 = NULL, smin2 = NULL, smax0 = NULL, smax1 = NULL, smax2 = NULL WHERE map = '%s'", g_szCurrentMap );
 			g_bIsLoaded[RUN_MAIN] = false;
 		}
 		case ZONE_END :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET emin0 = NULL, emin1 = NULL, emin2 = NULL, emax0 = NULL, emax1 = NULL, emax2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET emin0 = NULL, emin1 = NULL, emin2 = NULL, emax0 = NULL, emax1 = NULL, emax2 = NULL WHERE map = '%s'", g_szCurrentMap );
 			g_bIsLoaded[RUN_MAIN] = false;
 		}
 		case ZONE_BLOCK_1 :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET bl1min0 = NULL, bl1min1 = NULL, bl1min2 = NULL, bl1max0 = NULL, bl1max1 = NULL, bl1max2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET bl1min0 = NULL, bl1min1 = NULL, bl1min2 = NULL, bl1max0 = NULL, bl1max1 = NULL, bl1max2 = NULL WHERE map = '%s'", g_szCurrentMap );
 		}
 		case ZONE_BLOCK_2 :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET bl2min0 = NULL, bl2min1 = NULL, bl2min2 = NULL, bl2max0 = NULL, bl2max1 = NULL, bl2max2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET bl2min0 = NULL, bl2min1 = NULL, bl2min2 = NULL, bl2max0 = NULL, bl2max1 = NULL, bl2max2 = NULL WHERE map = '%s'", g_szCurrentMap );
 		}
 		case ZONE_BLOCK_3 :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET bl3min0 = NULL, bl3min1 = NULL, bl3min2 = NULL, bl3max0 = NULL, bl3max1 = NULL, bl3max2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET bl3min0 = NULL, bl3min1 = NULL, bl3min2 = NULL, bl3max0 = NULL, bl3max1 = NULL, bl3max2 = NULL WHERE map = '%s'", g_szCurrentMap );
 		}
 		case ZONE_BONUS_1_START :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET b1_smin0 = NULL, b1_smin1 = NULL, b1_smin2 = NULL, b1_smax0 = NULL, b1_smax1 = NULL, b1_smax2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET b1_smin0 = NULL, b1_smin1 = NULL, b1_smin2 = NULL, b1_smax0 = NULL, b1_smax1 = NULL, b1_smax2 = NULL WHERE map = '%s'", g_szCurrentMap );
 			g_bIsLoaded[RUN_BONUS_1] = false;
 		}
 		case ZONE_BONUS_1_END :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET b1_emin0 = NULL, b1_emin1 = NULL, b1_emin2 = NULL, b1_emax0 = NULL, b1_emax1 = NULL, b1_emax2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET b1_emin0 = NULL, b1_emin1 = NULL, b1_emin2 = NULL, b1_emax0 = NULL, b1_emax1 = NULL, b1_emax2 = NULL WHERE map = '%s'", g_szCurrentMap );
 			g_bIsLoaded[RUN_BONUS_1] = false;
 		}
 		case ZONE_BONUS_2_START :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET b2_smin0 = NULL, b2_smin1 = NULL, b2_smin2 = NULL, b2_smax0 = NULL, b2_smax1 = NULL, b2_smax2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET b2_smin0 = NULL, b2_smin1 = NULL, b2_smin2 = NULL, b2_smax0 = NULL, b2_smax1 = NULL, b2_smax2 = NULL WHERE map = '%s'", g_szCurrentMap );
 			g_bIsLoaded[RUN_BONUS_2] = false;
 		}
 		case ZONE_BONUS_2_END :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET b2_emin0 = NULL, b2_emin1 = NULL, b2_emin2 = NULL, b2_emax0 = NULL, b2_emax1 = NULL, b2_emax2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET b2_emin0 = NULL, b2_emin1 = NULL, b2_emin2 = NULL, b2_emax0 = NULL, b2_emax1 = NULL, b2_emax2 = NULL WHERE map = '%s'", g_szCurrentMap );
 			g_bIsLoaded[RUN_BONUS_2] = false;
 		}
 		case ZONE_FREESTYLE_1 :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET fs1min0 = NULL, fs1min1 = NULL, fs1min2 = NULL, fs1max0 = NULL, fs1max1 = NULL, fs1max2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET fs1min0 = NULL, fs1min1 = NULL, fs1min2 = NULL, fs1max0 = NULL, fs1max1 = NULL, fs1max2 = NULL WHERE map = '%s'", g_szCurrentMap );
 		}
 		case ZONE_FREESTYLE_2 :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET fs2min0 = NULL, fs2min1 = NULL, fs2min2 = NULL, fs2max0 = NULL, fs2max1 = NULL, fs2max2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET fs2min0 = NULL, fs2min1 = NULL, fs2min2 = NULL, fs2max0 = NULL, fs2max1 = NULL, fs2max2 = NULL WHERE map = '%s'", g_szCurrentMap );
 		}
 		case ZONE_FREESTYLE_3 :
 		{
-			Format( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET fs3min0 = NULL, fs3min1 = NULL, fs3min2 = NULL, fs3max0 = NULL, fs3max1 = NULL, fs3max2 = NULL WHERE map = '%s';", g_szCurrentMap );
+			FormatEx( g_szQuery_Med, sizeof( g_szQuery_Med ), "UPDATE _mapbounds SET fs3min0 = NULL, fs3min1 = NULL, fs3min2 = NULL, fs3max0 = NULL, fs3max1 = NULL, fs3max2 = NULL WHERE map = '%s'", g_szCurrentMap );
 		}
 		default : return false;
 	}
@@ -968,7 +921,7 @@ stock bool EraseCurMapZone( int zone )
 	if ( !SQL_FastQuery( g_Database, g_szQuery_Med ) )
 	{
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-		LogError( "%s Couldn't erase a zone!\nError: %s", CONSOLE_PREFIX, g_szError );
+		LogError( CONSOLE_PREFIX ... "Couldn't erase a zone!\nError: %s", g_szError );
 		
 		SQL_UnlockDatabase( g_Database );
 		return false;

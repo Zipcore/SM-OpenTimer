@@ -14,7 +14,7 @@ stock void PrintColorChatAll( int author, bool bAllowHide, const char[] szMsg, a
 	if ( bAllowHide )
 	{
 		for ( int client = 1; client <= MaxClients; client++ )
-			if ( IsClientInGame( client ) && !( g_iClientHideFlags[client] & HIDEHUD_CHAT ) )
+			if ( IsClientInGame( client ) && !( g_fClientHideFlags[client] & HIDEHUD_CHAT ) )
 				SendColorMessage( client, author, g_szBuffer );
 	}
 	else
@@ -50,34 +50,44 @@ stock void ShowKeyHintText( int client, int target )
 	
 	if ( hMsg != null )
 	{
-		static char szTime[12];
-		static char szText[92];
+		static char szTime[SIZE_TIME_RECORDS];
+		static char szText[120];
 		
 		if ( g_flClientBestTime[target][ g_iClientRun[target] ][ g_iClientStyle[target] ] != TIME_INVALID )
 		{
-			FormatSeconds( g_flClientBestTime[target][ g_iClientRun[target] ][ g_iClientStyle[target] ], szTime, sizeof( szTime ), true );
+			FormatSeconds( g_flClientBestTime[target][ g_iClientRun[target] ][ g_iClientStyle[target] ], szTime, sizeof( szTime ) );
 		}
-		else Format( szTime, sizeof( szTime ), "N/A" );
+		else FormatEx( szTime, sizeof( szTime ), "N/A" );
+		
 		
 		if ( g_iClientState[target] != STATE_START )
 		{
-			// Please, don't divide by zero :(
-			if ( g_iClientSync_Max[target] < 1 ) g_iClientSync_Max[target] = 1;
-			
-			
-			// "Strafes: 90000\nTotal Sync: 100.0\nJumps: XXXX\n \nStyle: Real HSW\nPB: 00:00:00.00"
-			Format( szText, sizeof( szText ), "Strafes: %i\nTotal Sync: %.1f\nJumps: %i\n \nStyle: %s\nPB: %s\n%s",
-				g_iClientStrafeCount[target],
-				( g_iClientSync[target] / float( g_iClientSync_Max[target] ) ) * 100.0, // Sync
-				g_iClientJumpCount[target],
-				g_szStyleName[NAME_LONG][ g_iClientStyle[target] ], // Show our style.
-				szTime,
-				( g_bIsClientPractising[target] ? "(Prac Mode)" : "" ) ); // Have a practice mode warning for players!
+			if ( g_iClientStyle[client] == STYLE_W )
+			{
+				FormatEx( szText, sizeof( szText ), "Jumps: %i\n \nStyle: %s\nPB: %s\n%s",
+					g_iClientJumpCount[target],
+					g_szStyleName[NAME_LONG][ g_iClientStyle[target] ], // Show our style.
+					szTime,
+					( g_bIsClientPractising[target] ? "(Practice Mode)" : "" ) ); // Have a practice mode warning for players!
+			}
+			else
+			{
+				// "Strafes: XXXXXCL Sync: 100.0CL Sync: 100.0CR Sync: 100.0CJumps: XXXXC CStyle: Real HSWCPB: 00:00:00.00C(Practice Mode)"
+				FormatEx( szText, sizeof( szText ), "Strafes: %i\nL Sync: %.1f\nR Sync: %.1f\nJumps: %i\n \nStyle: %s\nPB: %s\n%s",
+					g_iClientStrafeCount[target],
+					g_flClientSync[target][STRAFE_LEFT] * 100.0, // Left Sync
+					g_flClientSync[target][STRAFE_RIGHT] * 100.0, // Right Sync
+					g_iClientJumpCount[target],
+					g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
+					szTime,
+					( g_bIsClientPractising[target] ? "(Practice Mode)" : "" ) );
+			}
+
 			
 		}
 		else
 		{
-			Format( szText, sizeof( szText ), "Style: %s\nPB: %s\n%s",
+			FormatEx( szText, sizeof( szText ), "Style: %s\nPB: %s\n%s",
 				g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
 				szTime,
 				( g_bIsClientPractising[target] ? "(Prac Mode)" : "" ) );

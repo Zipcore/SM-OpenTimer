@@ -10,18 +10,25 @@ stock void ArrayFill( any[] Array, any data, int size = 1 )
 }
 
 // Format seconds and make them look nice.
-stock void FormatSeconds( float flSeconds, char[] szTarget, int iLength, bool bIsDeci, bool bColored = false )
+stock void FormatSeconds( float flSeconds, char[] szTarget, int iLength, int fFlags = 0 )
 {
-	int				iHours;
+	static int		iHours;
 	int				iMins;
 	static char		szHours[3];
 	static char		szMins[3];
-	static char		szSec[7];
+	static char		szSec[6];
 	
-	while ( flSeconds >= 3600.0 )
+	if ( !( fFlags & FORMAT_NOHOURS ) )
 	{
-		iHours++;
-		flSeconds -= 3600.0;
+		iHours = 0;
+		
+		while ( flSeconds >= 3600.0 )
+		{
+			iHours++;
+			flSeconds -= 3600.0;
+		}
+		
+		FormatEx( szHours, sizeof( szHours ), ( iHours < 10 ) ? "0%i" : "%i", iHours );
 	}
 	
 	while ( flSeconds >= 60.0 )
@@ -30,39 +37,39 @@ stock void FormatSeconds( float flSeconds, char[] szTarget, int iLength, bool bI
 		flSeconds -= 60.0;
 	}
 	
-	Format( szHours, sizeof( szHours ), ( iHours < 10 ) ? "0%i" : "%i", iHours );
 	
-	Format( szMins, sizeof( szMins ), ( iMins < 10 ) ? "0%i" : "%i", iMins );
+	FormatEx( szMins, sizeof( szMins ), ( iMins < 10 ) ? "0%i" : "%i", iMins );
 	
 	if ( flSeconds < 10.0 )
 	{
-		Format( szSec, sizeof( szSec ), bIsDeci ? "0%.2f" : "0%.1f", flSeconds );
+		FormatEx( szSec, sizeof( szSec ), ( fFlags & FORMAT_DESISECONDS ) ? "0%.1f" : "0%.2f", flSeconds );
 	}
 	else
 	{
-		Format( szSec, sizeof( szSec ), bIsDeci ? "%.2f" : "%.1f", flSeconds );
+		FormatEx( szSec, sizeof( szSec ), ( fFlags & FORMAT_DESISECONDS ) ? "%.1f" : "%.2f", flSeconds );
 	}
-	
+	// "XX:XX.X" - [8] (SCOREBOARD)
 	// "XX:XX:XX.X" - [11] (HINT)
 	// "XX:XX:XX.XX" - [12] (RECORDS)
 	// "CXXC:CXXC:CXX.XX" - [17] (CHAT)
-	if ( !bColored )
+	if ( fFlags & FORMAT_COLORED )
 	{
-		Format( szTarget, iLength, "%s:%s:%s", szHours, szMins, szSec );
+		FormatEx( szTarget, iLength, "\x03%s\x06:\x03%s\x06:\x03%s", szHours, szMins, szSec );
 	}
-	else
+	else if ( fFlags & FORMAT_NOHOURS )
 	{
-		Format( szTarget, iLength, "\x03%s\x06:\x03%s\x06:\x03%s", szHours, szMins, szSec );
+		FormatEx( szTarget, iLength, "%s:%s", szMins, szSec );
 	}
+	else FormatEx( szTarget, iLength, "%s:%s:%s", szHours, szMins, szSec );
 }
 
 // "Real" velocity
-stock float GetClientVelocity( int client )
+stock float GetClientSpeed( int client )
 {
 	static float vecVel[3];
 	GetEntPropVector( client, Prop_Data, "m_vecVelocity", vecVel );
 	
-	return SquareRoot( ( vecVel[0] * vecVel[0] ) + ( vecVel[1] * vecVel[1] ) );
+	return SquareRoot( vecVel[0] * vecVel[0] + vecVel[1] * vecVel[1] );
 }
 
 // Tell people what our time is in the clan section of scoreboard.
@@ -75,15 +82,17 @@ stock void UpdateScoreboard( int client )
 	}
 	
 	
-	char szNewTime[11];
-	FormatSeconds( g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ], szNewTime, sizeof( szNewTime ), false );
+	char szNewTime[SIZE_TIME_SCOREBOARD];
+	FormatSeconds( g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ], szNewTime, sizeof( szNewTime ), FORMAT_NOHOURS );
 	CS_SetClientClanTag( client, szNewTime );
 }
 
 stock void SetClientFOV( int client, int fov )
 {
-	SetEntProp( client, Prop_Data, "m_iFOV", fov );
-	SetEntProp( client, Prop_Data, "m_iDefaultFOV", fov );
+	// I wonder if there's a way to stop weapon switching resetting your FOV...
+	SetEntProp( client, Prop_Send, "m_iFOV", fov );
+	SetEntProp( client, Prop_Send, "m_iDefaultFOV", fov ); // This affects player's sensitivity. Should always be the same as desired FOV.
+	//SetEntProp( client, Prop_Send, "m_iFOVStart", fov );
 }
 
 #if defined VOTING
@@ -130,7 +139,7 @@ stock void SetClientFOV( int client, int fov )
 				strcopy( g_szNextMap, sizeof( g_szNextMap ), iMap[MAP_NAME] );
 				
 				CreateTimer( 3.0, Timer_ChangeMap, TIMER_FLAG_NO_MAPCHANGE );
-				PrintColorChatAll( 0, false, "%s Enough people voted for \x03%s%s! Changing map...", CHAT_PREFIX, g_szNextMap, COLOR_TEXT );
+				PrintColorChatAll( 0, false, CHAT_PREFIX ... "Enough people voted for \x03%s"...CLR_TEXT..."! Changing map...", g_szNextMap );
 				
 				return;
 			}

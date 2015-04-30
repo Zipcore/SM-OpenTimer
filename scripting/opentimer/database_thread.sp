@@ -8,9 +8,9 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 	if ( hQuery == null )
 	{
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-		LogError( "%s An error occured when trying to print times to client.\nError: %s", CONSOLE_PREFIX, g_szError );
+		LogError( CONSOLE_PREFIX ... "An error occured when trying to print times to client. Error: %s", g_szError );
 	
-		PrintColorChat( client, client, "%s Sorry, something went wrong.", CHAT_PREFIX );
+		PrintColorChat( client, client, CHAT_PREFIX ... "Sorry, something went wrong." );
 		return;
 	}
 	
@@ -22,7 +22,7 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 	static float	flSeconds[RECORDS_PRINT_MAXPLAYERS + 1];
 	static char		szSteamId[RECORDS_PRINT_MAXPLAYERS + 1][STEAMID_MAXLENGTH];
 	static char		szName[RECORDS_PRINT_MAXPLAYERS + 1][MAX_NAME_LENGTH];
-	static char		szFormTime[RECORDS_PRINT_MAXPLAYERS + 1][12];
+	static char		szFormTime[RECORDS_PRINT_MAXPLAYERS + 1][SIZE_TIME_RECORDS];
 	
 	bool bInConsole = GetArrayCell( hData, 0, 1 );
 	
@@ -66,17 +66,16 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 		{
 			for ( int i; i < ply; i++ )
 			{
-				Format( szRec, sizeof( szRec ), "%s - %s", szName[i], szFormTime[i] );
+				FormatEx( szRec, sizeof( szRec ), "%s - %s", szName[i], szFormTime[i] );
 				AddMenuItem( mMenu, "_", szRec, ITEMDRAW_DISABLED );
 			}
 		}
 		else
 		{
-			Format( szRec, sizeof( szRec ), "No one has beaten the map yet." );
+			FormatEx( szRec, sizeof( szRec ), "No one has beaten the map yet." );
 			AddMenuItem( mMenu, "_", szRec, ITEMDRAW_DISABLED );
 		}
 		
-		//SetMenuExitButton( mMenu, true );
 		DisplayMenu( mMenu, client, MENU_TIME_FOREVER );
 	}
 	else
@@ -96,7 +95,7 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 		
 		PrintToConsole( client, "--------------------" );
 		
-		PrintColorChat( client, client, "%s Printed (\x03%i%s) records in your console.", CHAT_PREFIX, ply, COLOR_TEXT );
+		PrintColorChat( client, client, CHAT_PREFIX ... "Printed (\x03%i"...CLR_TEXT...") records in your console.", ply );
 	}
 }
 
@@ -106,7 +105,7 @@ public int Handler_Records( Menu mMenu, MenuAction action, int client, int item 
 	{
 		case MenuAction_End :
 		{
-			if ( client > 0 && g_iClientHideFlags[client] & HIDEHUD_HUD )
+			if ( client > 0 && g_fClientHideFlags[client] & HIDEHUD_HUD )
 			{
 				SetEntProp( client, Prop_Data, "m_iHideHUD", HIDE_FLAGS );
 			}
@@ -132,7 +131,7 @@ public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const cha
 	if ( hQuery == null )
 	{
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-		LogError( "%s Couldn't retrieve player data!\n g_szError: %s", CONSOLE_PREFIX, g_szError );
+		LogError( CONSOLE_PREFIX ... "Couldn't retrieve player data! Error: %s", g_szError );
 		
 		return;
 	}
@@ -146,7 +145,7 @@ public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const cha
 	
 	if ( !GetClientAuthId( client, AuthId_Engine, szSteamId, sizeof( szSteamId ) ) )
 	{
-		LogError( "%s There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.", CONSOLE_PREFIX, client );
+		LogError( CONSOLE_PREFIX ... "There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save record.", client );
 		return;
 	}
 	
@@ -155,7 +154,7 @@ public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const cha
 	
 	if ( SQL_GetRowCount( hQuery ) == 0 )
 	{
-		Format( szQuery, sizeof( szQuery ), "INSERT INTO player_data ( steamid, fov, hideflags ) VALUES ( '%s', 90, 0 );", szSteamId );
+		FormatEx( szQuery, sizeof( szQuery ), "INSERT INTO player_data (steamid, fov, hideflags) VALUES ('%s', 90, 0)", szSteamId );
 		
 		SQL_LockDatabase( g_Database );
 		
@@ -163,7 +162,7 @@ public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const cha
 		{
 			SQL_UnlockDatabase( g_Database );
 			
-			LogError( "%s Error! Couldn't add a row for new profile!! Steam ID: %s", CONSOLE_PREFIX, szSteamId );
+			LogError( CONSOLE_PREFIX ... "Error! Couldn't add a row for new profile!! Steam ID: %s", szSteamId );
 			return;
 		}
 		
@@ -180,14 +179,16 @@ public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const cha
 		g_iClientFOV[client] = SQL_FetchInt( hQuery, field );
 		
 		SQL_FieldNameToNum( hQuery, "hideflags", field );
-		g_iClientHideFlags[client] = SQL_FetchInt( hQuery, field );
+		g_fClientHideFlags[client] = SQL_FetchInt( hQuery, field );
 	}
 	
-	if ( g_iClientHideFlags[client] & HIDEHUD_PLAYERS )
-		SDKHook( client, SDKHook_SetTransmit, Event_ClientTransmit );
+	/*if ( g_fClientHideFlags[client] & HIDEHUD_PLAYERS )
+		SDKHook( client, SDKHook_SetTransmit, Event_ClientTransmit );*/
 	
-	Format( szQuery, sizeof( szQuery ), "SELECT time, style, run FROM '%s' WHERE steamid = '%s' ORDER BY run;", g_szCurrentMap, szSteamId );
-	SQL_TQuery( g_Database, Threaded_RetrieveClientTimes, szQuery, GetClientUserId( client ) );
+	
+	// Then we get the times.
+	FormatEx( szQuery, sizeof( szQuery ), "SELECT time, style, run FROM '%s' WHERE steamid = '%s' ORDER BY run", g_szCurrentMap, szSteamId );
+	SQL_TQuery( g_Database, Threaded_RetrieveClientTimes, szQuery, GetClientUserId( client ), DBPrio_Normal );
 }
 
 public void Threaded_RetrieveClientTimes( Handle hOwner, Handle hQuery, const char[] szError, any data )
@@ -195,7 +196,7 @@ public void Threaded_RetrieveClientTimes( Handle hOwner, Handle hQuery, const ch
 	if ( hQuery == null )
 	{
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
-		LogError( "%s Couldn't retrieve player data!\n Error: %s", CONSOLE_PREFIX, g_szError );
+		LogError( CONSOLE_PREFIX ... "Couldn't retrieve player data! Error: %s", g_szError );
 		
 		return;
 	}

@@ -2,10 +2,10 @@
 public Action Timer_RestartMap( Handle hTimer )
 {
 	for ( int i = 1; i <= MaxClients; i++ )
-		if ( IsClientInGame( i ) && !IsFakeClient( i ) ) return Plugin_Continue;
+		if ( IsClientConnected( i ) && !IsFakeClient( i ) ) return Plugin_Continue;
 	
 	
-	PrintToServer( "%s No players found, restarting map for performance!", CONSOLE_PREFIX );
+	PrintToServer( CONSOLE_PREFIX ... "No players found, restarting map for performance!" );
 	
 	ServerCommand( "changelevel %s", g_szCurrentMap );
 	
@@ -23,7 +23,7 @@ public Action Timer_Connected( Handle hTimer, any client )
 		
 		if ( g_bAutoHop )
 		{
-			Format( szTxt, sizeof( szTxt ), ", AutoHop" );
+			FormatEx( szTxt, sizeof( szTxt ), ", AutoHop" );
 		}
 		
 		if ( g_bEZHop )
@@ -32,14 +32,14 @@ public Action Timer_Connected( Handle hTimer, any client )
 		}
 		
 		// ", Auto, EZHop" - [14]
-		PrintColorChat( client, client, "%sServer settings: %.0ftick, %iaa%s.", COLOR_TEAL, 1 / GetTickInterval(), GetConVarInt( g_ConVar_AirAccelerate ), szTxt );
+		PrintColorChat( client, client, "%sServer settings: %.0ftick, %iaa%s.", CLR_TEAL, 1 / GetTickInterval(), GetConVarInt( g_ConVar_AirAccelerate ), szTxt );
 	}
 	
-	PrintColorChat( client, client, "%s Type \x03!commands%s for more info.", CHAT_PREFIX, COLOR_TEXT );
+	PrintColorChat( client, client, CHAT_PREFIX ... "Type \x03!commands"...CLR_TEXT..." for more info." );
 	
 	if ( !g_bIsLoaded[RUN_MAIN] )
 	{
-		PrintColorChat( client, client, "%s No records are available for this map!", CHAT_PREFIX );
+		PrintColorChat( client, client, CHAT_PREFIX ... "No records are available for this map!" );
 	}
 	
 	return Plugin_Handled;
@@ -67,13 +67,13 @@ public Action Timer_ShowClientInfo( Handle hTimer, any client )
 	
 	
 	
-	if ( !( g_iClientHideFlags[client] & HIDEHUD_SIDEINFO ) )
+	if ( !( g_fClientHideFlags[client] & HIDEHUD_SIDEINFO ) )
 	{
 		// Show side info if not a bot.
 		if ( !IsFakeClient( target ) ) ShowKeyHintText( client, target );
 	}
 	
-	if ( !( g_iClientHideFlags[client] & HIDEHUD_TIMER ) )
+	if ( !( g_fClientHideFlags[client] & HIDEHUD_TIMER ) )
 	{
 		if ( IsFakeClient( target ) )
 		{
@@ -82,8 +82,8 @@ public Action Timer_ShowClientInfo( Handle hTimer, any client )
 			PrintHintText( client, "Replay Bot\n[%s|%s]\n \nSpeed\n%.0f",
 				g_szRunName[NAME_LONG][ g_iClientRun[target] ],
 				g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
-				/*g_iClientTick[target] / float( g_iMimicTickMax[ g_iClientRun[target] ][ g_iClientStyle[target] ] ) * 100.0*/
-				GetClientVelocity( target ) );
+				/*g_iClientTick[target] / float( g_iRecTickMax[ g_iClientRun[target] ][ g_iClientStyle[target] ] ) * 100.0*/
+				GetClientSpeed( target ) );
 				
 			return Plugin_Continue;
 		}
@@ -91,21 +91,21 @@ public Action Timer_ShowClientInfo( Handle hTimer, any client )
 		if ( !g_bIsLoaded[ g_iClientRun[client] ] )
 		{
 			// No zones were found.
-			PrintHintText( client, "Speed\n%.0f", GetClientVelocity( target ) );
+			PrintHintText( client, "Speed\n%.0f", GetClientSpeed( target ) );
 			return Plugin_Continue;
 		}
 		
 		if ( g_iClientState[target] == STATE_START )
 		{
 			// We are in the start zone.
-			PrintHintText( client, "Starting Zone\n \nSpeed\n%.0f", GetClientVelocity( target ) );
+			PrintHintText( client, "Starting Zone\n \nSpeed\n%.0f", GetClientSpeed( target ) );
 			return Plugin_Continue;
 		}
 		
 		static float flSeconds;
 		static float flBestSeconds;
 		
-		if ( g_iClientState[target] == STATE_END ) 
+		if ( g_iClientState[target] == STATE_END && g_flClientFinishTime[target] != TIME_INVALID ) 
 		{
 			// Show our finish time if we're at the ending
 			flSeconds = g_flClientFinishTime[target];
@@ -116,15 +116,15 @@ public Action Timer_ShowClientInfo( Handle hTimer, any client )
 			flSeconds = GetEngineTime() - g_flClientStartTime[target];
 		}
 		
-		static char szMyTime[11];
-		FormatSeconds( flSeconds, szMyTime, sizeof( szMyTime ), false );
+		static char szMyTime[SIZE_TIME_HINT];
+		FormatSeconds( flSeconds, szMyTime, sizeof( szMyTime ), FORMAT_DESISECONDS );
 		
 		// We don't have a map best time! We don't need to show anything else.
 		if ( g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ] <= TIME_INVALID )
 		{
 			PrintHintText( client, "%s\n \nSpeed\n%.0f",
 				szMyTime,
-				GetClientVelocity( target ) );
+				GetClientSpeed( target ) );
 			
 			return Plugin_Continue;
 		}
@@ -144,16 +144,16 @@ public Action Timer_ShowClientInfo( Handle hTimer, any client )
 			prefix = '+';
 		}
 		
-		static char szBestTime[11];
-		FormatSeconds( flBestSeconds, szBestTime, sizeof( szBestTime ), false );
+		static char szBestTime[SIZE_TIME_HINT];
+		FormatSeconds( flBestSeconds, szBestTime, sizeof( szBestTime ), FORMAT_DESISECONDS );
 		
 		// WARNING: Each line has to have something (e.g space), or it will break.
-		// "00:00:00.0C(+00:00:00.0)C CSpeedC1000" - [37]
-		PrintHintText( client, "%s\n(%c%s)\n \nSpeed\n%.0f",
+		// "00:00:00.0C(+00:00:00.0) C CSpeedCXXXX" - [38]
+		PrintHintText( client, "%s\n(%c%s) \n \nSpeed\n%.0f",
 			szMyTime,
 			prefix,
 			szBestTime,
-			GetClientVelocity( target ) );
+			GetClientSpeed( target ) );
 	}
 	
 	return Plugin_Continue;
@@ -349,12 +349,12 @@ public Action Timer_DrawBuildZoneBeams( Handle hTimer, any client )
 #if defined RECORD
 public Action Timer_Rec_Start( Handle hTimer, any mimic )
 {
-	if ( !IsClientInGame( mimic ) || !IsFakeClient( mimic ) || g_hMimicRecording[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ] == null || !g_bIsLoaded[ g_iClientRun[mimic] ] )
+	if ( !IsClientInGame( mimic ) || !IsFakeClient( mimic ) || g_hRec[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ] == null || !g_bIsLoaded[ g_iClientRun[mimic] ] )
 		return Plugin_Handled;
 	
 	
 	g_iClientTick[mimic] = 0;
-	g_bIsClientMimicing[mimic] = true;
+	g_bClientMimicing[mimic] = true;
 	
 	return Plugin_Handled;
 }
@@ -362,12 +362,12 @@ public Action Timer_Rec_Start( Handle hTimer, any mimic )
 // WAIT TIME BETWEEN RECORDS
 public Action Timer_Rec_Restart( Handle hTimer, any mimic )
 {
-	if ( !IsClientInGame( mimic ) || !IsFakeClient( mimic ) || g_hMimicRecording[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ] == null || !g_bIsLoaded[ g_iClientRun[mimic] ] )
+	if ( !IsClientInGame( mimic ) || !IsFakeClient( mimic ) || g_hRec[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ] == null || !g_bIsLoaded[ g_iClientRun[mimic] ] )
 		return Plugin_Handled;
 	
 	
 	g_iClientTick[mimic] = TICK_PRE_PLAYBLACK;
-	TeleportEntity( mimic, g_vecInitMimicPos[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ], g_angInitMimicAngles[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ], g_vecNull );
+	TeleportEntity( mimic, g_vecInitRecPos[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ], g_vecInitRecAng[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ], g_vecNull );
 	SetEntProp( mimic, Prop_Data, "m_nButtons", 0 );
 	
 	CreateTimer( 2.0, Timer_Rec_Start, mimic, TIMER_FLAG_NO_MAPCHANGE );
@@ -380,7 +380,7 @@ public Action Timer_Rec_Restart( Handle hTimer, any mimic )
 	if ( !IsClientInGame( mimic ) || !IsFakeClient( mimic ) )
 		return Plugin_Handled;
 	
-	delete g_hMimicRecording[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ];
+	delete g_hRec[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ];
 	AcceptEntityInput( mimic, "Kill" );
 	
 	return Plugin_Handled;

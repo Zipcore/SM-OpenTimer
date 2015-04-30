@@ -3,9 +3,7 @@ public Action OnPlayerRunCmd(
 	int &buttons,
 	int &impulse, // Not used
 	float vel[3],
-	float angles[3],
-	int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed,  // Not used
-	int mouse[2] )
+	float angles[3] )
 {
 	if ( !IsPlayerAlive( client ) ) return Plugin_Continue;
 	
@@ -18,6 +16,9 @@ public Action OnPlayerRunCmd(
 	
 	if ( !IsFakeClient( client ) )
 	{
+		static int fFlags;
+		fFlags = GetEntProp( client, Prop_Data, "m_fFlags" );
+		
 		// MODES
 		switch ( g_iClientStyle[client] )
 		{
@@ -33,25 +34,23 @@ public Action OnPlayerRunCmd(
 			}
 			case STYLE_REAL_HSW :
 			{
-				// We have to have something pressed in order to get punished.
-				if ( buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_FORWARD || buttons & IN_MOVERIGHT )
+				// Not holding all keys.
+				if ( !( buttons & IN_BACK && buttons & IN_FORWARD && buttons & IN_MOVELEFT && buttons & IN_MOVERIGHT ) )
 				{
-					// Prevents people from holding left+forward+back
-					// Allow them to hold all keys, tho
-					if ( ( buttons & IN_BACK || buttons & IN_FORWARD ) && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
-					{
+					if ( buttons & IN_BACK && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
 						CheckFreestyle( client );
-					}
+					else if ( buttons & IN_FORWARD && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
+						CheckFreestyle( client );
+					else if ( buttons & IN_MOVELEFT && !( buttons & IN_FORWARD || buttons & IN_BACK ) )
+						CheckFreestyle( client );
+					else if ( buttons & IN_MOVERIGHT && !( buttons & IN_FORWARD || buttons & IN_BACK ) )
+						CheckFreestyle( client );
 					
-					// Not holding back+right and back+left
-					// Not holding forward+right and forward+left
-					else if ( 	( ( !( buttons & IN_BACK ) && !( buttons & IN_MOVERIGHT ) )
-										&& ( !( buttons & IN_BACK ) && !( buttons & IN_MOVELEFT ) ) ) ||
-								( ( !( buttons & IN_FORWARD ) && !( buttons & IN_MOVERIGHT ) )
-										&& ( !( buttons & IN_FORWARD ) && !( buttons & IN_MOVELEFT ) ) ) )
-					{
+					// Holding opposite keys.
+					else if ( buttons & IN_BACK && buttons & IN_FORWARD )
 						CheckFreestyle( client );
-					}
+					else if ( buttons & IN_MOVELEFT && buttons & IN_MOVERIGHT )
+						CheckFreestyle( client );
 				}
 			}
 			case STYLE_HSW :
@@ -59,22 +58,42 @@ public Action OnPlayerRunCmd(
 				if ( buttons & IN_BACK )
 					CheckFreestyle( client );
 				
-				else if ( buttons & IN_BACK || ( buttons & IN_FORWARD && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) ) )
+				else if ( buttons & IN_FORWARD && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
 					CheckFreestyle( client );
+			}
+			case STYLE_VEL :
+			{
+				if ( fFlags & FL_ONGROUND )
+				{
+					static float vecVel[3];
+					GetEntPropVector( client, Prop_Data, "m_vecVelocity", vecVel );
+					
+					static float flSpd;
+					flSpd = vecVel[0] * vecVel[0] + vecVel[1] * vecVel[1];
+					
+					if ( flSpd > g_flVelCapSquared )
+					{
+						flSpd = SquareRoot( flSpd ) / g_flVelCap;
+						
+						vecVel[0] /= flSpd;
+						vecVel[1] /= flSpd;
+						
+						TeleportEntity( client, NULL_VECTOR, NULL_VECTOR, vecVel );
+					}
+				}
 			}
 		}
 		
-		// "ANTI-CHEAT"
 		if ( !g_bForbiddenCommands && ( buttons & IN_LEFT || buttons & IN_RIGHT ) )
 		{
 			if ( g_iClientState[client] == STATE_RUNNING )
 			{
-				TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_angSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+				TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 			}
 			
 			if ( g_flClientWarning[client] < GetEngineTime() )
 			{
-				PrintColorChat( client, client, "%s \x03+left%s and \x03+right%s are not allowed!", CHAT_PREFIX, COLOR_TEXT, COLOR_TEXT );
+				PrintColorChat( client, client, CHAT_PREFIX ... "\x03+left"...CLR_TEXT..." and \x03+right"...CLR_TEXT..." are not allowed!" );
 				
 				g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
 			}
@@ -90,8 +109,6 @@ public Action OnPlayerRunCmd(
 			SetClientFOV( client, g_iClientFOV[client] );
 		}
 		
-		int iFlags = GetEntityFlags( client );
-		
 		/////////////
 		// AUTOHOP //
 		/////////////
@@ -103,11 +120,11 @@ public Action OnPlayerRunCmd(
 			SetEntProp( client, Prop_Data, "m_nOldButtons", iOldButtons );
 			
 			// Anti-doublestepping
-			if ( g_bClientHoldingJump[client] && iFlags & FL_ONGROUND ) buttons |= IN_JUMP;
+			if ( g_bClientHoldingJump[client] && fFlags & FL_ONGROUND ) buttons |= IN_JUMP;
 		}
 		
 		// Jump count stat
-		if ( iFlags & FL_ONGROUND && buttons & IN_JUMP )
+		if ( fFlags & FL_ONGROUND && buttons & IN_JUMP )
 			g_iClientJumpCount[client]++;
 		
 		
@@ -119,7 +136,7 @@ public Action OnPlayerRunCmd(
 		// RECORDING //
 		///////////////
 #if defined RECORD
-		if ( g_bIsClientRecording[client] && g_hClientRecording[client] != null )
+		if ( g_bClientRecording[client] && g_hClientRecording[client] != null )
 		{
 			// Remove distracting buttons.
 			iFrame[FRAME_FLAGS] = ( buttons & IN_DUCK ) ? FRAMEFLAG_CROUCH : 0;
@@ -137,54 +154,86 @@ public Action OnPlayerRunCmd(
 			PushArrayArray( g_hClientRecording[client], iFrame, view_as<int>FrameInfo );
 		}
 #endif
-
-		///////////
-		// STATS //
-		///////////
+		
+		// Don't calc sync and strafes for W-Only.
+		if ( g_iClientStyle[client] == STYLE_W ) return Plugin_Continue;
+		
+		
+		static float flClientPrevYaw[MAXPLAYERS_BHOP];
+		
 		// We don't want ladders or water counted as jumpable space.
-		if ( GetEntityMoveType( client ) == MOVETYPE_LADDER || GetEntProp( client, Prop_Data, "m_nWaterLevel" ) > 1 )
+		if ( GetEntityMoveType( client ) != MOVETYPE_WALK || GetEntProp( client, Prop_Data, "m_nWaterLevel" ) > 1 )
+		{
+			flClientPrevYaw[client] = angles[1];
 			return Plugin_Continue;
+		}
 		
 		
 		static float flClientLastVel[MAXPLAYERS_BHOP];
 		
-		// JUMP COUNT
-		if ( iFlags & FL_ONGROUND && !( buttons & IN_JUMP ) )
+		if ( fFlags & FL_ONGROUND && !( buttons & IN_JUMP ) )
 		{
 			// If we're on the ground and not jumping, we reset our last speed.
 			flClientLastVel[client] = 0.0;
+			flClientPrevYaw[client] = angles[1];
 			
 			return Plugin_Continue;
 		}
-		// SYNC AND STRAFE COUNT
+		
+		
+		///////////////////////////
+		// SYNC AND STRAFE COUNT //
+		///////////////////////////
+		// The reason why we don't just use mouse[0] to determine whether our player is strafing is because it isn't reliable.
+		// If a player is using a strafe hack, the variable doesn't change.
+		// If a player is using a controller, the variable doesn't change. (unless using no acceleration)
+		// If a player has a controller plugged in and uses mouse instead, the variable doesn't change.
+		static int iClientLastStrafe[MAXPLAYERS_BHOP] = { STRAFE_INVALID, ... };
+		
 		// Not on ground, moving mouse and we're pressing at least some key.
-		else if ( mouse[0] != 0 && ( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT || buttons & IN_FORWARD || buttons & IN_BACK ) )
+		if ( angles[1] != flClientPrevYaw[client] && ( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT || buttons & IN_FORWARD || buttons & IN_BACK ) )
 		{
-			float flCurVel = GetClientVelocity( client );
+			static int iClientSync[MAXPLAYERS_BHOP][STRAFE_COUNT];
+			static int iClientSync_Max[MAXPLAYERS_BHOP][STRAFE_COUNT];
+			
+			// Thing to remember: angle is a number between 180 and -180.
+			// So we give 20 degree cap where this can be registered as strafing to the left.
+			int iCurStrafe = (
+				!( flClientPrevYaw[client] < -170.0 && angles[1] > 170.0 ) // Make sure we didn't do -180 -> 180 because that would mean left when it's actually right.
+				&& ( angles[1] > flClientPrevYaw[client] // Is our current yaw bigger than last time? Strafing to the left.
+				|| ( flClientPrevYaw[client] > 170.0 && angles[1] < -170.0 ) ) ) // If that didn't pass, there might be a chance of 180 -> -180.
+				? STRAFE_LEFT : STRAFE_RIGHT;
+			
+			
+			if ( iCurStrafe != iClientLastStrafe[client] )
+			// Start of a new strafe.
+			{
+				// Calc previous strafe's sync. This will then be shown to the player.
+				if ( iClientLastStrafe[client] != STRAFE_INVALID )
+				{
+					g_flClientSync[client][ iClientLastStrafe[client] ] = ( g_flClientSync[client][ iClientLastStrafe[client] ] + iClientSync[client][ iClientLastStrafe[client] ] / float( iClientSync_Max[client][ iClientLastStrafe[client] ] ) ) / 2;
+				}
+				
+				// Reset the new strafe's variables.
+				iClientSync[client][iCurStrafe] = 1;
+				iClientSync_Max[client][iCurStrafe] = 1;
+				
+				iClientLastStrafe[client] = iCurStrafe;
+				g_iClientStrafeCount[client]++;
+			}
+			
+			
+			float flCurVel = GetClientSpeed( client );
 			
 			// We're moving our mouse, but are we gaining speed?
-			if ( flCurVel > flClientLastVel[client] ) g_iClientSync[client]++;
+			if ( flCurVel > flClientLastVel[client] ) iClientSync[client][iCurStrafe]++;
+			iClientSync_Max[client][iCurStrafe]++;
 			
-			g_iClientSync_Max[client]++;
 			
 			flClientLastVel[client] = flCurVel;
-
-			
-			// If we haven't strafed to the left and mouse is going to the left, etc.
-			if ( g_iClientLastStrafe[client] != STRAFE_LEFT && mouse[0] < 0 )
-			{
-				// Player is in 'perfect' left strafe.
-				g_iClientLastStrafe[client] = STRAFE_LEFT;
-				g_iClientStrafeCount[client]++;
-			}
-			else if ( g_iClientLastStrafe[client] != STRAFE_RIGHT && mouse[0] > 0 )
-			{
-				// Player is in 'perfect' right strafe.
-				g_iClientLastStrafe[client] = STRAFE_RIGHT;
-				g_iClientStrafeCount[client]++;
-			}
 		}
-
+		
+		flClientPrevYaw[client] = angles[1];
 
 		return Plugin_Continue;
 	}
@@ -194,13 +243,11 @@ public Action OnPlayerRunCmd(
 	//////////////
 	
 #if defined RECORD
-	if ( g_bIsClientMimicing[client] )
+	if ( g_bClientMimicing[client] )
 	{
-		GetArrayArray( g_hMimicRecording[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_iClientTick[client], iFrame, view_as<int>FrameInfo );
+		GetArrayArray( g_hRec[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_iClientTick[client], iFrame, view_as<int>FrameInfo );
 		
-		// Take care of the buttons.
 		buttons = ( iFrame[FRAME_FLAGS] & FRAMEFLAG_CROUCH ) ? IN_DUCK : 0;
-		
 		vel = g_vecNull;
 		ArrayCopy( iFrame[FRAME_ANGLES], angles, 2 );
 		
@@ -210,14 +257,9 @@ public Action OnPlayerRunCmd(
 		static float vecPrevPos[3];
 		GetEntPropVector( client, Prop_Data, "m_vecOrigin", vecPrevPos );
 		
-		
-		// The problem with this system is that the spectator's view will be delayed and when the mimic gets teleported, the rest of the r.
-		// Sure, it gets rid of DHOOKS, but I just don't like how the spectating works.
-		
-		if ( GetVectorDistance( vecPrevPos, vecPos, true ) > 370.0 )
-		// Around the same distance as you can travel with 3500 speed in 1 tick.
+		if ( GetVectorDistance( vecPrevPos, vecPos, false ) > 16384.0 )
+		// Around the same distance as you can travel with 3500 speed in 1 tick. (128)
 		{
-			//PrintToServer( "Teleporting the bot!" );
 			TeleportEntity( client, vecPos, angles, NULL_VECTOR );
 		}
 		else
@@ -232,7 +274,7 @@ public Action OnPlayerRunCmd(
 			
 			TeleportEntity( client, NULL_VECTOR, angles, vecDirVel );
 			
-			// If server ops want more responsive but choppy view, here it is.
+			// If server ops want more responsive but choppy movement, here it is.
 			if ( !g_bSmoothPlayback ) SetEntPropVector( client, Prop_Send, "m_vecOrigin", vecPos );
 		}
 		
@@ -240,9 +282,9 @@ public Action OnPlayerRunCmd(
 		g_iClientTick[client]++;
 		
 		// Are we done with our recording?
-		if ( g_iClientTick[client] >= g_iMimicTickMax[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
+		if ( g_iClientTick[client] >= g_iRecTickMax[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
 		{
-			g_bIsClientMimicing[client] = false;
+			g_bClientMimicing[client] = false;
 			
 			CreateTimer( 2.0, Timer_Rec_Restart, client, TIMER_FLAG_NO_MAPCHANGE );
 		}
@@ -254,16 +296,15 @@ public Action OnPlayerRunCmd(
 	if ( g_iClientTick[client] == TICK_PRE_PLAYBLACK )
 	{
 		// Means that we are at the start of the run, about to begin our recorded run.
-		// Kinda hacky, but works.
-		
-		// Reset things, so the bot can't move.
-		ArrayCopy( g_angInitMimicAngles[ g_iClientRun[client] ][ g_iClientStyle[client] ], angles, 2 );
+		ArrayCopy( g_vecInitRecAng[ g_iClientRun[client] ][ g_iClientStyle[client] ], angles, 2 );
 		vel = g_vecNull;
 		
+		// Purpose of this is to stop the bot from crouching and then suddenly uncrouching at the start of the run.
+		// Not quite sure it if works.
 		SetEntProp( client, Prop_Data, "m_nButtons", 0 );
 		buttons = 0;
 		
-		TeleportEntity( client, g_vecInitMimicPos[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_angInitMimicAngles[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_vecNull );
+		TeleportEntity( client, g_vecInitRecPos[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_vecInitRecAng[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_vecNull );
 		
 		return Plugin_Changed;
 	}
