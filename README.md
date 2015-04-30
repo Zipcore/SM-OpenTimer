@@ -60,5 +60,4 @@ Test it out @ 98.166.119.99:27016
 **TO-DO LIST:**
 - More admin tools to remove/modify records.
 - Better database structure.
-- Better sync.
 - Fix everything.
