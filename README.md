@@ -4,6 +4,8 @@ OpenTimer (Read this!)
 SourceMod timer plugin for *CSS* bunnyhop servers. Yes, it is free as in freedom.
 Test it out @ 98.166.119.99:27016
 
+The plugin is written in new syntax which requires **SourceMod version 1.7**!
+
 **Read opentimer_log.txt if you want to know what changes have been made!**
 
 **Dependencies (Optional):**
@@ -20,13 +22,13 @@ Test it out @ 98.166.119.99:27016
     - This plugin will automatically create a new database called 'opentimer'. You are no longer required to change databases.cfg.
     - By default, max recording length is 45 minutes. Times can be however long.
 
-**Use these commands, please:**
+**Required server commands for bunnyhop-gamemode to work:**
 - bot_quota_mode normal
 - sv_hudhint_sound 0 (lol)
 - mp_ignore_round_win_conditions 1
 - mp_autoteambalance 0
 
-**Optional commands:**
+**Other commands you might find useful:**
 - sv_allow_wait_command 0
 
 **Plugin commands:**
