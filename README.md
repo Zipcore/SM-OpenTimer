@@ -38,12 +38,12 @@ The plugin is written in new syntax which requires **SourceMod version 1.7**!
 - sm_ac_strafevel 0/1 (Do we check for strafe inconsistencies? **Experimental anti-cheat**)
 - sm_prespeed 0/1 (Can go over 300vel when leaving starting zone?)
 - sm_smoothplayback 0/1 (If false, show more accurate but not as smooth playback.)
-- sm_allow_sw (Allow Sideways-style?)
-- sm_allow_w (Allow W-Only-style?)
-- sm_allow_hsw (Allow HSW-style?)
-- sm_allow_rhsw (Allow Real HSW-style?)
-- sm_allow_vel (Allow Vel-Cap-style?)
-- sm_vel_limit (Vel-Cap-style's limit. Def. 400)
+- sm_allow_sw 0/1 (Allow Sideways-style? Def. enabled)
+- sm_allow_w 0/1 (Allow W-Only-style? Def. enabled)
+- sm_allow_hsw 0/1 (Allow HSW-style? Def. enabled)
+- sm_allow_rhsw 0/1 (Allow Real HSW-style? Def. enabled)
+- sm_allow_vel 0/1 (Allow Vel-Cap-style? Def. enabled)
+- sm_vel_limit 250/3500 (Vel-Cap-style's limit. Def. 400)
 
 **Creating a .nav file for maps:** (Required for record bots. Tell Valve how much you hate it.)
 - Local server and the map you want to generate the .nav file for.
