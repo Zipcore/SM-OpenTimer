@@ -3,7 +3,18 @@ Ignore me!
 ------------
 Update log:
 ------------
-
+-------------
+	v1.4.3
+-------------
+	- Added experimental anti-cheat 'sm_ac_strafevel'-cvar
+		* Whether we check if player has a strafe-hack that changes velocity but doesn't press keys. (basically style cheat)
+		* Thanks to |-ICE-| Angel for cheating on my server so I realized this. :)
+		
+	- Small stuff
+		* Decreased anti-spam time from three seconds to one.
+		* Modified zone creation to be more reliable.
+		* Bots no longer playback records if no players exist. <- Hoping to lower CPU usage
+	
 -------------
 	v1.4.2
 -------------

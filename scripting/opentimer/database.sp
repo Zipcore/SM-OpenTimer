@@ -50,9 +50,11 @@ stock bool DB_SaveClientRecord( int client, float flNewTime )
 		return false;
 	}
 	
+	int run = g_iClientRun[client];
+	int style = g_iClientStyle[client];
 	
 	// First time beating or better time than last time.
-	if ( g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] <= TIME_INVALID || flNewTime < g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] )
+	if ( g_flClientBestTime[client][run][style] <= TIME_INVALID || flNewTime < g_flClientBestTime[client][run][style] )
 	{
 		char szName[MAX_NAME_LENGTH];
 		GetClientName( client, szName, sizeof( szName ) );
@@ -61,7 +63,7 @@ stock bool DB_SaveClientRecord( int client, float flNewTime )
 		SQL_EscapeString( g_Database, szName, szName, sizeof( szName ) );
 		
 		// Insert new if we haven't beaten this one yet. Replace otherwise.
-		FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "INSERT OR REPLACE INTO '%s' (steamid, name, time, jumps, style, strafes, run) VALUES ('%s', '%s', %.3f, %i, %i, %i, %i)", g_szCurrentMap, szSteamID, szName, flNewTime, g_iClientJumpCount[client], g_iClientStyle[client], g_iClientStrafeCount[client], g_iClientRun[client] );
+		FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "INSERT OR REPLACE INTO '%s' (steamid, name, time, jumps, run, style, strafes) VALUES ('%s', '%s', %.3f, %i, %i, %i, %i)", g_szCurrentMap, szSteamID, szName, flNewTime, g_iClientJumpCount[client], run, style, g_iClientStrafeCount[client] );
 		
 		SQL_TQuery( g_Database, Threaded_Empty, g_szQuery_Big, _, DBPrio_High );
 	}
@@ -73,15 +75,15 @@ stock bool DB_SaveClientRecord( int client, float flNewTime )
 	float flLeftSeconds;
 	
 	// This is to format the time correctly.
-	if ( flNewTime > g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
+	if ( flNewTime > g_flMapBestTime[run][style] )
 	{
 		// Show them how many seconds it was off of from the record. E.g +00:01:33.70
-		flLeftSeconds = flNewTime - g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ];
+		flLeftSeconds = flNewTime - g_flMapBestTime[run][style];
 	}
 	else
 	{
 		// We got a better time than the best record! E.g -00:00:01.00
-		flLeftSeconds = g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] - flNewTime;
+		flLeftSeconds = g_flMapBestTime[run][style] - flNewTime;
 	}
 	
 	static char		szTxt[192];
@@ -90,39 +92,39 @@ stock bool DB_SaveClientRecord( int client, float flNewTime )
 	FormatSeconds( flNewTime, szFormTime, sizeof( szFormTime ), FORMAT_COLORED );
 	
 	// New time if under or equal to 0
-	if ( g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] <= TIME_INVALID ) 
+	if ( g_flClientBestTime[client][run][style] <= TIME_INVALID ) 
 	{
-		if ( flNewTime > g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
+		if ( flNewTime > g_flMapBestTime[run][style] )
 		{
-			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." for the first time ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06)", client, g_szRunName[NAME_LONG][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], szFormTime );
+			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." for the first time ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06)", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime );
 			
-			if ( g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] <= TIME_INVALID )
+			if ( g_flMapBestTime[run][style] <= TIME_INVALID )
 			{
 				bIsBest = true;
 			}
 		}
 		else
 		{
-			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." broke \x03%s"...CLR_TEXT..." record ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], szFormTime, flLeftSeconds );
+			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." broke \x03%s"...CLR_TEXT..." record ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime, flLeftSeconds );
 			bIsBest = true;
 		}
 	}
 	else
 	{
-		if ( flNewTime >= g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
+		if ( flNewTime >= g_flMapBestTime[run][style] )
 		{
-			if ( flNewTime > g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] )
+			if ( flNewTime > g_flClientBestTime[client][run][style] )
 			{
-				FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06)", client, g_szRunName[NAME_LONG][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], szFormTime );
+				FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06)", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime );
 			}
 			else
 			{
-				FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], szFormTime, g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] - flNewTime );
+				FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime, g_flClientBestTime[client][run][style] - flNewTime );
 			}
 		}
 		else
 		{
-			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." broke \x03%s"...CLR_TEXT..." record ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][ g_iClientRun[client] ], g_szStyleName[NAME_SHORT][ g_iClientStyle[client] ], szFormTime, flLeftSeconds );
+			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." broke \x03%s"...CLR_TEXT..." record ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime, flLeftSeconds );
 			bIsBest = true;
 		}
 	}
@@ -152,16 +154,16 @@ stock bool DB_SaveClientRecord( int client, float flNewTime )
 	
 	
 	// Update client's best time if better or if the time doesn't exist.
-	if ( g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] <= TIME_INVALID || flNewTime < g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] )
+	if ( g_flClientBestTime[client][run][style] <= TIME_INVALID || flNewTime < g_flClientBestTime[client][run][style] )
 	{
-		g_flClientBestTime[client][ g_iClientRun[client] ][ g_iClientStyle[client] ] = flNewTime;
+		g_flClientBestTime[client][run][style] = flNewTime;
 	}
 	
 	
 	// Save if best time and save the recording on disk. :)
-	if ( g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] <= TIME_INVALID || flNewTime < g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
+	if ( g_flMapBestTime[run][style] <= TIME_INVALID || flNewTime < g_flMapBestTime[run][style] )
 	{
-		g_flMapBestTime[ g_iClientRun[client] ][ g_iClientStyle[client] ] = flNewTime;
+		g_flMapBestTime[run][style] = flNewTime;
 		
 #if defined RECORD
 		if ( g_bClientRecording[client] && g_hClientRecording[client] != null )
@@ -189,7 +191,7 @@ stock bool DB_SaveClientData( int client )
 	
 	if ( !GetClientAuthId( client, AuthId_Engine, szSteamID, sizeof( szSteamID ) ) )
 	{
-		LogError( CONSOLE_PREFIX ... "There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot save data.", client );
+		LogError( CONSOLE_PREFIX ... "There was an error while trying to retrieve player's \"%N\" Steam ID! Cannot save data.", client );
 		return false;
 	}
 	
@@ -208,7 +210,7 @@ stock void DB_RetrieveClientData( int client )
 	
 	if ( !GetClientAuthId( client, AuthId_Engine, szSteamID, sizeof( szSteamID ) ) )
 	{
-		LogError( CONSOLE_PREFIX ... "There was an error at trying to retrieve player's \"%N\" Steam ID! Cannot retrieve data.", client );
+		LogError( CONSOLE_PREFIX ... "There was an error while trying to retrieve player's \"%N\" Steam ID! Cannot retrieve data.", client );
 		return;
 	}
 	
@@ -233,7 +235,7 @@ stock void DB_InitializeDatabase()
 	
 	if ( g_Database == null )
 	{
-		SetFailState( CONSOLE_PREFIX ... "Unable to establish connection to database! Error: %s", g_szError );
+		SetFailState( CONSOLE_PREFIX ... "Unable to establish connection to the database! Error: %s", g_szError );
 		return;
 	}
 	

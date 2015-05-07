@@ -395,7 +395,7 @@ public int Handler_Style( Menu mMenu, MenuAction action, int client, int style )
 			
 			if ( IsPlayerAlive( client ) )
 			{
-				TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+				TeleportPlayerToStart( client );
 				g_iClientStyle[client] = style;
 				
 				PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][style] );

@@ -25,7 +25,7 @@ stock void PrintColorChatAll( int author, bool bAllowHide, const char[] szMsg, a
 	}
 }
 
-static void SendColorMessage( int target, int author, const char szMsg[256] )
+stock void SendColorMessage( int target, int author, const char szMsg[256] )
 {
 	// If we don't use the reliable channel, sometimes clients won't receive the message (?).
 	// Happens more than you'd normally think.
@@ -90,7 +90,7 @@ stock void ShowKeyHintText( int client, int target )
 			FormatEx( szText, sizeof( szText ), "Style: %s\nPB: %s\n%s",
 				g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
 				szTime,
-				( g_bIsClientPractising[target] ? "(Prac Mode)" : "" ) );
+				( g_bIsClientPractising[target] ? "(Practice Mode)" : "" ) );
 		}
 		
 		BfWriteByte( hMsg, 1 );

@@ -95,18 +95,22 @@ stock void SetClientFOV( int client, int fov )
 	//SetEntProp( client, Prop_Send, "m_iFOVStart", fov );
 }
 
-#if defined VOTING
-	stock int GetActivePlayers()
+stock int GetActivePlayers( int ignore = 0 )
+{
+	int clients;
+	
+	for ( int i = 1; i <= MaxClients; i++ )
 	{
-		int clients;
+		if ( i == ignore ) continue;
 		
-		for ( int i = 1; i <= MaxClients; i++ )
-			if ( IsClientInGame( i ) && !IsFakeClient( i ) && IsPlayerAlive( i ) )
-				clients++;
-				
-		return clients;
+		if ( IsClientInGame( i ) && !IsFakeClient( i ) )
+			clients++;
 	}
+	
+	return clients;
+}
 
+#if defined VOTING
 	stock void CalcVotes()
 	{
 		int iClients = GetActivePlayers();

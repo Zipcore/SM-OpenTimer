@@ -48,10 +48,7 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 	
 	if ( client < 1 || GetClientTeam( client ) < 2 || !IsPlayerAlive( client ) ) return;
 
-	if ( g_bIsLoaded[ g_iClientRun[client] ] )
-	{
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
-	}
+	TeleportPlayerToStart( client );
 	
 	// -----------------------------------------------------------------------------------------------
 	// Story time!

@@ -100,7 +100,7 @@ public Action Command_Spawn( int client, int args )
 	
 	if ( GetClientTeam( client ) == CS_TEAM_SPECTATOR )
 	{
-		ChangeClientTeam( client, g_iPreferedTeam );
+		ChangeClientTeam( client, g_iPreferredTeam );
 	}
 	else if ( !IsPlayerAlive( client ) || !g_bIsLoaded[ g_iClientRun[client] ] )
 	{
@@ -108,7 +108,7 @@ public Action Command_Spawn( int client, int args )
 	}
 	else
 	{
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportPlayerToStart( client );
 	}
 	
 	return Plugin_Handled;
@@ -294,7 +294,7 @@ public Action Command_Style_Normal( int client, int args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportPlayerToStart( client );
 		g_iClientStyle[client] = STYLE_NORMAL;
 		
 		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][STYLE_NORMAL] );
@@ -333,7 +333,7 @@ public Action Command_Style_Sideways( int client, int args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportPlayerToStart( client );
 		g_iClientStyle[client] = STYLE_SIDEWAYS;
 		
 		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][STYLE_SIDEWAYS] );
@@ -370,7 +370,7 @@ public Action Command_Style_W( int client, int args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportPlayerToStart( client );
 		g_iClientStyle[client] = STYLE_W;
 		
 		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][STYLE_W] );
@@ -409,7 +409,7 @@ public Action Command_Style_HSW( int client, int args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportPlayerToStart( client );
 		g_iClientStyle[client] = STYLE_HSW;
 		
 		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][STYLE_HSW] );
@@ -448,7 +448,7 @@ public Action Command_Style_RealHSW( int client, int args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportPlayerToStart( client );
 		g_iClientStyle[client] = STYLE_REAL_HSW;
 		
 		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][STYLE_REAL_HSW] );
@@ -487,7 +487,7 @@ public Action Command_Style_VelCap( int client, int args )
 	
 	if ( IsPlayerAlive( client ) )
 	{
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportPlayerToStart( client );
 		g_iClientStyle[client] = STYLE_VEL;
 		
 		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%.0fvel"...CLR_TEXT..."!", g_flVelCap );
@@ -532,10 +532,7 @@ public Action Command_Practise( int client, int args )
 	{
 		PrintColorChat( client, client, CHAT_PREFIX ... "You're now in \x03normal"...CLR_TEXT..." running mode!" );
 		
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
-		
-		g_iClientState[client] = STATE_START;
-		g_flClientStartTime[client] = TIME_INVALID;
+		TeleportPlayerToStart( client );
 		
 		SetEntityMoveType( client, MOVETYPE_WALK );
 	}
@@ -675,7 +672,7 @@ public Action Command_Run_Bonus( int client, int args )
 		
 		g_iClientRun[client] = RUN_BONUS_1;
 	
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportPlayerToStart( client );
 		UpdateScoreboard( client );
 		
 		PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."! Use \x03!main"...CLR_TEXT..." to go back.", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
@@ -696,7 +693,7 @@ public Action Command_Run_Bonus( int client, int args )
 		
 		g_iClientRun[client] = RUN_BONUS_1;
 	
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportPlayerToStart( client );
 		UpdateScoreboard( client );
 		
 		PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."! Use \x03!main"...CLR_TEXT..." to go back.", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
@@ -712,7 +709,7 @@ public Action Command_Run_Bonus( int client, int args )
 		
 		g_iClientRun[client] = RUN_BONUS_2;
 	
-		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+		TeleportPlayerToStart( client );
 		UpdateScoreboard( client );
 		
 		PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."! Use \x03!main"...CLR_TEXT..." to go back.", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
@@ -740,7 +737,7 @@ public Action Command_Run_Main( int client, int args )
 	
 	g_iClientRun[client] = RUN_MAIN;
 	
-	TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+	TeleportPlayerToStart( client );
 	UpdateScoreboard( client );
 	
 	PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
@@ -767,7 +764,7 @@ public Action Command_Run_Bonus_1( int client, int args )
 	
 	g_iClientRun[client] = RUN_BONUS_1;
 	
-	TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+	TeleportPlayerToStart( client );
 	UpdateScoreboard( client );
 	
 	PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
@@ -794,7 +791,7 @@ public Action Command_Run_Bonus_2( int client, int args )
 	
 	g_iClientRun[client] = RUN_BONUS_2;
 	
-	TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+	TeleportPlayerToStart( client );
 	UpdateScoreboard( client );
 	
 	PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );

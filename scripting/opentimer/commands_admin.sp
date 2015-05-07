@@ -4,7 +4,7 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 	
 	if ( g_iBuilderIndex != client )
 	{
-		if ( g_iBuilderIndex == 0 )
+		if ( g_iBuilderIndex == INVALID_INDEX )
 		{
 			PrintColorChat( client, client, CHAT_PREFIX ... "You haven't even started a zone! (\x03!startzone"...CLR_TEXT...")" );
 			return Plugin_Handled;
@@ -12,7 +12,7 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 		
 		if ( !IsClientInGame( g_iBuilderIndex ) )
 		{
-			g_iBuilderIndex = 0;
+			g_iBuilderIndex = INVALID_INDEX;
 			
 			PrintColorChat( client, client, CHAT_PREFIX ... "You haven't even started a zone! (\x03!startzone"...CLR_TEXT...")" );
 			
@@ -24,14 +24,14 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 		return Plugin_Handled;
 	}
 	
-	if ( g_iBuilderZone < 0 )
+	if ( g_iBuilderZone == INVALID_ZONE_INDEX )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "You haven't even started a zone! (\x03!startzone"...CLR_TEXT...")" );
+		PrintColorChat( client, client, CHAT_PREFIX ... "Invalid zone index!" );
 		return Plugin_Handled;
 	}
 	
 	
-	static float vecClientPos[3];
+	float vecClientPos[3];
 	GetClientAbsOrigin( client, vecClientPos );
 	
 	g_vecZoneMaxs[g_iBuilderZone][0] = vecClientPos[0] - ( RoundFloat( vecClientPos[0] ) % g_iBuilderGridSize );
@@ -41,7 +41,7 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 	float flDif = vecClientPos[2] - g_vecZoneMins[g_iBuilderZone][2];
 	
 	// If player built the mins on the ground and just walks to the other side, we will then automatically make it higher.
-	g_vecZoneMaxs[g_iBuilderZone][2] = ( flDif <= 4.0 && flDif >= -4.0 ) ? ( vecClientPos[2] + ZONE_DEF_HEIGHT ) : float( RoundFloat( vecClientPos[2] ) );
+	g_vecZoneMaxs[g_iBuilderZone][2] = ( flDif <= 4.0 && flDif >= -4.0 ) ? ( vecClientPos[2] + ZONE_DEF_HEIGHT ) : float( RoundFloat( vecClientPos[2] - 0.5 ) );
 	
 	
 	
@@ -63,11 +63,12 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 	// Save to database.
 	if ( DB_SaveMapZone( g_iBuilderZone ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Saved the zone!" );
+		PrintColorChat( client, client, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." was successfully saved!", g_szZoneNames[g_iBuilderZone] );
 	}
 	else
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Couldn't save the zone!" );
+		PrintColorChat( client, client, CHAT_PREFIX ... "Plugin was unable to save \x03%s"...CLR_TEXT..." to database!!!", g_szZoneNames[g_iBuilderZone] );
+		return Plugin_Handled;
 	}
 	
 	

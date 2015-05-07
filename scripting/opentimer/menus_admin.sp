@@ -10,12 +10,20 @@ public Action Command_Admin_ZoneMenu( int client, int args )
 	char szGridTxt[22]; // "Grid Size: XX unitsC "
 	FormatEx( szGridTxt, sizeof( szGridTxt ), "Grid Size: %i units\n ", g_iBuilderGridSize );
 	
-	if ( g_iBuilderIndex == 0 )
+	if ( g_iBuilderIndex == INVALID_INDEX )
 	{
 		// We haven't started to build a zone yet. Show them the option for it.
 		AddMenuItem( mMenu, "_", "New Zone" );
 		AddMenuItem( mMenu, "_", "End Zone", ITEMDRAW_DISABLED );
 		AddMenuItem( mMenu, "_", szGridTxt );
+	}
+	else if ( g_iBuilderIndex != client )
+	{
+		// Some other player is building a zone.
+		PrintColorChat( client, client, CHAT_PREFIX ... "Somebody is already building!" );
+		
+		delete mMenu;
+		return Plugin_Handled;
 	}
 	else
 	{
@@ -35,7 +43,7 @@ public Action Command_Admin_ZoneMenu( int client, int args )
 	}
 	
 	AddMenuItem( mMenu, "_", "Delete Zone\n " );
-	SetMenuExitButton( mMenu, true );
+	//SetMenuExitButton( mMenu, true );
 	
 	DisplayMenu( mMenu, client, MENU_TIME_FOREVER );
 	
@@ -79,7 +87,7 @@ public Action Command_Admin_ZoneStart( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( g_iBuilderIndex != client && g_iBuilderIndex != 0 )
+	if ( g_iBuilderIndex != INVALID_INDEX && g_iBuilderIndex != client )
 	{
 		PrintColorChat( client, client, CHAT_PREFIX ... "Somebody is already building!" );
 		return Plugin_Handled;
@@ -109,7 +117,7 @@ public Action Command_Admin_ZoneStart( int client, int args )
 	}
 	
 	
-	SetMenuExitButton( mMenu, true );
+	//SetMenuExitButton( mMenu, true );
 	DisplayMenu( mMenu, client, MENU_TIME_FOREVER );
 	
 	return Plugin_Handled;
@@ -130,6 +138,12 @@ public int Handler_ZoneCreate( Menu mMenu, MenuAction action, int client, int zo
 		{
 			if ( zone < 0 || zone >= MAX_ZONES ) return 0;
 			
+			
+			if ( g_iBuilderIndex != 0 && g_iBuilderIndex != client )
+			{
+				PrintColorChat( client, client, CHAT_PREFIX ... "Somebody is already building!" );
+				return 0;
+			}
 			
 			float vecClientPos[3];
 			GetClientAbsOrigin( client, vecClientPos );
@@ -177,14 +191,14 @@ public Action Command_Admin_ZoneDelete( int client, int args )
 	
 	if ( !bFound )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "There are no zones!" );
+		PrintColorChat( client, client, CHAT_PREFIX ... "There are no zones to delete!" );
 		
 		delete mMenu;
 		return Plugin_Handled;
 	}
 	
 	
-	SetMenuExitButton( mMenu, true );
+	//SetMenuExitButton( mMenu, true );
 	DisplayMenu( mMenu, client, 5 );
 	
 	return Plugin_Handled;

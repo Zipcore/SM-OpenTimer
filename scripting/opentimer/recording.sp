@@ -3,7 +3,9 @@ public Action OnPlayerRunCmd(
 	int &buttons,
 	int &impulse, // Not used
 	float vel[3],
-	float angles[3] )
+	float angles[3],
+	int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, // Not used
+	int mouse[2] )
 {
 	if ( !IsPlayerAlive( client ) ) return Plugin_Continue;
 	
@@ -16,6 +18,32 @@ public Action OnPlayerRunCmd(
 	
 	if ( !IsFakeClient( client ) )
 	{
+		if ( g_bAntiCheat_StrafeVel )
+		{
+			// Anti-cheat
+			// Check if player has a strafe-hack that modifies the velocity and don't actually press the keys for them.
+			// 0 = forwardspeed
+			// 1 = sidespeed
+			// 2 = upspeed
+			if ( 	vel[0] != 0 && !( buttons & IN_FORWARD || buttons & IN_BACK ) ||
+					vel[1] != 0 && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
+			{
+				if ( g_iClientState[client] == STATE_RUNNING )
+				{
+					TeleportPlayerToStart( client );
+				}
+				
+				if ( g_flClientWarning[client] < GetEngineTime() )
+				{
+					PrintColorChat( client, client, CHAT_PREFIX ... "Potential cheat detected!" );
+					
+					g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
+				}
+				
+				return Plugin_Handled;
+			}
+		}
+		
 		static int fFlags;
 		fFlags = GetEntProp( client, Prop_Data, "m_fFlags" );
 		
@@ -88,7 +116,7 @@ public Action OnPlayerRunCmd(
 		{
 			if ( g_iClientState[client] == STATE_RUNNING )
 			{
-				TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+				TeleportPlayerToStart( client );
 			}
 			
 			if ( g_flClientWarning[client] < GetEngineTime() )
@@ -241,6 +269,7 @@ public Action OnPlayerRunCmd(
 	//////////////
 	// PLAYBACK //
 	//////////////
+	if ( !g_bPlayback ) return Plugin_Handled;
 	
 #if defined RECORD
 	if ( g_bClientMimicing[client] )
@@ -270,12 +299,13 @@ public Action OnPlayerRunCmd(
 			vecDirVel[1] = vecPos[1] - vecPrevPos[1];
 			vecDirVel[2] = vecPos[2] - vecPrevPos[2];
 			
-			ScaleVector( vecDirVel, 100.0 );
+			ScaleVector( vecDirVel, 100.0 ); // Based on tickrate (?)
 			
 			TeleportEntity( client, NULL_VECTOR, angles, vecDirVel );
 			
 			// If server ops want more responsive but choppy movement, here it is.
-			if ( !g_bSmoothPlayback ) SetEntPropVector( client, Prop_Send, "m_vecOrigin", vecPos );
+			if ( !g_bSmoothPlayback )
+				SetEntPropVector( client, Prop_Send, "m_vecOrigin", vecPos );
 		}
 		
 		
@@ -300,7 +330,7 @@ public Action OnPlayerRunCmd(
 		vel = g_vecNull;
 		
 		// Purpose of this is to stop the bot from crouching and then suddenly uncrouching at the start of the run.
-		// Not quite sure it if works.
+		// Not quite sure if it works.
 		SetEntProp( client, Prop_Data, "m_nButtons", 0 );
 		buttons = 0;
 		

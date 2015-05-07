@@ -4,7 +4,8 @@
 #include <sdkhooks>
 #include <basecomm> // To check if client is gagged.
 
-#define PLUGIN_VERSION	"1.4.2"
+
+#define PLUGIN_VERSION	"1.4.3"
 #define PLUGIN_AUTHOR	"Mehis"
 #define PLUGIN_NAME		"OpenTimer"
 
@@ -79,14 +80,16 @@
 		Huge thanks to Peace-Maker. A lot was learned from his movement recorder plugin.
 		Another huge thanks to george for giving me a tip about the correct way of recording ;)
 	*/
-	enum FrameInfo {
+	enum FrameInfo
+	{
 		float:FRAME_ANGLES[2],
 		float:FRAME_POS[3],
 		
 		FRAME_FLAGS // Combined FRAME_BUTTONS and FRAME_FLAGS. See FRAMEFLAG_*
 	};
 	
-	enum HeaderInfo {
+	enum HeaderInfo
+	{
 		HEADER_BINARYFORMAT = 0,
 		
 		HEADER_TICKCOUNT,
@@ -149,7 +152,7 @@
 #define ZONE_WIDTH				1.0
 #define ZONE_DEF_HEIGHT			128.0
 
-#define WARNING_INTERVAL		3.0
+#define WARNING_INTERVAL		1.0
 
 // How many strafes we take to determine our sync.
 #define SYNC_MAX_STRAFES		2
@@ -186,7 +189,8 @@
 //////////////////////
 // ZONE/MODES ENUMS //
 //////////////////////
-enum {
+enum
+{
 	ZONE_START = 0,
 	ZONE_END,
 	ZONE_BONUS_1_START,
@@ -207,7 +211,8 @@ enum {
 
 enum { STATE_START = 0, STATE_RUNNING, STATE_END };
 
-enum {
+enum
+{
 	RUN_MAIN = 0,
 	RUN_BONUS_1,
 	RUN_BONUS_2,
@@ -217,7 +222,8 @@ enum {
 
 enum { NAME_LONG = 0, NAME_SHORT, MAX_NAMES };
 
-enum {
+enum
+{
 	STYLE_NORMAL = 0,
 	STYLE_SIDEWAYS,
 	STYLE_W,
@@ -228,7 +234,8 @@ enum {
 	MAX_STYLES // 5
 };
 
-enum {
+enum
+{
 	STRAFE_INVALID = -1,
 	STRAFE_LEFT,
 	STRAFE_RIGHT,
@@ -299,9 +306,12 @@ int g_iClientCurSave[MAXPLAYERS_BHOP] = { INVALID_CP, ... };
 	Handle g_hRec[MAX_RUNS][MAX_STYLES];
 	char g_szRecName[MAX_RUNS][MAX_STYLES][MAX_NAME_LENGTH];
 	
-	// How many ticks we will record player's run.
-	// Usually couple ticks higher than bot's tick count.
+	// Max tick count for player's recording.
+	// Usually couple ticks higher than bot's tick count for safety reasons.
 	int g_iRecMaxLength[MAX_RUNS][MAX_STYLES];
+	
+	// Do playback or not?
+	bool g_bPlayback;
 #endif
 
 
@@ -316,7 +326,7 @@ float g_vecSpawnPos[MAX_RUNS][3];
 float g_vecSpawnAngles[MAX_RUNS][3];
 float g_flMapBestTime[MAX_RUNS][MAX_STYLES];
 int g_iBeam;
-int g_iPreferedTeam = CS_TEAM_T;
+int g_iPreferredTeam = CS_TEAM_T;
 
 
 // Voting stuff
@@ -329,7 +339,7 @@ int g_iPreferedTeam = CS_TEAM_T;
 
 
 // Constants
-char	g_szZoneNames[MAX_ZONES][15] = {
+char g_szZoneNames[MAX_ZONES][15] = {
 	"Start", "End",
 	"Bonus #1 Start", "Bonus #1 End",
 	"Bonus #2 Start", "Bonus #2 End",
@@ -359,6 +369,7 @@ static ConVar g_ConVar_PreSpeed;
 ConVar g_ConVar_AutoHop;
 ConVar g_ConVar_EZHop;
 ConVar g_ConVar_LeftRight;
+ConVar g_ConVar_AntiCheat_StrafeVel;
 #if defined RECORD
 	ConVar g_ConVar_SmoothPlayback;
 #endif
@@ -376,6 +387,7 @@ bool g_bPreSpeed = false;
 bool g_bForbiddenCommands = true;
 bool g_bAutoHop = true;
 bool g_bEZHop = true;
+bool g_bAntiCheat_StrafeVel = true;
 #if defined RECORD
 	bool g_bSmoothPlayback = true;
 #endif
@@ -580,6 +592,8 @@ public void OnPluginStart()
 	
 	g_ConVar_LeftRight = CreateConVar( "sm_forbidden_commands", "1", "Is +left and +right allowed?", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	
+	g_ConVar_AntiCheat_StrafeVel = CreateConVar( "sm_ac_strafevel", "1", "Does server check for inconsistencies in player's strafes? (anti-cheat)", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
+	
 #if defined RECORD
 	g_ConVar_SmoothPlayback = CreateConVar( "sm_smoothplayback", "1", "If false, playback movement will appear more responsive but choppy and teleporting will not be affected by ping.", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 #endif
@@ -598,6 +612,7 @@ public void OnPluginStart()
 	HookConVarChange( g_ConVar_EZHop, Event_ConVar_EZHop );
 	HookConVarChange( g_ConVar_PreSpeed, Event_ConVar_PreSpeed );
 	HookConVarChange( g_ConVar_LeftRight, Event_ConVar_LeftRight );
+	HookConVarChange( g_ConVar_AntiCheat_StrafeVel, Event_ConVar_AntiCheat_StrafeVel );
 #if defined RECORD
 	HookConVarChange( g_ConVar_SmoothPlayback, Event_ConVar_SmoothPlayback );
 #endif
@@ -628,6 +643,11 @@ public void Event_ConVar_PreSpeed( Handle hConVar, const char[] szOldValue, cons
 public void Event_ConVar_LeftRight( Handle hConVar, const char[] szOldValue, const char[] szNewValue )
 {
 	g_bForbiddenCommands = StringToInt( szNewValue ) ? true : false;
+}
+
+public void Event_ConVar_AntiCheat_StrafeVel( Handle hConVar, const char[] szOldValue, const char[] szNewValue )
+{
+	g_bAntiCheat_StrafeVel = StringToInt( szNewValue ) ? true : false;
 }
 
 #if defined RECORD
@@ -716,6 +736,7 @@ public void OnMapStart()
 	g_bEZHop = GetConVarBool( g_ConVar_EZHop );
 	g_bPreSpeed = GetConVarBool( g_ConVar_PreSpeed );
 	g_bForbiddenCommands = GetConVarBool( g_ConVar_LeftRight );
+	g_bAntiCheat_StrafeVel = GetConVarBool( g_ConVar_AntiCheat_StrafeVel );
 #if defined RECORD
 	g_bSmoothPlayback = GetConVarBool( g_ConVar_SmoothPlayback );
 #endif
@@ -736,13 +757,22 @@ public void OnClientDisconnect( int client )
 {
 	// Release client's vote or bot's record.
 	
-	
 #if defined RECORD
-	if ( IsFakeClient( client ) && g_iRec[ g_iClientRun[client] ][ g_iClientStyle[client] ] == client )
+	if ( IsFakeClient( client ) )
 	{
-		g_iRec[ g_iClientRun[client] ][ g_iClientStyle[client] ] = INVALID_INDEX;
-		g_bClientMimicing[client] = false;
+		if ( g_iRec[ g_iClientRun[client] ][ g_iClientStyle[client] ] == client )
+		{
+			g_iRec[ g_iClientRun[client] ][ g_iClientStyle[client] ] = INVALID_INDEX;
+			g_bClientMimicing[client] = false;
+		}
+		
 		return;
+	}
+	
+	if ( GetActivePlayers( client ) < 1 )
+	{
+		g_bPlayback = false;
+		PrintToServer( CONSOLE_PREFIX ... "No players, disabling playback." );
 	}
 #endif
 
@@ -787,12 +817,16 @@ public void OnClientPutInServer( int client )
 				
 				AssignRecordToBot( client, run, style );
 				
+				SetEntProp( client, Prop_Data, "m_iFrags", 1337 );
 				return;
 			}
 		
 		return;
 	}
 #endif
+	
+	// Allow playback if there are players.
+	g_bPlayback = true;
 	
 	// States
 	g_iClientState[client] = STATE_RUNNING;
@@ -1047,7 +1081,16 @@ stock void CheckFreestyle( int client )
 		return;
 	}
 	
-	TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
+	TeleportPlayerToStart( client );
+}
+
+stock void TeleportPlayerToStart( int client )
+{
+	g_flClientStartTime[client] = TIME_INVALID;
+	g_iClientState[client] = STATE_START;
+	
+	if ( g_bIsLoaded[ g_iClientRun[client] ] )
+		TeleportEntity( client, g_vecSpawnPos[ g_iClientRun[client] ], g_vecSpawnAngles[ g_iClientRun[client] ], g_vecNull );
 }
 
 stock void DoMapStuff()
@@ -1064,25 +1107,31 @@ stock void DoMapStuff()
 	
 	while ( ( ent = FindEntityByClassname( ent, "info_teleport_destination" ) ) != -1 )
 	{
-		if ( IsInsideZone( ent, ZONE_START ) )
+		if ( g_bZoneExists[ZONE_START] && IsInsideZone( ent, ZONE_START ) )
 		{
 			GetEntPropVector( ent, Prop_Data, "m_angRotation", angAngle );
 			
 			ArrayCopy( angAngle, g_vecSpawnAngles[RUN_MAIN], 2 );
+			g_vecSpawnAngles[RUN_MAIN][2] = 0.0; // Reset roll in case the mappers are dumbasses.
+			
 			bFoundAng[RUN_MAIN] = true;
 		}
-		else if ( IsInsideZone( ent, ZONE_BONUS_1_START ) )
+		else if ( g_bZoneExists[ZONE_BONUS_1_START] && IsInsideZone( ent, ZONE_BONUS_1_START ) )
 		{
 			GetEntPropVector( ent, Prop_Data, "m_angRotation", angAngle );
 			
 			ArrayCopy( angAngle, g_vecSpawnAngles[RUN_BONUS_1], 2 );
+			g_vecSpawnAngles[RUN_BONUS_1][2] = 0.0;
+			
 			bFoundAng[RUN_BONUS_1] = true;
 		}
-		else if ( IsInsideZone( ent, ZONE_BONUS_2_START ) )
+		else if ( g_bZoneExists[ZONE_BONUS_2_START] && IsInsideZone( ent, ZONE_BONUS_2_START ) )
 		{
 			GetEntPropVector( ent, Prop_Data, "m_angRotation", angAngle );
 			
 			ArrayCopy( angAngle, g_vecSpawnAngles[RUN_BONUS_2], 2 );
+			g_vecSpawnAngles[RUN_BONUS_2][2] = 0.0;
+			
 			bFoundAng[RUN_BONUS_2] = true;
 		}
 	}
@@ -1177,7 +1226,7 @@ stock void DoMapStuff()
 	// Determine what team we should put the runners in.
 	if ( FindEntityByClassname( ent, "info_player_counterterrorist" ) != -1 )
 	{
-		g_iPreferedTeam = CS_TEAM_CT;
+		g_iPreferredTeam = CS_TEAM_CT;
 		
 #if defined RECORD
 		ServerCommand( "bot_join_team ct" );
@@ -1185,7 +1234,7 @@ stock void DoMapStuff()
 	}
 	else
 	{
-		g_iPreferedTeam = CS_TEAM_T;
+		g_iPreferredTeam = CS_TEAM_T;
 		
 #if defined RECORD
 		ServerCommand( "bot_join_team t" );
@@ -1206,7 +1255,7 @@ stock bool CreateBlockZoneEntity( int zone )
 	
 	if ( ent < 1 )
 	{
-		PrintToServer( CONSOLE_PREFIX ... "Couldn't create block entity!" );
+		LogError( CONSOLE_PREFIX ... "Couldn't create block entity!" );
 		return false;
 	}
 	
@@ -1216,7 +1265,7 @@ stock bool CreateBlockZoneEntity( int zone )
 	
 	if ( !DispatchSpawn( ent ) )
 	{
-		PrintToServer( CONSOLE_PREFIX ... "Couldn't spawn block entity!" );
+		LogError( CONSOLE_PREFIX ... "Couldn't spawn block entity!" );
 		return false;
 	}
 	
@@ -1314,32 +1363,34 @@ stock bool CreateBlockZoneEntity( int zone )
 
 stock void CopyRecordToPlayback( int client )
 {
+	int run = g_iClientRun[client];
+	int style = g_iClientStyle[client];
 	// If that bot already exists, we must stop it from mimicing.
-	g_bClientMimicing[ g_iRec[ g_iClientRun[client] ][ g_iClientStyle[client] ] ] = false;
+	g_bClientMimicing[ g_iRec[run][style] ] = false;
 	
 	
 	// Clone client's recording to the playback slot.
-	g_hRec[ g_iClientRun[client] ][ g_iClientStyle[client] ] = CloneArray( g_hClientRecording[client] );
-	g_iRecTickMax[ g_iClientRun[client] ][ g_iClientStyle[client] ] = GetArraySize( g_hClientRecording[client] );
+	g_hRec[run][style] = CloneArray( g_hClientRecording[client] );
+	g_iRecTickMax[run][style] = GetArraySize( g_hClientRecording[client] );
 	
 	// Re-calc max length.
-	g_iRecMaxLength[ g_iClientRun[client] ][ g_iClientStyle[client] ] = RoundFloat( g_iRecTickMax[ g_iClientRun[client] ][ g_iClientStyle[client] ] * 1.2 );
+	g_iRecMaxLength[run][style] = RoundFloat( g_iRecTickMax[run][style] * 1.2 );
 	
 	
 	delete g_hClientRecording[client];
 	g_hClientRecording[client] = null;
 	g_bClientRecording[client] = false;
 	
-	GetClientName( client, g_szRecName[ g_iClientRun[client] ][ g_iClientStyle[client] ], sizeof( g_szRecName[][] ) );
+	GetClientName( client, g_szRecName[run][style], sizeof( g_szRecName[][] ) );
 	
-	ArrayCopy( g_vecInitPos[client], g_vecInitRecPos[ g_iClientRun[client] ][ g_iClientStyle[client] ], 3 );
-	ArrayCopy( g_vecInitAng[client], g_vecInitRecAng[ g_iClientRun[client] ][ g_iClientStyle[client] ], 2 );
+	ArrayCopy( g_vecInitPos[client], g_vecInitRecPos[run][style], 3 );
+	ArrayCopy( g_vecInitAng[client], g_vecInitRecAng[run][style], 2 );
 	
 	
-	if ( g_iRec[ g_iClientRun[client] ][ g_iClientStyle[client] ] != INVALID_INDEX )
+	if ( g_iRec[run][style] != INVALID_INDEX )
 	{
 		// We already have a bot? Let's use it instead.
-		AssignRecordToBot( g_iRec[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_iClientRun[client], g_iClientStyle[client] );
+		AssignRecordToBot( g_iRec[run][style], run, style );
 	}
 	else
 	{

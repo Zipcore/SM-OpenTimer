@@ -6,7 +6,7 @@ stock bool ExCreateDir( const char[] szPath )
 		
 		if ( !DirExists( szPath ) )
 		{
-			PrintToServer( CONSOLE_PREFIX ... "Couldn't create folder! (%s)", szPath );
+			LogError( CONSOLE_PREFIX ... "Couldn't create folder! (%s)", szPath );
 			return false;
 		}
 	}
@@ -55,7 +55,7 @@ stock bool SaveRecording( int client, float flTime )
 	Handle hFile = OpenFile( szPath, "wb" );
 	if ( hFile == null )
 	{
-		PrintToServer( CONSOLE_PREFIX ... "Couldn't open file! (%s)", szPath );
+		LogError( CONSOLE_PREFIX ... "Couldn't open file! (%s)", szPath );
 		return false;
 	}
 	

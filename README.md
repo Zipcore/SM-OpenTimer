@@ -35,6 +35,7 @@ The plugin is written in new syntax which requires **SourceMod version 1.7**!
 - sm_autobhop 0/1
 - sm_ezhop 0/1
 - sm_forbidden_commands 0/1 (+left/+right allowed?)
+- sm_ac_strafevel 0/1 (Do we check for strafe inconsistencies? **Experimental anti-cheat**)
 - sm_prespeed 0/1 (Can go over 300vel when leaving starting zone?)
 - sm_smoothplayback 0/1 (If false, show more accurate but not as smooth playback.)
 - sm_allow_sw (Allow Sideways-style?)
