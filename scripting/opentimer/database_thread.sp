@@ -17,12 +17,12 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 	
 	int				field;
 	int				ply; // Record count.
-	int				iJumps[RECORDS_PRINT_MAXPLAYERS + 1];
-	int				iStyle[RECORDS_PRINT_MAXPLAYERS + 1];
-	static float	flSeconds[RECORDS_PRINT_MAXPLAYERS + 1];
-	static char		szSteamId[RECORDS_PRINT_MAXPLAYERS + 1][STEAMID_MAXLENGTH];
-	static char		szName[RECORDS_PRINT_MAXPLAYERS + 1][MAX_NAME_LENGTH];
-	static char		szFormTime[RECORDS_PRINT_MAXPLAYERS + 1][SIZE_TIME_RECORDS];
+	int				iJumps[RECORDS_PRINT_MAX];
+	int				iStyle[RECORDS_PRINT_MAX];
+	static float	flSeconds[RECORDS_PRINT_MAX];
+	static char		szSteamId[RECORDS_PRINT_MAX][STEAMID_MAXLENGTH];
+	static char		szName[RECORDS_PRINT_MAX][MAX_NAME_LENGTH];
+	static char		szFormTime[RECORDS_PRINT_MAX][SIZE_TIME_RECORDS];
 	
 	bool bInConsole = GetArrayCell( hData, 0, 1 );
 	
@@ -35,19 +35,18 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 		
 			SQL_FieldNameToNum( hQuery, "jumps", field );
 			iJumps[ply] = SQL_FetchInt( hQuery, field );
-			
-			SQL_FieldNameToNum( hQuery, "style", field );
-			iStyle[ply] = SQL_FetchInt( hQuery, field );
 		}
+		
+		SQL_FieldNameToNum( hQuery, "style", field );
+		iStyle[ply] = SQL_FetchInt( hQuery, field );
 		
 		SQL_FieldNameToNum( hQuery, "name", field );
 		SQL_FetchString( hQuery, field, szName[ply], sizeof( szName[] ) );
 		
 		SQL_FieldNameToNum( hQuery, "time", field );
 		flSeconds[ply] = SQL_FetchFloat( hQuery, field );
-		//flSeconds[ply] += 0.0001; // Just to make sure...
 		
-		FormatSeconds( flSeconds[ply], szFormTime[ply], sizeof( szFormTime[] ), true );
+		FormatSeconds( flSeconds[ply], szFormTime[ply], sizeof( szFormTime[] ) );
 		
 		ply++;
 	}
@@ -57,16 +56,17 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 	if ( !bInConsole )
 	{
 		SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
-		Menu mMenu = CreateMenu( Handler_Records );
+		Menu mMenu = CreateMenu( Handler_Empty );
 		SetMenuTitle( mMenu, "Records\n " );
 		
-		char szRec[32];
+		char szRec[64];
 		
 		if ( ply > 0 )
 		{
 			for ( int i; i < ply; i++ )
 			{
-				FormatEx( szRec, sizeof( szRec ), "%s - %s", szName[i], szFormTime[i] );
+				// "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX XX:XX:XX.XX [XXXX]"
+				FormatEx( szRec, sizeof( szRec ), "%s - %s [%s]", szName[i], szFormTime[i], g_szStyleName[NAME_SHORT][ iStyle[i] ] );
 				AddMenuItem( mMenu, "_", szRec, ITEMDRAW_DISABLED );
 			}
 		}
@@ -82,7 +82,7 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 	{
 		PrintToConsole( client, "--------------------" );
 		PrintToConsole( client, ">> !printrecords <style/run> for specific styles and runs. (\"normal\", \"sideways\", \"w\", \"b1/b2\", etc.)" );
-		PrintToConsole( client, ">> Records (Max. %i):", RECORDS_PRINT_MAXPLAYERS );
+		PrintToConsole( client, ">> Records (Max. %i):", RECORDS_PRINT_MAX );
 		
 		if ( ply > 0 )
 		{
@@ -97,33 +97,6 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 		
 		PrintColorChat( client, client, CHAT_PREFIX ... "Printed (\x03%i"...CLR_TEXT...") records in your console.", ply );
 	}
-}
-
-public int Handler_Records( Menu mMenu, MenuAction action, int client, int item )
-{
-	switch ( action )
-	{
-		case MenuAction_End :
-		{
-			if ( client > 0 && g_fClientHideFlags[client] & HIDEHUD_HUD )
-			{
-				SetEntProp( client, Prop_Data, "m_iHideHUD", HIDE_FLAGS );
-			}
-			
-			delete mMenu;
-		}
-		/*case MenuAction_Select :
-		{
-			char szItem[2];
-			
-			if ( !GetMenuItem( mMenu, item, szItem, sizeof( szItem ) ) || szItem[0] != '_' )
-			{
-				return 0;
-			}
-		}*/
-	}
-	
-	return 0;
 }
 
 public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const char[] szError, any data )

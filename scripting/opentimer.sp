@@ -5,14 +5,15 @@
 #include <basecomm> // To check if client is gagged.
 
 
-#define PLUGIN_VERSION	"1.4.3"
+#define PLUGIN_VERSION	"1.4.4"
 #define PLUGIN_AUTHOR	"Mehis"
 #define PLUGIN_NAME		"OpenTimer"
+#define PLUGIN_URL		"https://github.com/TotallyMehis/SM-OpenTimer"
+#define PLUGIN_DESC		"Timer plugin"
 
 //	OPTIONS: Uncomment/comment things to change the plugin to your liking! Simply adding '//' (without quotation marks) in front of the line.
 // ------------------------------------------------------------------------------------------------------------------------------------------
 #define	RECORD // Comment out for no recording and record playback.
-
 
 //#define VOTING // Comment out for no voting. NOTE: This overrides commands rtv and nominate.
 // Disabled by default because it overrides default commands. (rtv/nominate)
@@ -20,8 +21,12 @@
 //#define CHAT // Comment out for no chat processing. Custom colors on player messages.
 // Disabled by default because it is not really necessary for this plugin.
 
+//#define ANTI_DOUBLESTEP // Let people fix their non-perfect jumps. Used for autobhop.
+// Disabled by default because not necessary.
+
 //#define DELETE_ENTS // Comment out to keep some entities. (func_doors, func_movelinears, etc.)
 // This was originally used for surf maps. If you want old bhop maps with platforms don't uncomment.
+// ------------------------------------------------------------------------------------------------------------------------------------------
 
 #define ZONE_EDIT_ADMFLAG ADMFLAG_ROOT // Admin level that allows zone editing.
 // E.g ADMFLAG_KICK, ADMFLAG_BAN, ADMFLAG_CHANGELEVEL
@@ -38,7 +43,7 @@
 // I really don't know what I was thinking when I started to use this instead of the default MAXPLAYERS which is 65.
 // I guess I was really paranoid about optimization. Keep in mind, I didn't really intend to share this plugin with anybody else.
 
-#define RECORDS_PRINT_MAXPLAYERS 16 // Maximum records to print in the console. Def. 16
+#define RECORDS_PRINT_MAX 15 // Maximum records to print in the console. Def. 15
 
 
 // HEX color codes
@@ -48,7 +53,7 @@
 //
 // You can then put your own text after it:
 // \x07FFFFFFThis text is white!
-#define CLR_PURPLE	"\x07E71470"
+#define CLR_PURPLE		"\x07E71470"
 #define CLR_TEAL		"\x0766CCCC"
 #define CLR_GRAY		"\x07434343"
 
@@ -76,14 +81,10 @@
 // RECORDING //
 ///////////////
 #if defined RECORD
-	/*
-		Huge thanks to Peace-Maker. A lot was learned from his movement recorder plugin.
-		Another huge thanks to george for giving me a tip about the correct way of recording ;)
-	*/
 	enum FrameInfo
 	{
-		float:FRAME_ANGLES[2],
-		float:FRAME_POS[3],
+		Float:FRAME_ANGLES[2],
+		Float:FRAME_POS[3],
 		
 		FRAME_FLAGS // Combined FRAME_BUTTONS and FRAME_FLAGS. See FRAMEFLAG_*
 	};
@@ -93,11 +94,11 @@
 		HEADER_BINARYFORMAT = 0,
 		
 		HEADER_TICKCOUNT,
-		float:HEADER_TIME, // Just in case our database loses the record information!!
+		Float:HEADER_TIME, // Just in case our database loses the record information!!
 		
 		
-		float:HEADER_INITPOS[3],
-		float:HEADER_INITANGLES[2]
+		Float:HEADER_INITPOS[3],
+		Float:HEADER_INITANGLES[2]
 	};
 	
 	#define FRAME_SIZE			6
@@ -120,6 +121,8 @@
 	//#define FRAMEFLAG_ATTACK2	( 1 << 2 )
 	
 	#define MIN_REC_SIZE		100
+	
+	#define MAX_RECNAME_LENGTH	13
 #endif
 
 ///////////////////
@@ -132,7 +135,10 @@
 #define HIDEHUD_SIDEINFO		( 1 << 4 )
 #define HIDEHUD_CHAT			( 1 << 5 )
 
+// HUD flags to hide specific objects.
 #define HIDE_FLAGS				3946
+
+#define OBS_MODE_IN_EYE			4
 
 // How do we format time to hud/scoreboard/text.
 #define FORMAT_DESISECONDS		( 1 << 0 )
@@ -152,10 +158,10 @@
 #define ZONE_WIDTH				1.0
 #define ZONE_DEF_HEIGHT			128.0
 
+// Anti-spam and warning interval
 #define WARNING_INTERVAL		1.0
 
-// How many strafes we take to determine our sync.
-#define SYNC_MAX_STRAFES		2
+#define SYNC_STRAFES			2
 
 // How many checkpoints can a player have?
 #define PRAC_MAX_SAVES			5
@@ -204,7 +210,7 @@ enum
 	ZONE_BLOCK_2,
 	ZONE_BLOCK_3,
 	
-	MAX_ZONES
+	NUM_ZONES
 };
 // Number of block zones available. TO-DO: Make a block zones be stored in a dynamic array for limitless block zones.
 #define NUM_BLOCKZONES 3
@@ -217,7 +223,7 @@ enum
 	RUN_BONUS_1,
 	RUN_BONUS_2,
 	
-	MAX_RUNS
+	NUM_RUNS
 };
 
 enum { NAME_LONG = 0, NAME_SHORT, MAX_NAMES };
@@ -231,7 +237,7 @@ enum
 	STYLE_HSW,
 	STYLE_VEL,
 	
-	MAX_STYLES // 5
+	NUM_STYLES // 5
 };
 
 enum
@@ -240,15 +246,15 @@ enum
 	STRAFE_LEFT,
 	STRAFE_RIGHT,
 	
-	STRAFE_COUNT
+	NUM_STRAFES
 };
 
 
 // Zones
-bool g_bIsLoaded[MAX_RUNS]; // Do we have start and end zone for main/bonus at least?
-bool g_bZoneExists[MAX_ZONES]; // Are we going to check if the player is inside the zones in the first place?
-float g_vecZoneMins[MAX_ZONES][3];
-float g_vecZoneMaxs[MAX_ZONES][3];
+bool g_bIsLoaded[NUM_RUNS]; // Do we have start and end zone for main/bonus at least?
+bool g_bZoneExists[NUM_ZONES]; // Are we going to check if the player is inside the zones in the first place?
+float g_vecZoneMins[NUM_ZONES][3];
+float g_vecZoneMaxs[NUM_ZONES][3];
 int g_iBlockZoneIndex[NUM_BLOCKZONES];
 
 
@@ -264,18 +270,20 @@ int g_iClientStyle[MAXPLAYERS_BHOP]; // Styles W-ONLY/HSW/RHSW etc.
 int g_iClientRun[MAXPLAYERS_BHOP]; // Which run client is doing (main/bonus)?
 float g_flClientStartTime[MAXPLAYERS_BHOP]; // When we started our run? Engine time.
 float g_flClientFinishTime[MAXPLAYERS_BHOP]; // This is to tell the client's finish time in the end. Engine time.
-float g_flClientBestTime[MAXPLAYERS_BHOP][MAX_RUNS][MAX_STYLES];
+float g_flClientBestTime[MAXPLAYERS_BHOP][NUM_RUNS][NUM_STYLES];
 
 
 // Player stats
-int g_iClientJumpCount[MAXPLAYERS_BHOP];
-int g_iClientStrafeCount[MAXPLAYERS_BHOP];
-float g_flClientSync[MAXPLAYERS_BHOP][STRAFE_COUNT];
+int g_nClientJumpCount[MAXPLAYERS_BHOP];
+int g_nClientStrafeCount[MAXPLAYERS_BHOP];
+float g_flClientSync[MAXPLAYERS_BHOP][NUM_STRAFES];
 
 
 // Misc player stuff.
 float g_flClientWarning[MAXPLAYERS_BHOP]; // Used for anti-spam.
-bool g_bClientHoldingJump[MAXPLAYERS_BHOP]; // Used for anti-doublestep.
+#if defined ANTI_DOUBLESTEP
+	bool g_bClientHoldingJump[MAXPLAYERS_BHOP]; // Used for anti-doublestep.
+#endif
 
 
 // Practice
@@ -292,23 +300,23 @@ int g_iClientCurSave[MAXPLAYERS_BHOP] = { INVALID_CP, ... };
 	Handle g_hClientRecording[MAXPLAYERS_BHOP];
 	bool g_bClientRecording[MAXPLAYERS_BHOP];
 	bool g_bClientMimicing[MAXPLAYERS_BHOP];
-	int g_iClientTick[MAXPLAYERS_BHOP];
+	int g_nClientTick[MAXPLAYERS_BHOP];
 	
 	float g_vecInitPos[MAXPLAYERS_BHOP][3];
 	float g_vecInitAng[MAXPLAYERS_BHOP][3];
 	
 	// Record playback
-	float g_vecInitRecPos[MAX_RUNS][MAX_STYLES][3];
-	float g_vecInitRecAng[MAX_RUNS][MAX_STYLES][3];
-	int g_iRec[MAX_RUNS][MAX_STYLES];
+	float g_vecInitRecPos[NUM_RUNS][NUM_STYLES][3];
+	float g_vecInitRecAng[NUM_RUNS][NUM_STYLES][3];
+	int g_iRec[NUM_RUNS][NUM_STYLES];
 	int g_iNumRec;
-	int g_iRecTickMax[MAX_RUNS][MAX_STYLES];
-	Handle g_hRec[MAX_RUNS][MAX_STYLES];
-	char g_szRecName[MAX_RUNS][MAX_STYLES][MAX_NAME_LENGTH];
+	int g_iRecTickMax[NUM_RUNS][NUM_STYLES];
+	Handle g_hRec[NUM_RUNS][NUM_STYLES];
+	char g_szRecName[NUM_RUNS][NUM_STYLES][MAX_NAME_LENGTH];
 	
 	// Max tick count for player's recording.
 	// Usually couple ticks higher than bot's tick count for safety reasons.
-	int g_iRecMaxLength[MAX_RUNS][MAX_STYLES];
+	int g_iRecMaxLength[NUM_RUNS][NUM_STYLES];
 	
 	// Do playback or not?
 	bool g_bPlayback;
@@ -322,9 +330,9 @@ int g_fClientHideFlags[MAXPLAYERS_BHOP];
 
 // Other
 char g_szCurrentMap[MAX_MAP_NAME_LENGTH];
-float g_vecSpawnPos[MAX_RUNS][3];
-float g_vecSpawnAngles[MAX_RUNS][3];
-float g_flMapBestTime[MAX_RUNS][MAX_STYLES];
+float g_vecSpawnPos[NUM_RUNS][3];
+float g_vecSpawnAngles[NUM_RUNS][3];
+float g_flMapBestTime[NUM_RUNS][NUM_STYLES];
 int g_iBeam;
 int g_iPreferredTeam = CS_TEAM_T;
 
@@ -339,22 +347,26 @@ int g_iPreferredTeam = CS_TEAM_T;
 
 
 // Constants
-char g_szZoneNames[MAX_ZONES][15] = {
+char g_szZoneNames[NUM_ZONES][15] =
+{
 	"Start", "End",
 	"Bonus #1 Start", "Bonus #1 End",
 	"Bonus #2 Start", "Bonus #2 End",
 	"Freestyle #1", "Freestyle #2", "Freestyle #3",
 	"Block #1", "Block #2", "Block #3"
 };
-char g_szRunName[MAX_NAMES][MAX_RUNS][9] = {
+char g_szRunName[MAX_NAMES][NUM_RUNS][9] =
+{
 	{ "Main", "Bonus #1", "Bonus #2" },
 	{ "M", "B1", "B2" }
 };
-char g_szStyleName[MAX_NAMES][MAX_STYLES][14] = {
+char g_szStyleName[MAX_NAMES][NUM_STYLES][14] =
+{
 	{ "Normal", "Sideways", "W-Only", "Real HSW", "Half-Sideways", "Vel-Cap" },
-	{ "N", "SW", "W", "RHSW", "HSW", "Vel-Cap" }
+	{ "N", "SW", "W", "RHSW", "HSW", "VEL" }
 };
-char g_szWinningSounds[][25] = {
+char g_szWinningSounds[][25] =
+{
 	"buttons/button16.wav", "bot/i_am_on_fire.wav",
 	"bot/its_a_party.wav", "bot/made_him_cry.wav",
 	"bot/this_is_my_house.wav", "bot/yea_baby.wav",
@@ -394,7 +406,6 @@ bool g_bAntiCheat_StrafeVel = true;
 float g_flVelCap = 400.0;
 float g_flVelCapSquared = 160000.0;
 
-
 // ------------------------
 // End of globals.
 // ------------------------
@@ -403,7 +414,7 @@ float g_flVelCapSquared = 160000.0;
 	#include "opentimer/file.sp"
 #endif
 
-#include "opentimer/recording.sp"
+#include "opentimer/cmd.sp"
 #include "opentimer/usermsg.sp"
 #include "opentimer/stocks.sp"
 #include "opentimer/database.sp"
@@ -417,8 +428,8 @@ float g_flVelCapSquared = 160000.0;
 public Plugin OpenTimerInfo = {
 	author = PLUGIN_AUTHOR,
 	name = PLUGIN_NAME,
-	description = "Timer plugin",
-	url = "http://steamcommunity.com/profiles/76561198021256769",
+	description = PLUGIN_DESC,
+	url = PLUGIN_URL,
 	version = PLUGIN_VERSION
 };
 
@@ -427,6 +438,7 @@ public void OnPluginStart()
 	// HOOKS
 	HookEvent( "player_spawn", Event_ClientSpawn );
 	HookEvent( "player_jump", Event_ClientJump );
+	HookEvent( "player_team", Event_ClientTeam );
 	//HookEvent( "player_hurt", Event_ClientHurt );
 	HookEvent( "player_death", Event_ClientDeath );
 	
@@ -435,9 +447,11 @@ public void OnPluginStart()
 	AddCommandListener( Listener_Say, "say" );
 	AddCommandListener( Listener_Say, "say_team" );
 	
+#if defined ANTI_DOUBLESTEP
 	AddCommandListener( Listener_AntiDoublestep_On, "+ds" );
 	AddCommandListener( Listener_AntiDoublestep_Off, "-ds" );
-	
+#endif
+
 	
 	// SPAWNING
 	RegConsoleCmd( "sm_respawn", Command_Spawn );
@@ -556,9 +570,13 @@ public void OnPluginStart()
 	
 	RegConsoleCmd( "sm_version", Command_Version );
 	
+	RegConsoleCmd( "sm_credits", Command_Credits );
+	
+#if defined ANTI_DOUBLESTEP
 	RegConsoleCmd( "sm_ds", Command_Doublestep );
 	RegConsoleCmd( "sm_doublestep", Command_Doublestep );
 	RegConsoleCmd( "sm_doublestepping", Command_Doublestep );
+#endif
 	
 	
 	// VOTING
@@ -688,8 +706,8 @@ public void OnMapStart()
 	g_iBuilderGridSize =	BUILDER_DEF_GRIDSIZE;
 	
 	
-	for ( int run; run < MAX_RUNS; run++ )
-		for ( int style; style < MAX_STYLES; style++ )
+	for ( int run; run < NUM_RUNS; run++ )
+		for ( int style; style < NUM_STYLES; style++ )
 		{
 			g_flMapBestTime[run][style] = TIME_INVALID;
 			
@@ -708,7 +726,7 @@ public void OnMapStart()
 		}
 	
 	// In case we don't try to fetch the zones.
-	for ( int i; i < MAX_ZONES; i++ ) g_bZoneExists[i] = false;
+	for ( int i; i < NUM_ZONES; i++ ) g_bZoneExists[i] = false;
 	ArrayFill( g_iBlockZoneIndex, 0, NUM_BLOCKZONES );
 	
 	
@@ -721,7 +739,9 @@ public void OnMapStart()
 	{
 		PrecacheSound( g_szWinningSounds[i] );
 	}
-
+	
+	g_iPreferredTeam = 0;
+	
 	
 	// Get map zones from database.
 	DB_InitializeMapZones();
@@ -747,6 +767,8 @@ public void OnMapStart()
 	// Repeating timer that sends the zones to the client every X seconds.
 	CreateTimer( ZONE_UPDATE_INTERVAL, Timer_DrawZoneBeams, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE );
 	
+	// Show timer to players.
+	CreateTimer( TIMER_UPDATE_INTERVAL, Timer_HudTimer, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE );
 	
 	// We want to restart the map if it has been going on for too long without any players.
 	// This prevents performance issues.
@@ -798,7 +820,7 @@ public void OnClientPutInServer( int client )
 	// Recording
 	g_bClientRecording[client] = false;
 	g_bClientMimicing[client] = false;
-	g_iClientTick[client] = 0;
+	g_nClientTick[client] = 0;
 	
 	
 	if ( IsFakeClient( client ) )
@@ -806,8 +828,8 @@ public void OnClientPutInServer( int client )
 		// -----------------------------------------------
 		// Assign records for bots and make them mimic it.
 		// -----------------------------------------------
-		for ( int run; run < MAX_RUNS; run++ )
-			for ( int style; style < MAX_STYLES; style++ )
+		for ( int run; run < NUM_RUNS; run++ )
+			for ( int style; style < NUM_STYLES; style++ )
 			{
 				// We already have a mimic in this slot? Continue to the next.
 				if ( g_iRec[run][style] != INVALID_INDEX ) continue;
@@ -817,7 +839,11 @@ public void OnClientPutInServer( int client )
 				
 				AssignRecordToBot( client, run, style );
 				
+				//if ( !IsPlayerAlive( client ) ) CS_RespawnPlayer( client );
+				
 				SetEntProp( client, Prop_Data, "m_iFrags", 1337 );
+				SetEntProp( client, Prop_Data, "m_iDeaths", 1337 );
+				
 				return;
 			}
 		
@@ -837,13 +863,13 @@ public void OnClientPutInServer( int client )
 	// Times
 	g_flClientFinishTime[client] = TIME_INVALID;
 	
-	for ( int i; i < MAX_RUNS; i++ )
-		ArrayFill( g_flClientBestTime[client][i], TIME_INVALID, MAX_STYLES );
+	for ( int i; i < NUM_RUNS; i++ )
+		ArrayFill( g_flClientBestTime[client][i], TIME_INVALID, NUM_STYLES );
 	
 	
 	// Stats
-	g_iClientJumpCount[client] = 0;
-	g_iClientStrafeCount[client] = 0;
+	g_nClientJumpCount[client] = 0;
+	g_nClientStrafeCount[client] = 0;
 	
 	g_flClientSync[client][STRAFE_LEFT] = 1.0;
 	g_flClientSync[client][STRAFE_RIGHT] = 1.0;
@@ -871,9 +897,6 @@ public void OnClientPutInServer( int client )
 	// Welcome message for players.
 	CreateTimer( 5.0, Timer_Connected, GetClientUserId( client ), TIMER_FLAG_NO_MAPCHANGE );
 	
-	// Timer's timer function :^)
-	CreateTimer( TIMER_UPDATE_INTERVAL, Timer_ShowClientInfo, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE );
-	
 	SDKHook( client, SDKHook_WeaponSwitchPost, Event_WeaponSwitchPost ); // FOV reset.
 	SDKHook( client, SDKHook_PreThinkPost, Event_PreThinkPost );
 	
@@ -882,7 +905,7 @@ public void OnClientPutInServer( int client )
 }
 
 // Used just here.
-enum { INSIDE_START = 0, INSIDE_END, INSIDE_MAX };
+enum { INSIDE_START = 0, INSIDE_END, NUM_INSIDE };
 
 public void Event_PreThinkPost( int client )
 {
@@ -892,7 +915,7 @@ public void Event_PreThinkPost( int client )
 	if ( !g_bIsLoaded[ g_iClientRun[client] ] || !IsPlayerAlive( client ) ) return;
 	
 	
-	static bool bInsideZone[MAXPLAYERS_BHOP][INSIDE_MAX];
+	static bool bInsideZone[MAXPLAYERS_BHOP][NUM_INSIDE];
 	
 	// First we find out if our player is in his/her current zone areas.
 	switch ( g_iClientRun[client] )
@@ -957,7 +980,7 @@ public void Event_PreThinkPost( int client )
 		// Start to record if we're not practising...
 		if ( !g_bIsClientPractising[client] )
 		{
-			g_iClientTick[client] = 0;
+			g_nClientTick[client] = 0;
 			g_bClientRecording[client] = true;
 			
 			g_hClientRecording[client] = CreateArray( view_as<int>FrameInfo );
@@ -999,7 +1022,7 @@ public void Event_PreThinkPost( int client )
 #if defined RECORD
 			if ( g_bClientRecording[client] && g_hClientRecording[client] != null )
 			{
-				g_iClientTick[client] = 0;
+				g_nClientTick[client] = 0;
 				g_bClientRecording[client] = false;
 			}
 #endif
@@ -1017,14 +1040,14 @@ public void Event_PreThinkPost( int client )
 		// Did we not jump when we were on the ground?
 		if ( g_iClientState[client] != STATE_START || ( GetEntityFlags( client ) & FL_ONGROUND && !( GetClientButtons( client ) & IN_JUMP ) ) )
 		{
-			g_iClientJumpCount[client] = 0;
+			g_nClientJumpCount[client] = 0;
 		}
 		
 		g_iClientState[client] = STATE_START;
 		
 		ArrayFill( g_flClientSaveDif[client], TIME_INVALID, PRAC_MAX_SAVES );
 		
-		g_iClientStrafeCount[client] = 0;
+		g_nClientStrafeCount[client] = 0;
 	}
 #if defined RECORD
 	else if ( !g_bIsClientPractising[client] && g_bClientRecording[client] )
@@ -1033,9 +1056,9 @@ public void Event_PreThinkPost( int client )
 		// Have we been running for too long?
 		
 		// Is our recording longer than max length.
-		if ( g_iClientTick[client] > g_iRecMaxLength[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
+		if ( g_nClientTick[client] > g_iRecMaxLength[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
 		{
-			g_iClientTick[client] = 0;
+			g_nClientTick[client] = 0;
 			g_bClientRecording[client] = false;
 			
 			if ( g_hClientRecording[client] != null )
@@ -1044,7 +1067,7 @@ public void Event_PreThinkPost( int client )
 				g_hClientRecording[client] = null;
 			}
 			
-			if ( g_iClientTick[client] >= RECORDING_MAX_LENGTH )
+			if ( g_nClientTick[client] >= RECORDING_MAX_LENGTH )
 			{
 				PrintColorChat( client, client, CHAT_PREFIX ... "Your time was too long to be recorded!" );
 			}
@@ -1101,7 +1124,7 @@ stock void DoMapStuff()
 	// Spawn block zones.
 	
 	
-	bool	bFoundAng[MAX_RUNS];
+	bool	bFoundAng[NUM_RUNS];
 	float	angAngle[3];
 	int		ent;
 	
@@ -1139,7 +1162,6 @@ stock void DoMapStuff()
 	
 	// Give each starting zone a spawn position.
 	// If no angle was previous found, we make it face the ending trigger.
-	
 	if ( g_bZoneExists[ZONE_START] )
 	{
 		if ( g_vecZoneMins[ZONE_START][0] < g_vecZoneMaxs[ZONE_START][0] )
@@ -1222,24 +1244,55 @@ stock void DoMapStuff()
 			g_vecSpawnAngles[RUN_BONUS_2][1] = ArcTangent2( g_vecZoneMins[ZONE_BONUS_2_END][1] - g_vecZoneMins[ZONE_BONUS_2_START][1], g_vecZoneMins[ZONE_BONUS_2_END][0] - g_vecZoneMins[ZONE_BONUS_2_START][0] ) * 180 / MATH_PI;
 	}
 	
-	
-	// Determine what team we should put the runners in.
-	if ( FindEntityByClassname( ent, "info_player_counterterrorist" ) != -1 )
+	// Determine what team we should put the runners in when map starts.
+	// Bots go to the other team.
+	if ( !g_iPreferredTeam )
 	{
-		g_iPreferredTeam = CS_TEAM_CT;
-		
+		if ( FindEntityByClassname( -1, "info_player_counterterrorist" ) != -1 )
+		{
+			g_iPreferredTeam = CS_TEAM_CT;
+			
 #if defined RECORD
-		ServerCommand( "bot_join_team ct" );
+			ServerCommand( "bot_join_team t" );
 #endif
+		}
+		else
+		{
+			g_iPreferredTeam = CS_TEAM_T;
+			
+#if defined RECORD
+			ServerCommand( "bot_join_team ct" );
+#endif
+		}
+	}
+	
+	
+#if defined RECORD
+	char szSpawn[29];
+	
+	if ( g_iPreferredTeam == CS_TEAM_CT )
+	{
+		strcopy( szSpawn, sizeof( szSpawn ), "info_player_terrorist" );
 	}
 	else
 	{
-		g_iPreferredTeam = CS_TEAM_T;
-		
-#if defined RECORD
-		ServerCommand( "bot_join_team t" );
-#endif
+		strcopy( szSpawn, sizeof( szSpawn ), "info_player_counterterrorist" );
 	}
+	// Spawn bot spawnpoints if none exist.
+	if ( g_bIsLoaded[RUN_MAIN] && ( ent = FindEntityByClassname( -1, szSpawn ) ) == -1 )
+	{
+		for ( int i; i < 24; i++ )
+		{
+			ent = CreateEntityByName( szSpawn );
+			
+			if ( ent != -1 )
+			{
+				DispatchKeyValueVector( ent, "origin", g_vecSpawnPos[RUN_MAIN] );
+				DispatchSpawn( ent );
+			}
+		}
+	}
+#endif
 	
 	
 	// Spawn block zones and clean up map (if DELETE_ENTS is defined).
@@ -1288,40 +1341,16 @@ stock bool CreateBlockZoneEntity( int zone )
 	float vecLength[3];
 	
 	
-	if ( g_vecZoneMins[zone][0] < g_vecZoneMaxs[zone][0] )
-	{
-		vecLength[0] = g_vecZoneMaxs[zone][0] - g_vecZoneMins[zone][0];
-		vecPos[0] = g_vecZoneMins[zone][0] + vecLength[0] / 2;
-	}
-	else
-	{
-		vecLength[0] = g_vecZoneMins[zone][0] - g_vecZoneMaxs[zone][0];
-		vecPos[0] = g_vecZoneMaxs[zone][0] + vecLength[0] / 2;
-	}
+
+	vecLength[0] = ( g_vecZoneMaxs[zone][0] - g_vecZoneMins[zone][0] ) / 2;
+	vecPos[0] = g_vecZoneMins[zone][0] + vecLength[0];
+
+	vecLength[1] = ( g_vecZoneMaxs[zone][1] - g_vecZoneMins[zone][1] ) / 2;
+	vecPos[1] = g_vecZoneMins[zone][1] + vecLength[1];
+
+	vecLength[2] = ( g_vecZoneMaxs[zone][2] - g_vecZoneMins[zone][2] ) / 2;
+	vecPos[2] = g_vecZoneMins[zone][2] + vecLength[2];
 	
-	
-	if ( g_vecZoneMins[zone][1] < g_vecZoneMaxs[zone][1] )
-	{
-		vecLength[1] = g_vecZoneMaxs[zone][1] - g_vecZoneMins[zone][1];
-		vecPos[1] = g_vecZoneMins[zone][1] + vecLength[1] / 2;
-	}
-	else
-	{
-		vecLength[1] = g_vecZoneMins[zone][1] - g_vecZoneMaxs[zone][1];
-		vecPos[1] = g_vecZoneMaxs[zone][1] + vecLength[1] / 2;
-	}
-	
-	
-	if ( g_vecZoneMins[zone][2] < g_vecZoneMaxs[zone][2] )
-	{
-		vecLength[2] = g_vecZoneMaxs[zone][2] - g_vecZoneMins[zone][2];
-		vecPos[2] = g_vecZoneMins[zone][2] + vecLength[2] / 2;
-	}
-	else
-	{
-		vecLength[2] = g_vecZoneMins[zone][2] - g_vecZoneMaxs[zone][2];
-		vecPos[2] = g_vecZoneMaxs[zone][2] + vecLength[2] / 2;
-	}
 	
 	TeleportEntity( ent, vecPos, NULL_VECTOR, NULL_VECTOR );
 	
@@ -1329,10 +1358,6 @@ stock bool CreateBlockZoneEntity( int zone )
 	// We then set the mins and maxs of the zone.
 	float vecMins[3];
 	float vecMaxs[3];
-	
-	vecLength[0] /= 2;
-	vecLength[1] /= 2;
-	vecLength[2] /= 2;
 	
 	vecMins[0] = -1 * vecLength[0];
 	vecMins[1] = -1 * vecLength[1];
@@ -1359,6 +1384,24 @@ stock bool CreateBlockZoneEntity( int zone )
 	}
 	
 	return true;
+}
+
+// Used for players and other entities.
+stock bool IsInsideZone( int ent, int zone )
+{
+	if ( !g_bZoneExists[zone] ) return false;
+	
+	
+	static float vecPos[3];
+	GetEntPropVector( ent, Prop_Data, "m_vecOrigin", vecPos );
+	
+	// As of 1.4.4, we correct zone mins and maxs.
+	return (
+		( g_vecZoneMins[zone][0] <= vecPos[0] <= g_vecZoneMaxs[zone][0] )
+		&&
+		( g_vecZoneMins[zone][1] <= vecPos[1] <= g_vecZoneMaxs[zone][1] )
+		&&
+		( g_vecZoneMins[zone][2] <= vecPos[2] <= g_vecZoneMaxs[zone][2] ) );
 }
 
 stock void CopyRecordToPlayback( int client )
@@ -1408,20 +1451,24 @@ stock void AssignRecordToBot( int mimic, int run, int style )
 	
 	g_iRec[run][style] = mimic;
 	
-	
-	char szName[MAX_NAME_LENGTH];
-	FormatEx( szName, sizeof( szName ), "REC* %s [%s|%s]", g_szRecName[run][style], g_szRunName[NAME_SHORT][run], g_szStyleName[NAME_SHORT][style] );
-	SetClientInfo( mimic, "name", szName );
-	
+	// We'll have to limit the player's name in order to show everything.
+	char szName[MAX_RECNAME_LENGTH];
+	strcopy( szName, sizeof( szName ), g_szRecName[run][style] );
 	
 	char szTime[SIZE_TIME_SCOREBOARD];
 	FormatSeconds( g_flMapBestTime[run][style], szTime, sizeof( szTime ), FORMAT_NOHOURS );
-	CS_SetClientClanTag( mimic, szTime );
+	
+	// "XXXXXXXXXXXX [B1|RHSW] 00:00.00"
+	char szFullName[MAX_NAME_LENGTH];
+	FormatEx( szFullName, sizeof( szFullName ), "%s [%s|%s] %s", szName, g_szRunName[NAME_SHORT][run], g_szStyleName[NAME_SHORT][style], szTime );
+	SetClientInfo( mimic, "name", szFullName );
+	
+	CS_SetClientClanTag( mimic, "REC*" );
 	
 	
 	// Teleport 'em to the starting position and start the countdown!
 	g_bClientMimicing[mimic] = false;
-	g_iClientTick[mimic] = TICK_PRE_PLAYBLACK;
+	g_nClientTick[mimic] = TICK_PRE_PLAYBLACK;
 	
 	CreateTimer( 2.0, Timer_Rec_Start, g_iRec[run][style] );
 }

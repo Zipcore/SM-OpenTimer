@@ -4,6 +4,27 @@ Ignore me!
 Update log:
 ------------
 -------------
+	v1.4.4
+-------------
+	- Fixes and improvements
+		* Changed bot name format to show time.
+		* We now shorten the player's name on the bot. This way we always see the time and mode.
+		* Bot's full name and time is shown in the side info text.
+		* Made spawning less shitty.
+			* No more annoying team menus.
+			* We automatically spawn the player after joining a team.
+		* Changed some notations on variables.
+		* Bots and players go to separate teams.
+		* HUD no longer shows for spectators that are in free roaming mode.
+		* Zone mins and maxs are now real mins and maxs. They are corrected on creation.
+			* This allowed the simplification of function IsInsideZone()
+				* Less computing time.
+		* Anti-cheat now prints a warning to the console if we found a cheating player.
+		* Improved and fixed record display.
+		* Added credits (!credits)
+		* Renamed recording.sp to cmd.sp
+		
+-------------
 	v1.4.3
 -------------
 	- Added experimental anti-cheat 'sm_ac_strafevel'-cvar
@@ -13,7 +34,7 @@ Update log:
 	- Small stuff
 		* Decreased anti-spam time from three seconds to one.
 		* Modified zone creation to be more reliable.
-		* Bots no longer playback records if no players exist. <- Hoping to lower CPU usage
+		* Bots no longer playback records if no players exist. <- Hoping to lower CPU usage while idling.
 	
 -------------
 	v1.4.2

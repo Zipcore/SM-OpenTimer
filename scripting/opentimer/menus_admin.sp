@@ -100,7 +100,7 @@ public Action Command_Admin_ZoneStart( int client, int args )
 	
 	bool bFound;
 	
-	for ( int i; i < MAX_ZONES; i++ )
+	for ( int i; i < NUM_ZONES; i++ )
 		if ( !g_bZoneExists[i] )
 		{
 			AddMenuItem( mMenu, "_", g_szZoneNames[i] );
@@ -136,7 +136,7 @@ public int Handler_ZoneCreate( Menu mMenu, MenuAction action, int client, int zo
 		}
 		case MenuAction_Select :
 		{
-			if ( zone < 0 || zone >= MAX_ZONES ) return 0;
+			if ( 0 > zone >= NUM_ZONES ) return 0;
 			
 			
 			if ( g_iBuilderIndex != 0 && g_iBuilderIndex != client )
@@ -178,7 +178,7 @@ public Action Command_Admin_ZoneDelete( int client, int args )
 	
 	bool bFound;
 	
-	for ( int i; i < MAX_ZONES; i++ )
+	for ( int i; i < NUM_ZONES; i++ )
 	{
 		if ( g_bZoneExists[i] )
 		{
@@ -217,7 +217,7 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 		}
 		case MenuAction_Select :
 		{
-			if ( zone < 0 || zone >= MAX_ZONES ) return 0;
+			if ( 0 > zone >= NUM_ZONES ) return 0;
 			
 			
 			if ( zone == ZONE_START || zone == ZONE_END )
@@ -275,7 +275,7 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 			}
 			
 			g_bZoneExists[zone] = false;
-			PrintColorChat( client, client, CHAT_PREFIX ... "%s deleted.", g_szZoneNames[zone] );
+			PrintColorChat( client, client, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." deleted.", g_szZoneNames[zone] );
 			
 			// Erase them from the database.
 			DB_EraseCurMapZone( zone );
@@ -299,7 +299,7 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 	
 	bool bFound;
 	
-	for ( int i; i < MAX_ZONES; i++ )
+	for ( int i; i < NUM_ZONES; i++ )
 	{
 		if ( g_bZoneExists[i] )
 		{

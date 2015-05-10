@@ -44,6 +44,7 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 	g_vecZoneMaxs[g_iBuilderZone][2] = ( flDif <= 4.0 && flDif >= -4.0 ) ? ( vecClientPos[2] + ZONE_DEF_HEIGHT ) : float( RoundFloat( vecClientPos[2] - 0.5 ) );
 	
 	
+	CorrectMinsMaxs( g_vecZoneMins[g_iBuilderZone], g_vecZoneMaxs[g_iBuilderZone] );
 	
 	// This was used for precise mins for zones that would always be on the ground, so our origin cannot be under the mins.
 	// E.g player is standing on ground but our mins are higher than player's origin meaning that the player is outside of the zone.

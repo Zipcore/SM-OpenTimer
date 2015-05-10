@@ -25,8 +25,8 @@ public Action OnPlayerRunCmd(
 			// 0 = forwardspeed
 			// 1 = sidespeed
 			// 2 = upspeed
-			if ( 	vel[0] != 0 && !( buttons & IN_FORWARD || buttons & IN_BACK ) ||
-					vel[1] != 0 && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
+			if ( 	vel[0] != 0.0 && !( buttons & IN_FORWARD || buttons & IN_BACK ) ||
+					vel[1] != 0.0 && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
 			{
 				if ( g_iClientState[client] == STATE_RUNNING )
 				{
@@ -36,6 +36,7 @@ public Action OnPlayerRunCmd(
 				if ( g_flClientWarning[client] < GetEngineTime() )
 				{
 					PrintColorChat( client, client, CHAT_PREFIX ... "Potential cheat detected!" );
+					PrintToServer( CONSOLE_PREFIX ... "Potential cheat detected (%N)!", client );
 					
 					g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
 				}
@@ -142,18 +143,22 @@ public Action OnPlayerRunCmd(
 		/////////////
 		if ( g_bAutoHop /*&& g_bClientAutoHop[client]*/ ) // Server setting && Client setting
 		{
-			int iOldButtons = GetEntProp( client, Prop_Data, "m_nOldButtons" );
+			static int iOldButtons;
+			iOldButtons = GetEntProp( client, Prop_Data, "m_nOldButtons" );
+			
 			iOldButtons &= ~IN_JUMP;
 			
 			SetEntProp( client, Prop_Data, "m_nOldButtons", iOldButtons );
 			
+#if defined ANTI_DOUBLESTEP
 			// Anti-doublestepping
 			if ( g_bClientHoldingJump[client] && fFlags & FL_ONGROUND ) buttons |= IN_JUMP;
+#endif
 		}
 		
 		// Jump count stat
 		if ( fFlags & FL_ONGROUND && buttons & IN_JUMP )
-			g_iClientJumpCount[client]++;
+			g_nClientJumpCount[client]++;
 		
 		
 		// Rest what we do is done in running only.
@@ -177,7 +182,7 @@ public Action OnPlayerRunCmd(
 			
 			
 			// This is only required to check if player's recording is too long.
-			g_iClientTick[client]++;
+			g_nClientTick[client]++;
 			
 			PushArrayArray( g_hClientRecording[client], iFrame, view_as<int>FrameInfo );
 		}
@@ -221,8 +226,8 @@ public Action OnPlayerRunCmd(
 		// Not on ground, moving mouse and we're pressing at least some key.
 		if ( angles[1] != flClientPrevYaw[client] && ( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT || buttons & IN_FORWARD || buttons & IN_BACK ) )
 		{
-			static int iClientSync[MAXPLAYERS_BHOP][STRAFE_COUNT];
-			static int iClientSync_Max[MAXPLAYERS_BHOP][STRAFE_COUNT];
+			static int iClientSync[MAXPLAYERS_BHOP][NUM_STRAFES];
+			static int iClientSync_Max[MAXPLAYERS_BHOP][NUM_STRAFES];
 			
 			// Thing to remember: angle is a number between 180 and -180.
 			// So we give 20 degree cap where this can be registered as strafing to the left.
@@ -247,7 +252,7 @@ public Action OnPlayerRunCmd(
 				iClientSync_Max[client][iCurStrafe] = 1;
 				
 				iClientLastStrafe[client] = iCurStrafe;
-				g_iClientStrafeCount[client]++;
+				g_nClientStrafeCount[client]++;
 			}
 			
 			
@@ -274,7 +279,7 @@ public Action OnPlayerRunCmd(
 #if defined RECORD
 	if ( g_bClientMimicing[client] )
 	{
-		GetArrayArray( g_hRec[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_iClientTick[client], iFrame, view_as<int>FrameInfo );
+		GetArrayArray( g_hRec[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_nClientTick[client], iFrame, view_as<int>FrameInfo );
 		
 		buttons = ( iFrame[FRAME_FLAGS] & FRAMEFLAG_CROUCH ) ? IN_DUCK : 0;
 		vel = g_vecNull;
@@ -309,10 +314,10 @@ public Action OnPlayerRunCmd(
 		}
 		
 		
-		g_iClientTick[client]++;
+		g_nClientTick[client]++;
 		
 		// Are we done with our recording?
-		if ( g_iClientTick[client] >= g_iRecTickMax[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
+		if ( g_nClientTick[client] >= g_iRecTickMax[ g_iClientRun[client] ][ g_iClientStyle[client] ] )
 		{
 			g_bClientMimicing[client] = false;
 			
@@ -323,7 +328,7 @@ public Action OnPlayerRunCmd(
 	}
 	
 	
-	if ( g_iClientTick[client] == TICK_PRE_PLAYBLACK )
+	if ( g_nClientTick[client] == TICK_PRE_PLAYBLACK )
 	{
 		// Means that we are at the start of the run, about to begin our recorded run.
 		ArrayCopy( g_vecInitRecAng[ g_iClientRun[client] ][ g_iClientStyle[client] ], angles, 2 );

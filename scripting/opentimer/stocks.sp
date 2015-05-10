@@ -9,6 +9,33 @@ stock void ArrayFill( any[] Array, any data, int size = 1 )
 	for ( int i; i < size; i++ ) Array[i] = data;
 }
 
+stock void CorrectMinsMaxs( float vecMins[3], float vecMaxs[3] )
+{
+	// Corrects map zones.
+	float f;
+	
+	if ( vecMins[0] > vecMaxs[0] )
+	{
+		f = vecMins[0];
+		vecMins[0] = vecMaxs[0];
+		vecMaxs[0] = f;
+	}
+	
+	if ( vecMins[1] > vecMaxs[1] )
+	{
+		f = vecMins[1];
+		vecMins[1] = vecMaxs[1];
+		vecMaxs[1] = f;
+	}
+	
+	if ( vecMins[2] > vecMaxs[2] )
+	{
+		f = vecMins[2];
+		vecMins[2] = vecMaxs[2];
+		vecMaxs[2] = f;
+	}
+}
+
 // Format seconds and make them look nice.
 stock void FormatSeconds( float flSeconds, char[] szTarget, int iLength, int fFlags = 0 )
 {
@@ -149,21 +176,3 @@ stock int GetActivePlayers( int ignore = 0 )
 			}
 	}
 #endif
-// Used for players and other entities.
-stock bool IsInsideZone( int ent, int zone )
-{
-	if ( !g_bZoneExists[zone] ) return false;
-	
-	
-	static float vecPos[3];
-	GetEntPropVector( ent, Prop_Data, "m_vecOrigin", vecPos );
-	
-	// Basically, a shit ton of checking if the entity is between coordinates.
-	// This allows mins and maxs to be "switched", meaning that mins can actually be bigger than maxs.
-	return (
-		( ( vecPos[0] >= g_vecZoneMins[zone][0] && vecPos[0] <= g_vecZoneMaxs[zone][0] ) || ( vecPos[0] <= g_vecZoneMins[zone][0] && vecPos[0] >= g_vecZoneMaxs[zone][0] ) )
-		&&
-		( ( vecPos[1] >= g_vecZoneMins[zone][1] && vecPos[1] <= g_vecZoneMaxs[zone][1] ) || ( vecPos[1] <= g_vecZoneMins[zone][1] && vecPos[1] >= g_vecZoneMaxs[zone][1] ) )
-		&&
-		( ( vecPos[2] >= g_vecZoneMins[zone][2] && vecPos[2] <= g_vecZoneMaxs[zone][2] ) || ( vecPos[2] <= g_vecZoneMins[zone][2] && vecPos[2] >= g_vecZoneMaxs[zone][2] ) ) );
-}

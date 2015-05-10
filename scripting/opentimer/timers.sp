@@ -46,117 +46,137 @@ public Action Timer_Connected( Handle hTimer, any client )
 }
 
 // Main component of the HUD timer.
-public Action Timer_ShowClientInfo( Handle hTimer, any client )
+public Action Timer_HudTimer( Handle hTimer )
 {
-	if ( !IsClientInGame( client ) ) return Plugin_Stop;
-	
-	
-	int target = client;
-	
-	// Dead? Find the player we're spectating.
-	if ( !IsPlayerAlive( client ) )
+	static int client;
+	static int target;
+	for ( client = 1; client <= MaxClients; client++ )
 	{
-		target = GetEntPropEnt( client, Prop_Data, "m_hObserverTarget" );
+		if ( !IsClientInGame( client ) ) continue;
 		
-		// Invalid spec target?
-		// -1 = No spec target.
-		// No target? No HUD.
-		if ( target < 1 || target > MaxClients || !IsPlayerAlive( target ) )
-			return Plugin_Continue;
-	}
-	
-	
-	
-	if ( !( g_fClientHideFlags[client] & HIDEHUD_SIDEINFO ) )
-	{
-		// Show side info if not a bot.
-		if ( !IsFakeClient( target ) ) ShowKeyHintText( client, target );
-	}
-	
-	if ( !( g_fClientHideFlags[client] & HIDEHUD_TIMER ) )
-	{
-		if ( IsFakeClient( target ) )
+		
+		target = client;
+		
+		// Dead? Find the player we're spectating.
+		if ( !IsPlayerAlive( client ) )
 		{
-			// Replay bot
+			// Bad observer mode.
+			if ( GetEntProp( client, Prop_Data, "m_iObserverMode" ) != OBS_MODE_IN_EYE )
+				continue;
 			
-			PrintHintText( client, "Replay Bot\n[%s|%s]\n \nSpeed\n%.0f",
-				g_szRunName[NAME_LONG][ g_iClientRun[target] ],
-				g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
-				/*g_iClientTick[target] / float( g_iRecTickMax[ g_iClientRun[target] ][ g_iClientStyle[target] ] ) * 100.0*/
-				GetClientSpeed( target ) );
+			
+			target = GetEntPropEnt( client, Prop_Data, "m_hObserverTarget" );
+			
+			// Invalid spec target?
+			// -1 = No spec target.
+			// No target? No HUD.
+			if ( target < 1 || target > MaxClients || !IsPlayerAlive( target ) )
+				continue;
+		}
+		
+		// Side info
+		if ( !( g_fClientHideFlags[client] & HIDEHUD_SIDEINFO ) )
+		{
+			ShowKeyHintText( client, target );
+		}
+		
+		if ( !( g_fClientHideFlags[client] & HIDEHUD_TIMER ) )
+		{
+			if ( IsFakeClient( target ) )
+			{
+				// Replay bot
 				
-			return Plugin_Continue;
-		}
-		
-		if ( !g_bIsLoaded[ g_iClientRun[client] ] )
-		{
-			// No zones were found.
-			PrintHintText( client, "Speed\n%.0f", GetClientSpeed( target ) );
-			return Plugin_Continue;
-		}
-		
-		if ( g_iClientState[target] == STATE_START )
-		{
-			// We are in the start zone.
-			PrintHintText( client, "Starting Zone\n \nSpeed\n%.0f", GetClientSpeed( target ) );
-			return Plugin_Continue;
-		}
-		
-		static float flSeconds;
-		static float flBestSeconds;
-		
-		if ( g_iClientState[target] == STATE_END && g_flClientFinishTime[target] != TIME_INVALID ) 
-		{
-			// Show our finish time if we're at the ending
-			flSeconds = g_flClientFinishTime[target];
-		}
-		else
-		{
-			// Else, we show our current time.
-			flSeconds = GetEngineTime() - g_flClientStartTime[target];
-		}
-		
-		static char szMyTime[SIZE_TIME_HINT];
-		FormatSeconds( flSeconds, szMyTime, sizeof( szMyTime ), FORMAT_DESISECONDS );
-		
-		// We don't have a map best time! We don't need to show anything else.
-		if ( g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ] <= TIME_INVALID )
-		{
-			PrintHintText( client, "%s\n \nSpeed\n%.0f",
-				szMyTime,
-				GetClientSpeed( target ) );
+				PrintHintText( client, "Record Bot\n[%s|%s]\n \nSpeed\n%.0f",
+					g_szRunName[NAME_LONG][ g_iClientRun[target] ],
+					g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
+					/*g_nClientTick[target] / float( g_iRecTickMax[ g_iClientRun[target] ][ g_iClientStyle[target] ] ) * 100.0*/
+					GetClientSpeed( target ) );
+					
+				continue;
+			}
 			
-			return Plugin_Continue;
+			if ( !g_bIsLoaded[ g_iClientRun[client] ] )
+			{
+				// No zones were found.
+				PrintHintText( client, "Speed\n%.0f", GetClientSpeed( target ) );
+				continue;
+			}
+			
+			if ( g_iClientState[target] == STATE_START )
+			{
+				// We are in the start zone.
+				PrintHintText( client, "Starting Zone\n \nSpeed\n%.0f", GetClientSpeed( target ) );
+				continue;
+			}
+			
+			static float flSeconds;
+			static float flBestSeconds;
+			
+			if ( g_iClientState[target] == STATE_END && g_flClientFinishTime[target] != TIME_INVALID ) 
+			{
+				// Show our finish time if we're at the ending
+				flSeconds = g_flClientFinishTime[target];
+			}
+			else
+			{
+				// Else, we show our current time.
+				flSeconds = GetEngineTime() - g_flClientStartTime[target];
+			}
+			
+			static char szMyTime[SIZE_TIME_HINT];
+			FormatSeconds( flSeconds, szMyTime, sizeof( szMyTime ), FORMAT_DESISECONDS );
+			
+			// We don't have a map best time! We don't need to show anything else.
+			if ( g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ] <= TIME_INVALID )
+			{
+				PrintHintText( client, "%s\n \nSpeed\n%.0f",
+					szMyTime,
+					GetClientSpeed( target ) );
+				
+				continue;
+			}
+			
+			
+			int prefix = '-';
+			
+			if ( g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ] > flSeconds )
+			{
+				// We currently have "better" time than the map's best time.
+				flBestSeconds = g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ] - flSeconds;
+			}
+			else
+			{
+				// Else, we have worse, so let's show the difference.
+				flBestSeconds = flSeconds - g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ];
+				prefix = '+';
+			}
+			
+			static char szBestTime[SIZE_TIME_HINT];
+			FormatSeconds( flBestSeconds, szBestTime, sizeof( szBestTime ), FORMAT_DESISECONDS );
+			
+			// WARNING: Each line has to have something (e.g space), or it will break.
+			// "00:00:00.0C(+00:00:00.0) C CSpeedCXXXX" - [38]
+			PrintHintText( client, "%s\n(%c%s) \n \nSpeed\n%.0f",
+				szMyTime,
+				prefix,
+				szBestTime,
+				GetClientSpeed( target ) );
 		}
-		
-		
-		int prefix = '-';
-		
-		if ( g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ] > flSeconds )
-		{
-			// We currently have "better" time than the map's best time.
-			flBestSeconds = g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ] - flSeconds;
-		}
-		else
-		{
-			// Else, we have worse, so let's show the difference.
-			flBestSeconds = flSeconds - g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ];
-			prefix = '+';
-		}
-		
-		static char szBestTime[SIZE_TIME_HINT];
-		FormatSeconds( flBestSeconds, szBestTime, sizeof( szBestTime ), FORMAT_DESISECONDS );
-		
-		// WARNING: Each line has to have something (e.g space), or it will break.
-		// "00:00:00.0C(+00:00:00.0) C CSpeedCXXXX" - [38]
-		PrintHintText( client, "%s\n(%c%s) \n \nSpeed\n%.0f",
-			szMyTime,
-			prefix,
-			szBestTime,
-			GetClientSpeed( target ) );
 	}
 	
 	return Plugin_Continue;
+}
+
+public Action Timer_ClientJoinTeam( Handle hTimer, any userid )
+{
+	int client;
+	
+	if ( ( client = GetClientOfUserId( userid ) ) < 1 ) return;
+	
+	if ( GetClientTeam( client) > CS_TEAM_SPECTATOR && !IsPlayerAlive( client ) )
+	{
+		CS_RespawnPlayer( client );
+	}
 }
 
 public Action Timer_DoMapStuff( Handle hTimer )
@@ -190,7 +210,7 @@ public Action Timer_DoMapStuff( Handle hTimer )
 #endif
 }
 
-static const int BeamColor[MAX_ZONES][4] = {
+static const int BeamColor[NUM_ZONES][4] = {
 	{ 0, 255, 0, 255 },
 	{ 255, 0, 0, 255 },
 	{ 255, 0, 255, 255 },
@@ -212,7 +232,7 @@ public Action Timer_DrawZoneBeams( Handle hTimer )
 	static float flPoint2Min[3], flPoint2Max[3];
 	static float flPoint1Max[3];
 	
-	for ( int i; i < MAX_ZONES; i++ )
+	for ( int i; i < NUM_ZONES; i++ )
 	{
 		if ( !g_bZoneExists[i] ) continue;
 		
@@ -353,7 +373,7 @@ public Action Timer_Rec_Start( Handle hTimer, any mimic )
 		return Plugin_Handled;
 	
 	
-	g_iClientTick[mimic] = 0;
+	g_nClientTick[mimic] = 0;
 	g_bClientMimicing[mimic] = true;
 	
 	return Plugin_Handled;
@@ -366,7 +386,7 @@ public Action Timer_Rec_Restart( Handle hTimer, any mimic )
 		return Plugin_Handled;
 	
 	
-	g_iClientTick[mimic] = TICK_PRE_PLAYBLACK;
+	g_nClientTick[mimic] = TICK_PRE_PLAYBLACK;
 	TeleportEntity( mimic, g_vecInitRecPos[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ], g_vecInitRecAng[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ], g_vecNull );
 	SetEntProp( mimic, Prop_Data, "m_nButtons", 0 );
 	

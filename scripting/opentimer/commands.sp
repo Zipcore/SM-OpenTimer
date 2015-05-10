@@ -31,12 +31,15 @@ public Action Command_Help( int client, int args )
 	PrintToConsole( client, "!fov/!fieldofview <number> - Change your field of view." );
 	PrintToConsole( client, "!hud/!showhud/!hidehud/!h - Toggle HUD elements." );
 	PrintToConsole( client, "!commands - This ;)" );
+#if defined ANTI_DOUBLESTEP
 	PrintToConsole( client, "!ds - Show info about client-side autobhop doublestepping." );
+#endif
 	PrintToConsole( client, "!version - What version of "...PLUGIN_NAME..." are we running?" );
+	PrintToConsole( client, "!credits" );
 	
 	PrintToConsole( client, ">> RECORDS" );
 	PrintToConsole( client, "!wr/!records/!times - Show top 5 times." );
-	PrintToConsole( client, "!printrecords <type> - Shows a detailed version of records. (m/b1/b2 n/w/sw/rhsw/hsw/vel) Max. %i times.", RECORDS_PRINT_MAXPLAYERS );
+	PrintToConsole( client, "!printrecords <type> - Shows a detailed version of records. (m/b1/b2 n/w/sw/rhsw/hsw/vel) Max. %i times.", RECORDS_PRINT_MAX );
 	
 	PrintToConsole( client, ">> PRACTICE" );
 	PrintToConsole( client, "!practise/!practice/!prac/!p - Toggle practice mode." );
@@ -67,23 +70,25 @@ public Action Command_Help( int client, int args )
 	return Plugin_Handled;
 }
 
-public Action Command_Doublestep( int client, int args )
-{
-	if ( client == INVALID_INDEX ) return Plugin_Handled;
-	
-	if ( g_flClientWarning[client] > GetEngineTime() )
+#if defined ANTI_DOUBLESTEP
+	public Action Command_Doublestep( int client, int args )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		if ( client == INVALID_INDEX ) return Plugin_Handled;
+		
+		if ( g_flClientWarning[client] > GetEngineTime() )
+		{
+			PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+			return Plugin_Handled;
+		}
+		
+		g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
+		
+		
+		ShowMOTDPanel( client, "Doublestep Info", "For players that use client-side autobhop and suffer from doublestepping (non-perfect jumps):\n\nBind your hold key to \'+ds\' to disable doublestepping completely.", MOTDPANEL_TYPE_TEXT );
+		
 		return Plugin_Handled;
 	}
-	
-	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
-	
-	
-	ShowMOTDPanel( client, "Doublestep Info", "For players that use client-side autobhop and suffer from doublestepping:\n\nBind your hold key to \'+ds\' to disable doublestepping completely.", MOTDPANEL_TYPE_TEXT );
-	
-	return Plugin_Handled;
-}
+#endif
 
 public Action Command_Spawn( int client, int args )
 {
@@ -100,7 +105,8 @@ public Action Command_Spawn( int client, int args )
 	
 	if ( GetClientTeam( client ) == CS_TEAM_SPECTATOR )
 	{
-		ChangeClientTeam( client, g_iPreferredTeam );
+		SetEntProp( client, Prop_Send, "m_iTeamNum", g_iPreferredTeam );
+		CS_RespawnPlayer( client );
 	}
 	else if ( !IsPlayerAlive( client ) || !g_bIsLoaded[ g_iClientRun[client] ] )
 	{
@@ -142,7 +148,7 @@ public Action Command_Spectate( int client, int args )
 		ChangeClientTeam( client, CS_TEAM_SPECTATOR );
 		
 		SetEntPropEnt( client, Prop_Send, "m_hObserverTarget", target );
-		SetEntProp( client, Prop_Send, "m_iObserverMode", 2 );
+		SetEntProp( client, Prop_Send, "m_iObserverMode", OBS_MODE_IN_EYE );
 	}
 
 	return Plugin_Handled;

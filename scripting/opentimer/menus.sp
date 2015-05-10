@@ -6,7 +6,7 @@ public Action Command_ToggleHUD( int client, int args )
 	SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
 	Menu mMenu = CreateMenu( Handler_Hud );
 	SetMenuTitle( mMenu, "HUD Menu\n " );
-
+	
 	AddMenuItem( mMenu, "_", ( g_fClientHideFlags[client] & HIDEHUD_HUD )		? "HUD: OFF" : "HUD: ON" );
 	AddMenuItem( mMenu, "_", ( g_fClientHideFlags[client] & HIDEHUD_VM )		? "Viewmodel: OFF" : "Viewmodel: ON" );
 	//AddMenuItem( mMenu, "_", ( g_fClientHideFlags[client] & HIDEHUD_PLAYERS )	? "Players: OFF" : "Players: ON" );
@@ -111,9 +111,6 @@ public int Handler_Hud( Menu mMenu, MenuAction action, int client, int item )
 					{
 						g_fClientHideFlags[client] &= ~HIDEHUD_TIMER;
 						
-						if ( !( g_fClientHideFlags[client] & HIDEHUD_TIMER ) && !( g_fClientHideFlags[client] & HIDEHUD_SIDEINFO ) )
-							CreateTimer( TIMER_UPDATE_INTERVAL, Timer_ShowClientInfo, client, TIMER_REPEAT );
-						
 						PrintColorChat( client, client, CHAT_PREFIX ... "Your timer is back!" );
 					}
 					else
@@ -130,9 +127,6 @@ public int Handler_Hud( Menu mMenu, MenuAction action, int client, int item )
 						g_fClientHideFlags[client] &= ~HIDEHUD_SIDEINFO;
 						
 						PrintColorChat( client, client, CHAT_PREFIX ... "Sidebar enabled!" );
-						
-						if ( !( g_fClientHideFlags[client] & HIDEHUD_TIMER ) && !( g_fClientHideFlags[client] & HIDEHUD_SIDEINFO ) )
-							CreateTimer( TIMER_UPDATE_INTERVAL, Timer_ShowClientInfo, client, TIMER_REPEAT );
 					}
 					else
 					{
@@ -288,7 +282,7 @@ public Action Command_Style( int client, int args )
 	
 	
 	
-	for ( int i; i < MAX_STYLES; i++ )
+	for ( int i; i < NUM_STYLES; i++ )
 	{
 		bool bAllowed = true;
 		switch ( i )
@@ -311,7 +305,7 @@ public Action Command_Style( int client, int args )
 			}
 			case STYLE_VEL :
 			{
-				char sz[12];
+				char sz[8]; // "XXXXvel"
 				FormatEx( sz, sizeof( sz ), "%.0fvel", g_flVelCap );
 				
 				if ( !GetConVarBool( g_ConVar_Allow_Vel ) || g_iClientStyle[client] == i )
@@ -360,7 +354,7 @@ public int Handler_Style( Menu mMenu, MenuAction action, int client, int style )
 				return 0;
 			}
 			
-			if ( style < 0 || style >= MAX_STYLES ) return 0;
+			if ( 0 > style >= NUM_STYLES ) return 0;
 			
 			bool bAllowed = true;
 			switch ( style )
@@ -439,7 +433,7 @@ public Action Command_Practise_GotoPoint( int client, int args )
 		int index = StringToInt( szArg );
 		index--;
 		
-		if ( index < 0 || index >= PRAC_MAX_SAVES )
+		if ( 0 > index >= PRAC_MAX_SAVES )
 		{
 			PrintColorChat( client, client, CHAT_PREFIX ... "Invalid argument! (1-%i)", PRAC_MAX_SAVES - 1 );
 			return Plugin_Handled;
@@ -450,7 +444,7 @@ public Action Command_Practise_GotoPoint( int client, int args )
 		
 		if ( index < 0 ) index = PRAC_MAX_SAVES + index;
 		
-		if ( ( index < 0 || index >= PRAC_MAX_SAVES ) || g_flClientSaveDif[client][index] == TIME_INVALID )
+		if ( ( 0 > index >= PRAC_MAX_SAVES ) || g_flClientSaveDif[client][index] == TIME_INVALID )
 		{
 			PrintColorChat( client, client, CHAT_PREFIX ... "You don't have a checkpoint there!" );
 			return Plugin_Handled;
@@ -494,7 +488,6 @@ public Action Command_Practise_GotoPoint( int client, int args )
 		iSlot++;
 	}
 	
-	//SetMenuExitButton( mMenu, true );
 	DisplayMenu( mMenu, client, MENU_TIME_FOREVER );
 	
 	return Plugin_Handled;
@@ -526,7 +519,7 @@ public int Handler_Check( Menu mMenu, MenuAction action, int client, int item )
 			
 			
 			// Just to be on the safe side...
-			if ( index < 0 || index >= PRAC_MAX_SAVES ) return 0;
+			if ( 0 > index >= PRAC_MAX_SAVES ) return 0;
 			if ( g_flClientSaveDif[client][index] == TIME_INVALID ) return 0;
 			
 			
@@ -536,6 +529,44 @@ public int Handler_Check( Menu mMenu, MenuAction action, int client, int item )
 			
 			// Re-open mMenu.
 			ClientCommand( client, "sm_cp" );
+		}
+	}
+	
+	return 0;
+}
+
+public Action Command_Credits( int client, int args )
+{
+	if ( client == INVALID_INDEX ) return Plugin_Handled;
+	
+	SetEntProp( client, Prop_Data, "m_iHideHUD", 0 );
+	Menu mMenu = CreateMenu( Handler_Check );
+	SetMenuTitle( mMenu, "Credits\n " );
+	
+	AddMenuItem( mMenu, "_", "Mehis - Original author\n ", ITEMDRAW_DISABLED );
+	
+	AddMenuItem( mMenu, "_", "Thanks to: ", ITEMDRAW_DISABLED );
+	AddMenuItem( mMenu, "_", "Peace-Maker - For making botmimic. Learned a lot.", ITEMDRAW_DISABLED );
+	AddMenuItem( mMenu, "_", "george. - For the recording tip.", ITEMDRAW_DISABLED );
+	
+	DisplayMenu( mMenu, client, MENU_TIME_FOREVER );
+	
+	return Plugin_Handled;
+}
+
+// Used for multiply menus.
+public int Handler_Empty( Menu mMenu, MenuAction action, int client, int item )
+{
+	switch ( action )
+	{
+		case MenuAction_End :
+		{
+			if ( client > 0 && g_fClientHideFlags[client] & HIDEHUD_HUD )
+			{
+				SetEntProp( client, Prop_Data, "m_iHideHUD", HIDE_FLAGS );
+			}
+			
+			delete mMenu;
 		}
 	}
 	

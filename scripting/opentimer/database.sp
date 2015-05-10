@@ -9,23 +9,18 @@ static char g_szQuery_Big[300];
 // Includes all the threaded SQL callbacks.
 #include "opentimer/database_thread.sp"
 
-// Print server times to client. This can be done to console (max. 15 records) or to MOTD page (max. 5 records)
+// Print server times to client. This can be done to console or to a menu.
 // Client can also request individual modes.
 stock void DB_PrintRecords( int client, bool bInConsole, int iReqStyle = -1, int iRun = 0 )
 {
-	int amt;
-	
-	if ( bInConsole ) amt = RECORDS_PRINT_MAXPLAYERS;
-	else amt = 7; // Max amount you can see in one menu view.
-	
 	if ( iReqStyle != -1 )
 	{
-		FormatEx( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM '%s' WHERE style = %i AND run = %i ORDER BY time LIMIT %i", g_szCurrentMap, iReqStyle, iRun, amt );
+		FormatEx( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM '%s' WHERE style = %i AND run = %i ORDER BY time LIMIT %i", g_szCurrentMap, iReqStyle, iRun, RECORDS_PRINT_MAX );
 	}
 	else
 	{
 		// No requested style.
-		FormatEx( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM '%s' WHERE style = 0 AND run = %i ORDER BY time LIMIT %i", g_szCurrentMap, iRun, amt );
+		FormatEx( g_szQuery_Small, sizeof( g_szQuery_Small ), "SELECT * FROM '%s' WHERE run = %i ORDER BY time LIMIT %i", g_szCurrentMap, iRun, RECORDS_PRINT_MAX );
 	}
 	
 	Handle hData = CreateArray( 2 );
@@ -63,7 +58,7 @@ stock bool DB_SaveClientRecord( int client, float flNewTime )
 		SQL_EscapeString( g_Database, szName, szName, sizeof( szName ) );
 		
 		// Insert new if we haven't beaten this one yet. Replace otherwise.
-		FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "INSERT OR REPLACE INTO '%s' (steamid, name, time, jumps, run, style, strafes) VALUES ('%s', '%s', %.3f, %i, %i, %i, %i)", g_szCurrentMap, szSteamID, szName, flNewTime, g_iClientJumpCount[client], run, style, g_iClientStrafeCount[client] );
+		FormatEx( g_szQuery_Big, sizeof( g_szQuery_Big ), "INSERT OR REPLACE INTO '%s' (steamid, name, time, jumps, run, style, strafes) VALUES ('%s', '%s', %.3f, %i, %i, %i, %i)", g_szCurrentMap, szSteamID, szName, flNewTime, g_nClientJumpCount[client], run, style, g_nClientStrafeCount[client] );
 		
 		SQL_TQuery( g_Database, Threaded_Empty, g_szQuery_Big, _, DBPrio_High );
 	}
@@ -349,7 +344,9 @@ stock void DB_InitializeMapZones()
 			
 				SQL_FieldNameToNum( hQuery, "smax2", field );
 				g_vecZoneMaxs[ZONE_START][2] = SQL_FetchFloat( hQuery, field );
-
+				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_START], g_vecZoneMaxs[ZONE_START] );
+				
 				g_bZoneExists[ZONE_START] = true;
 			}
 			else g_bZoneExists[ZONE_START] = false;
@@ -375,7 +372,9 @@ stock void DB_InitializeMapZones()
 			
 				SQL_FieldNameToNum( hQuery, "emax2", field );
 				g_vecZoneMaxs[ZONE_END][2] = SQL_FetchFloat( hQuery, field );
-
+				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_END], g_vecZoneMaxs[ZONE_END] );
+				
 				g_bZoneExists[ZONE_END] = true;
 			}
 			else g_bZoneExists[ZONE_END] = false;
@@ -403,6 +402,8 @@ stock void DB_InitializeMapZones()
 				SQL_FieldNameToNum( hQuery, "bl1max2", field );
 				g_vecZoneMaxs[ZONE_BLOCK_1][2] = SQL_FetchFloat( hQuery, field );
 				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_BLOCK_1], g_vecZoneMaxs[ZONE_BLOCK_1] );
+				
 				g_bZoneExists[ZONE_BLOCK_1] = true;
 			}
 			else g_bZoneExists[ZONE_BLOCK_1] = false;
@@ -428,6 +429,8 @@ stock void DB_InitializeMapZones()
 				
 				SQL_FieldNameToNum( hQuery, "bl2max2", field );
 				g_vecZoneMaxs[ZONE_BLOCK_2][2] = SQL_FetchFloat( hQuery, field );
+				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_BLOCK_2], g_vecZoneMaxs[ZONE_BLOCK_2] );
 				
 				g_bZoneExists[ZONE_BLOCK_2] = true;
 			}
@@ -455,7 +458,9 @@ stock void DB_InitializeMapZones()
 			
 				SQL_FieldNameToNum( hQuery, "bl3max2", field );
 				g_vecZoneMaxs[ZONE_BLOCK_3][2] = SQL_FetchFloat( hQuery, field );
-
+				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_BLOCK_3], g_vecZoneMaxs[ZONE_BLOCK_3] );
+				
 				g_bZoneExists[ZONE_BLOCK_3] = true;
 			}
 			else g_bZoneExists[ZONE_BLOCK_3] = false;
@@ -467,22 +472,24 @@ stock void DB_InitializeMapZones()
 			if ( !SQL_IsFieldNull( hQuery, field ) )
 			{
 				g_vecZoneMins[ZONE_BONUS_1_START][0] = SQL_FetchFloat( hQuery, field );
-
+				
 				SQL_FieldNameToNum( hQuery, "b1_smin1", field );
 				g_vecZoneMins[ZONE_BONUS_1_START][1] = SQL_FetchFloat( hQuery, field );
-			
+				
 				SQL_FieldNameToNum( hQuery, "b1_smin2", field );
 				g_vecZoneMins[ZONE_BONUS_1_START][2] = SQL_FetchFloat( hQuery, field );
-			
+				
 				SQL_FieldNameToNum( hQuery, "b1_smax0", field );
 				g_vecZoneMaxs[ZONE_BONUS_1_START][0] = SQL_FetchFloat( hQuery, field );
-			
+				
 				SQL_FieldNameToNum( hQuery, "b1_smax1", field );
 				g_vecZoneMaxs[ZONE_BONUS_1_START][1] = SQL_FetchFloat( hQuery, field );
-			
+				
 				SQL_FieldNameToNum( hQuery, "b1_smax2", field );
 				g_vecZoneMaxs[ZONE_BONUS_1_START][2] = SQL_FetchFloat( hQuery, field );
-
+				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_BONUS_1_START], g_vecZoneMaxs[ZONE_BONUS_1_START] );
+				
 				g_bZoneExists[ZONE_BONUS_1_START] = true;
 			}
 			else g_bZoneExists[ZONE_BONUS_1_START] = false;
@@ -508,7 +515,9 @@ stock void DB_InitializeMapZones()
 			
 				SQL_FieldNameToNum( hQuery, "b1_emax2", field );
 				g_vecZoneMaxs[ZONE_BONUS_1_END][2] = SQL_FetchFloat( hQuery, field );
-
+				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_BONUS_1_END], g_vecZoneMaxs[ZONE_BONUS_1_END] );
+				
 				g_bZoneExists[ZONE_BONUS_1_END] = true;
 			}
 			else g_bZoneExists[ZONE_BONUS_1_END] = false;
@@ -535,6 +544,8 @@ stock void DB_InitializeMapZones()
 				SQL_FieldNameToNum( hQuery, "b2_smax2", field );
 				g_vecZoneMaxs[ZONE_BONUS_2_START][2] = SQL_FetchFloat( hQuery, field );
 
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_BONUS_2_START], g_vecZoneMaxs[ZONE_BONUS_2_START] );
+				
 				g_bZoneExists[ZONE_BONUS_2_START] = true;
 			}
 			else g_bZoneExists[ZONE_BONUS_2_START] = false;
@@ -560,7 +571,9 @@ stock void DB_InitializeMapZones()
 			
 				SQL_FieldNameToNum( hQuery, "b2_emax2", field );
 				g_vecZoneMaxs[ZONE_BONUS_2_END][2] = SQL_FetchFloat( hQuery, field );
-
+				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_BONUS_2_END], g_vecZoneMaxs[ZONE_BONUS_2_END] );
+				
 				g_bZoneExists[ZONE_BONUS_2_END] = true;
 			}
 			else g_bZoneExists[ZONE_BONUS_2_END] = false;
@@ -588,7 +601,9 @@ stock void DB_InitializeMapZones()
 			
 				SQL_FieldNameToNum( hQuery, "fs1max2", field );
 				g_vecZoneMaxs[ZONE_FREESTYLE_1][2] = SQL_FetchFloat( hQuery, field );
-
+				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_FREESTYLE_1], g_vecZoneMaxs[ZONE_FREESTYLE_1] );
+				
 				g_bZoneExists[ZONE_FREESTYLE_1] = true;
 			}
 			else g_bZoneExists[ZONE_FREESTYLE_1] = false;
@@ -614,7 +629,9 @@ stock void DB_InitializeMapZones()
 				
 				SQL_FieldNameToNum( hQuery, "fs2max2", field );
 				g_vecZoneMaxs[ZONE_FREESTYLE_2][2] = SQL_FetchFloat( hQuery, field );
-
+				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_FREESTYLE_2], g_vecZoneMaxs[ZONE_FREESTYLE_2] );
+				
 				g_bZoneExists[ZONE_FREESTYLE_2] = true;
 			}
 			else g_bZoneExists[ZONE_FREESTYLE_2] = false;
@@ -640,7 +657,9 @@ stock void DB_InitializeMapZones()
 				
 				SQL_FieldNameToNum( hQuery, "fs3max2", field );
 				g_vecZoneMaxs[ZONE_FREESTYLE_3][2] = SQL_FetchFloat( hQuery, field );
-
+				
+				CorrectMinsMaxs( g_vecZoneMins[ZONE_FREESTYLE_3], g_vecZoneMaxs[ZONE_FREESTYLE_3] );
+				
 				g_bZoneExists[ZONE_FREESTYLE_3] = true;
 			}
 			else g_bZoneExists[ZONE_FREESTYLE_3] = false;

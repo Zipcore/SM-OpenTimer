@@ -1,9 +1,10 @@
 // Hide other players (doesn't work with bots?)
 /*public Action Event_ClientTransmit( int ent, int client )
 {
-	if ( !IsPlayerAlive( client ) ) return Plugin_Handled;
-	
-	return ( client != ent ) ? Plugin_Continue : Plugin_Handled;
+	return ( IsPlayerAlive( client )
+		&& g_fClientHideFlags[client] & HIDEHUD_PLAYERS
+		&& client != ent
+		) ? Plugin_Handled : Plugin_Continue;
 }*/
 
 // Tell the client to respawn!
@@ -41,6 +42,11 @@ public void Event_WeaponDropPost( int client, int weapon )
 		AcceptEntityInput( weapon, "Kill" );
 }
 
+/*public Action CS_OnCSWeaponDrop( int client, int wep )
+{
+	return Plugin_Continue;
+}*/
+
 // Set client ready for the map. Collision groups, bots, transparency, etc.
 public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
 {
@@ -73,6 +79,9 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 	
 	if ( !IsFakeClient( client ) )
 	{
+		// Make sure they didn't join the mimic team.
+		SetEntProp( client, Prop_Send, "m_iTeamNum", g_iPreferredTeam );
+		
 		SetEntProp( client, Prop_Data, "m_CollisionGroup", 2 ); // Disable player collisions.
 		SetEntityRenderColor( client, _, _, _, 128 );
 	}
@@ -83,6 +92,14 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 	}
 	
 	CreateTimer( 0.1, Timer_ClientSpawn, GetClientUserId( client ), TIMER_FLAG_NO_MAPCHANGE );
+}
+
+public Action Event_ClientTeam( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
+{
+	if ( GetEventInt( hEvent, "team" ) > CS_TEAM_SPECTATOR )
+	{
+		CreateTimer( 2.0, Timer_ClientJoinTeam, GetEventInt( hEvent, "userid" ), TIMER_FLAG_NO_MAPCHANGE );
+	}
 }
 
 // Continued from above event.
@@ -101,20 +118,20 @@ public Action Timer_ClientSpawn( Handle hTimer, any client )
 	
 	SetEntProp( client, Prop_Data, "m_nHitboxSet", 2 ); // Don't get damaged from weapons.
 	
+	// Hide guns so they are not just floating around
+	int wep;
+	for ( int i; i < 5; i++ ) // Slot count (5)
+		if ( ( wep = GetPlayerWeaponSlot( client, i ) ) > 0 )
+		{
+			SetEntityRenderMode( wep, RENDER_TRANSALPHA );
+			SetEntityRenderColor( wep, _, _, _, 0 );
+		}
+	
 	if ( IsFakeClient( client ) )
 	{
 #if defined RECORD
 		SetEntityGravity( client, 0.0 );
 		SetEntityMoveType( client, MOVETYPE_NOCLIP );
-		
-		// Also, hide their guns so they are not just floating around
-		int wep;
-		for ( int i; i < 5; i++ ) // Slot count (5)
-			if ( ( wep = GetPlayerWeaponSlot( client, i ) ) > 0 )
-			{
-				SetEntityRenderMode( wep, RENDER_TRANSALPHA );
-				SetEntityRenderColor( wep, _, _, _, 0 );
-			}
 #endif
 
 		return Plugin_Handled;
@@ -169,7 +186,6 @@ public Action Listener_Say( int client, const char[] szCommand, int argc )
 	if ( client == INVALID_INDEX || !IsClientInGame( client ) ) return Plugin_Continue;
 	
 	if ( BaseComm_IsClientGagged( client ) ) return Plugin_Handled;
-	
 	
 #if defined CHAT
 	static char szArg[131]; // MAX MESSAGE LENGTH (SayText) + QUOTES (?)
@@ -236,18 +252,20 @@ public void Event_TouchBlock( int trigger, int activator )
 			g_flClientWarning[activator] = GetEngineTime() + WARNING_INTERVAL;
 		}
 		
-		TeleportEntity( activator, g_vecSpawnPos[ g_iClientRun[activator] ], g_vecSpawnAngles[ g_iClientRun[activator] ], g_vecNull );
+		TeleportPlayerToStart( activator );
 	}
 }
 
-// Anti-doublestep
-public Action Listener_AntiDoublestep_On( int client, const char[] szCommand, int argc )
-{
-	g_bClientHoldingJump[client] = true;
-	return Plugin_Handled;
-}
-public Action Listener_AntiDoublestep_Off( int client, const char[] szCommand, int argc )
-{
-	g_bClientHoldingJump[client] = false;
-	return Plugin_Handled;
-} 
+#if defined ANTI_DOUBLESTEP
+	// Anti-doublestep
+	public Action Listener_AntiDoublestep_On( int client, const char[] szCommand, int argc )
+	{
+		g_bClientHoldingJump[client] = true;
+		return Plugin_Handled;
+	}
+	public Action Listener_AntiDoublestep_Off( int client, const char[] szCommand, int argc )
+	{
+		g_bClientHoldingJump[client] = false;
+		return Plugin_Handled;
+	}
+#endif
