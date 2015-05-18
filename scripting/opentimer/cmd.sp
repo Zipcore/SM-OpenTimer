@@ -3,9 +3,9 @@ public Action OnPlayerRunCmd(
 	int &buttons,
 	int &impulse, // Not used
 	float vel[3],
-	float angles[3],
+	float angles[3]/*,
 	int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, // Not used
-	int mouse[2] )
+	int mouse[2]*/ )
 {
 	if ( !IsPlayerAlive( client ) ) return Plugin_Continue;
 	
@@ -33,12 +33,10 @@ public Action OnPlayerRunCmd(
 					TeleportPlayerToStart( client );
 				}
 				
-				if ( g_flClientWarning[client] < GetEngineTime() )
+				if ( !IsSpamming( client ) )
 				{
-					PrintColorChat( client, client, CHAT_PREFIX ... "Potential cheat detected!" );
+					PRINTCHAT( client, client, CHAT_PREFIX ... "Potential cheat detected!" );
 					PrintToServer( CONSOLE_PREFIX ... "Potential cheat detected (%N)!", client );
-					
-					g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
 				}
 				
 				return Plugin_Handled;
@@ -63,6 +61,8 @@ public Action OnPlayerRunCmd(
 			}
 			case STYLE_REAL_HSW :
 			{
+				// Somehow I feel like I'm making this horribly complicated when in reality it's simple.
+				
 				// Not holding all keys.
 				if ( !( buttons & IN_BACK && buttons & IN_FORWARD && buttons & IN_MOVELEFT && buttons & IN_MOVERIGHT ) )
 				{
@@ -113,18 +113,16 @@ public Action OnPlayerRunCmd(
 			}
 		}
 		
-		if ( !g_bForbiddenCommands && ( buttons & IN_LEFT || buttons & IN_RIGHT ) )
+		if ( !g_bAllowLeftRight && ( buttons & IN_LEFT || buttons & IN_RIGHT ) )
 		{
 			if ( g_iClientState[client] == STATE_RUNNING )
 			{
 				TeleportPlayerToStart( client );
 			}
 			
-			if ( g_flClientWarning[client] < GetEngineTime() )
+			if ( !IsSpamming( client ) )
 			{
-				PrintColorChat( client, client, CHAT_PREFIX ... "\x03+left"...CLR_TEXT..." and \x03+right"...CLR_TEXT..." are not allowed!" );
-				
-				g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
+				PRINTCHAT( client, client, CHAT_PREFIX ... "\x03+left"...CLR_TEXT..." and \x03+right"...CLR_TEXT..." are not allowed!" );
 			}
 			
 			
@@ -157,7 +155,7 @@ public Action OnPlayerRunCmd(
 		}
 		
 		// Jump count stat
-		if ( fFlags & FL_ONGROUND && buttons & IN_JUMP )
+		if ( fFlags & FL_ONGROUND && buttons & IN_JUMP && g_iClientState[client] != STATE_END )
 			g_nClientJumpCount[client]++;
 		
 		
@@ -173,7 +171,6 @@ public Action OnPlayerRunCmd(
 		{
 			// Remove distracting buttons.
 			iFrame[FRAME_FLAGS] = ( buttons & IN_DUCK ) ? FRAMEFLAG_CROUCH : 0;
-			
 			
 			ArrayCopy( angles, iFrame[FRAME_ANGLES], 2 );
 			
@@ -274,14 +271,17 @@ public Action OnPlayerRunCmd(
 	//////////////
 	// PLAYBACK //
 	//////////////
+#if defined RECORD
 	if ( !g_bPlayback ) return Plugin_Handled;
 	
-#if defined RECORD
+	
 	if ( g_bClientMimicing[client] )
 	{
 		GetArrayArray( g_hRec[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_nClientTick[client], iFrame, view_as<int>FrameInfo );
 		
+		// Do buttons.
 		buttons = ( iFrame[FRAME_FLAGS] & FRAMEFLAG_CROUCH ) ? IN_DUCK : 0;
+		
 		vel = g_vecNull;
 		ArrayCopy( iFrame[FRAME_ANGLES], angles, 2 );
 		

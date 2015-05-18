@@ -4,6 +4,23 @@ Ignore me!
 Update log:
 ------------
 -------------
+	v1.4.5
+-------------
+	- CS:GO is now supported, kind of!
+		* There might still be some problems!
+		* Does not support custom chat colors. (Blame Valve)
+		
+	- Fixes and improvements
+		* Fixed a crash on player disconnect.
+		* Zone beams were re-done. They are now setup only once.
+		* You can now hide real players and bots through HUD menu.
+		* Plugin will now change mp_humanteam to make sure people don't join the bot team.
+		* Made some parts of the code simpler and easier to look at and read.
+		* Added 'sm_bonus_normalonlyrec'-cvar (def. 1)
+			* Do we allow only normal style to be recorded in bonuses? (Prevents mass bots.)
+		* Renamed 'sm_forbidden_commands' to 'sm_allow_leftright'
+
+-------------
 	v1.4.4
 -------------
 	- Fixes and improvements

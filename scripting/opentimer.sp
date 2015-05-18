@@ -5,7 +5,7 @@
 #include <basecomm> // To check if client is gagged.
 
 
-#define PLUGIN_VERSION	"1.4.4"
+#define PLUGIN_VERSION	"1.4.5"
 #define PLUGIN_AUTHOR	"Mehis"
 #define PLUGIN_NAME		"OpenTimer"
 #define PLUGIN_URL		"https://github.com/TotallyMehis/SM-OpenTimer"
@@ -13,7 +13,12 @@
 
 //	OPTIONS: Uncomment/comment things to change the plugin to your liking! Simply adding '//' (without quotation marks) in front of the line.
 // ------------------------------------------------------------------------------------------------------------------------------------------
+#define CSGO // Comment out for CSS.
+
 #define	RECORD // Comment out for no recording and record playback.
+
+
+// These are not tested with CS:GO!
 
 //#define VOTING // Comment out for no voting. NOTE: This overrides commands rtv and nominate.
 // Disabled by default because it overrides default commands. (rtv/nominate)
@@ -46,27 +51,60 @@
 #define RECORDS_PRINT_MAX 15 // Maximum records to print in the console. Def. 15
 
 
-// HEX color codes
+// HEX color codes (NOT SUPPORTED IN CSGO!!!)
 //
-// You have to put \x07{HEX CLR}
+//
+// You have to put \x07{HEX COLOR}
 // E.g \x07FFFFFF for white
 //
 // You can then put your own text after it:
 // \x07FFFFFFThis text is white!
-#define CLR_PURPLE		"\x07E71470"
-#define CLR_TEAL		"\x0766CCCC"
-#define CLR_GRAY		"\x07434343"
+#if defined CSGO
+	// CS:GO colors.
+	#define CLR_SPEC		"\x01"
+	#define CLR_SETTINGS	"\x02"
+	#define CLR_STYLE		"\x03"
+	
+	#define CLR_TEXT		"\x06"
 
-#define CLR_TEXT		"\x07FFFFFF" // Default text color.
+	#define CHAT_PREFIX		"\x01[\x07" ... PLUGIN_NAME ... "\x01] " ... CLR_TEXT
+#else
+	// CSS colors.
+	#define CLR_SPEC		"\x07E71470" // Purple
+	#define CLR_SETTINGS	"\x0766CCCC" // Teal
+	#define CLR_STYLE		"\x07434343" // Gray
 
-#define CHAT_PREFIX		"\x072F2F2F[\x07D01265" ... PLUGIN_NAME ... "\x072F2F2F] " ... CLR_TEXT
+	#define CLR_TEXT		"\x07FFFFFF" // Default text color. (White)
+
+	#define CHAT_PREFIX		"\x072F2F2F[\x07D01265" ... PLUGIN_NAME ... "\x072F2F2F] " ... CLR_TEXT
+#endif
 
 #define CONSOLE_PREFIX	"[" ... PLUGIN_NAME ... "] " // Used only for console/server.
 
 // Don't change things under this unless you know what you are doing!!
 // -------------------------------------------------------------------
 
+// Variadic preprocessor function doesn't actually require anything significant, it seems.
+#if defined CSGO
+	// V postfix means variadic (formatting).
+	#define PRINTCHATV(%0,%1,%2,%3) ( PrintToChat( %0, %2, %3 ) )
+	#define PRINTCHAT(%0,%1,%2) ( PrintToChat( %0, %2 ) )
+	
+	#define PRINTCHATALL(%0,%1,%2) ( PrintToChatAll( %2 ) )
+	#define PRINTCHATALLV(%0,%1,%2,%3) ( PrintToChatAll( %2, %3 ) )
+#else
+	#define PRINTCHATV(%0,%1,%2,%3) ( PrintColorChat( %0, %1, %2, %3 ) )
+	#define PRINTCHAT(%0,%1,%2) ( PrintColorChat( %0, %1, %2 ) )
+	
+	#define PRINTCHATALL(%0,%1,%2) ( PrintColorChatAll( %0, %1, %2 )  )
+	#define PRINTCHATALLV(%0,%1,%2,%3) ( PrintColorChatAll( %0, %1, %2, %3 ) )
+#endif
 
+#if defined CSGO
+	#define PREF_SECONDARY "weapon_hkp2000"
+#else
+	#define PREF_SECONDARY "weapon_usp"
+#endif
 
 // This has to be AFTER include files because not all natives are translated to 1.7!!!
 #pragma semicolon 1
@@ -113,12 +151,12 @@
 	
 	#define TICK_PRE_PLAYBLACK	-1
 	
-	//#define FRAMEFLAG_TELEPORT	( 1 << 0 )
 	#define FRAMEFLAG_CROUCH	( 1 << 0 )
-	
-	// Honestly, shooting isn't even needed since we don't record weapons in the first place.
-	//#define FRAMEFLAG_ATTACK1	( 1 << 1 )
-	//#define FRAMEFLAG_ATTACK2	( 1 << 2 )
+	#define FRAMEFLAG_PRIMARY	( 1 << 1 ) // When switching to specific slot.
+	#define FRAMEFLAG_SECONDARY	( 1 << 2 )
+	#define FRAMEFLAG_MELEE		( 1 << 3 )
+	#define FRAMEFLAG_ATTACK	( 1 << 4 )
+	#define FRAMEFLAG_ATTACK2	( 1 << 5 )
 	
 	#define MIN_REC_SIZE		100
 	
@@ -130,10 +168,11 @@
 ///////////////////
 #define HIDEHUD_HUD				( 1 << 0 )
 #define HIDEHUD_VM				( 1 << 1 )
-//#define HIDEHUD_PLAYERS			( 1 << 2 )
+#define HIDEHUD_PLAYERS			( 1 << 2 )
 #define HIDEHUD_TIMER			( 1 << 3 )
 #define HIDEHUD_SIDEINFO		( 1 << 4 )
 #define HIDEHUD_CHAT			( 1 << 5 )
+#define HIDEHUD_BOTS			( 1 << 6 )
 
 // HUD flags to hide specific objects.
 #define HIDE_FLAGS				3946
@@ -153,15 +192,13 @@
 #define TIME_INVALID			0.0
 
 #define TIMER_UPDATE_INTERVAL	0.1 // HUD Timer.
-#define ZONE_UPDATE_INTERVAL	3.0
+#define ZONE_UPDATE_INTERVAL	0.5
 #define ZONE_BUILD_INTERVAL		0.1
 #define ZONE_WIDTH				1.0
 #define ZONE_DEF_HEIGHT			128.0
 
 // Anti-spam and warning interval
 #define WARNING_INTERVAL		1.0
-
-#define SYNC_STRAFES			2
 
 // How many checkpoints can a player have?
 #define PRAC_MAX_SAVES			5
@@ -226,7 +263,7 @@ enum
 	NUM_RUNS
 };
 
-enum { NAME_LONG = 0, NAME_SHORT, MAX_NAMES };
+enum { NAME_LONG = 0, NAME_SHORT, NUM_NAMES };
 
 enum
 {
@@ -237,7 +274,7 @@ enum
 	STYLE_HSW,
 	STYLE_VEL,
 	
-	NUM_STYLES // 5
+	NUM_STYLES
 };
 
 enum
@@ -248,6 +285,19 @@ enum
 	
 	NUM_STRAFES
 };
+
+enum
+{
+	SLOT_PRIMARY = 0,
+	SLOT_SECONDARY,
+	SLOT_MELEE,
+	SLOT_GRENADE,
+	SLOT_BOMB,
+	
+	NUM_SLOTS // 6
+};
+
+//#define NUM_SLOTS_SAVED 3
 
 
 // Zones
@@ -355,23 +405,38 @@ char g_szZoneNames[NUM_ZONES][15] =
 	"Freestyle #1", "Freestyle #2", "Freestyle #3",
 	"Block #1", "Block #2", "Block #3"
 };
-char g_szRunName[MAX_NAMES][NUM_RUNS][9] =
+// The short versions are also used for directories. Do not use special characters!
+char g_szRunName[NUM_NAMES][NUM_RUNS][9] =
 {
 	{ "Main", "Bonus #1", "Bonus #2" },
 	{ "M", "B1", "B2" }
 };
-char g_szStyleName[MAX_NAMES][NUM_STYLES][14] =
+char g_szStyleName[NUM_NAMES][NUM_STYLES][14] =
 {
-	{ "Normal", "Sideways", "W-Only", "Real HSW", "Half-Sideways", "Vel-Cap" },
-	{ "N", "SW", "W", "RHSW", "HSW", "VEL" }
+	{ "Normal", "Sideways", "W-Only", "Real HSW", "Half-Sideways", "Vel-Cap" }, // "A/D-Only"
+	{ "N", "SW", "W", "RHSW", "HSW", "VEL" } // "A_D"
 };
-char g_szWinningSounds[][25] =
-{
-	"buttons/button16.wav", "bot/i_am_on_fire.wav",
-	"bot/its_a_party.wav", "bot/made_him_cry.wav",
-	"bot/this_is_my_house.wav", "bot/yea_baby.wav",
-	"bot/yesss.wav", "bot/yesss2.wav"
-};
+// First one is always the normal ending sound!
+#if defined CSGO
+	char g_szWinningSounds[][38] =
+	{
+		"buttons/button16.wav",
+		"player/vo/sas/onarollbrag13.wav",
+		"player/vo/sas/onarollbrag03.wav",
+		"player/vo/phoenix/onarollbrag11.wav",
+		"player/vo/anarchist/onarollbrag13.wav",
+		"player/vo/separatist/onarollbrag01.wav",
+		"player/vo/seal/onarollbrag08.wav"
+	};
+#else
+	char g_szWinningSounds[][25] =
+	{
+		"buttons/button16.wav", "bot/i_am_on_fire.wav",
+		"bot/its_a_party.wav", "bot/made_him_cry.wav",
+		"bot/this_is_my_house.wav", "bot/yea_baby.wav",
+		"bot/yesss.wav", "bot/yesss2.wav"
+	};
+#endif
 float g_vecNull[3] = { 0.0, 0.0, 0.0 };
 
 
@@ -384,6 +449,7 @@ ConVar g_ConVar_LeftRight;
 ConVar g_ConVar_AntiCheat_StrafeVel;
 #if defined RECORD
 	ConVar g_ConVar_SmoothPlayback;
+	ConVar g_ConVar_Bonus_NormalOnlyRec;
 #endif
 
 ConVar g_ConVar_Allow_SW;
@@ -396,7 +462,7 @@ ConVar g_ConVar_VelCap;
 
 // Settings (Convars)
 bool g_bPreSpeed = false;
-bool g_bForbiddenCommands = true;
+bool g_bAllowLeftRight = true;
 bool g_bAutoHop = true;
 bool g_bEZHop = true;
 bool g_bAntiCheat_StrafeVel = true;
@@ -410,13 +476,12 @@ float g_flVelCapSquared = 160000.0;
 // End of globals.
 // ------------------------
 
+#include "opentimer/stocks.sp"
 #if defined RECORD
 	#include "opentimer/file.sp"
 #endif
-
 #include "opentimer/cmd.sp"
 #include "opentimer/usermsg.sp"
-#include "opentimer/stocks.sp"
 #include "opentimer/database.sp"
 #include "opentimer/events.sp"
 #include "opentimer/commands.sp"
@@ -437,7 +502,9 @@ public void OnPluginStart()
 {
 	// HOOKS
 	HookEvent( "player_spawn", Event_ClientSpawn );
+#if !defined CSGO
 	HookEvent( "player_jump", Event_ClientJump );
+#endif
 	HookEvent( "player_team", Event_ClientTeam );
 	//HookEvent( "player_hurt", Event_ClientHurt );
 	HookEvent( "player_death", Event_ClientDeath );
@@ -528,6 +595,8 @@ public void OnPluginStart()
 	RegConsoleCmd( "sm_400", Command_Style_VelCap );
 	RegConsoleCmd( "sm_400vel", Command_Style_VelCap );
 	RegConsoleCmd( "sm_vel", Command_Style_VelCap );
+	RegConsoleCmd( "sm_velcap", Command_Style_VelCap );
+	RegConsoleCmd( "sm_vel-cap", Command_Style_VelCap );
 	RegConsoleCmd( "sm_v", Command_Style_VelCap );
 	
 	
@@ -608,12 +677,14 @@ public void OnPluginStart()
 	
 	g_ConVar_PreSpeed = CreateConVar( "sm_prespeed", "0", "Is prespeeding allowed in the starting zone?", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	
-	g_ConVar_LeftRight = CreateConVar( "sm_forbidden_commands", "1", "Is +left and +right allowed?", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
+	g_ConVar_LeftRight = CreateConVar( "sm_allow_leftright", "1", "Is +left and +right allowed?", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	
 	g_ConVar_AntiCheat_StrafeVel = CreateConVar( "sm_ac_strafevel", "1", "Does server check for inconsistencies in player's strafes? (anti-cheat)", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	
 #if defined RECORD
 	g_ConVar_SmoothPlayback = CreateConVar( "sm_smoothplayback", "1", "If false, playback movement will appear more responsive but choppy and teleporting will not be affected by ping.", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
+	
+	g_ConVar_Bonus_NormalOnlyRec = CreateConVar( "sm_bonus_normalonlyrec", "1", "Do we allow only normal style to be recorded in bonuses? (Prevents mass bots.)", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 #endif
 	
 	// STYLE CONVARS
@@ -627,7 +698,9 @@ public void OnPluginStart()
 	
 	
 	HookConVarChange( g_ConVar_AutoHop, Event_ConVar_AutoHop );
+#if !defined CSGO
 	HookConVarChange( g_ConVar_EZHop, Event_ConVar_EZHop );
+#endif
 	HookConVarChange( g_ConVar_PreSpeed, Event_ConVar_PreSpeed );
 	HookConVarChange( g_ConVar_LeftRight, Event_ConVar_LeftRight );
 	HookConVarChange( g_ConVar_AntiCheat_StrafeVel, Event_ConVar_AntiCheat_StrafeVel );
@@ -638,7 +711,6 @@ public void OnPluginStart()
 	HookConVarChange( g_ConVar_VelCap, Event_ConVar_VelCap );
 	
 	LoadTranslations( "common.phrases" ); // So FindTarget() can work.
-	
 	
 	DB_InitializeDatabase();
 }
@@ -660,7 +732,7 @@ public void Event_ConVar_PreSpeed( Handle hConVar, const char[] szOldValue, cons
 
 public void Event_ConVar_LeftRight( Handle hConVar, const char[] szOldValue, const char[] szNewValue )
 {
-	g_bForbiddenCommands = StringToInt( szNewValue ) ? true : false;
+	g_bAllowLeftRight = StringToInt( szNewValue ) ? true : false;
 }
 
 public void Event_ConVar_AntiCheat_StrafeVel( Handle hConVar, const char[] szOldValue, const char[] szNewValue )
@@ -755,7 +827,7 @@ public void OnMapStart()
 	g_bAutoHop = GetConVarBool( g_ConVar_AutoHop );
 	g_bEZHop = GetConVarBool( g_ConVar_EZHop );
 	g_bPreSpeed = GetConVarBool( g_ConVar_PreSpeed );
-	g_bForbiddenCommands = GetConVarBool( g_ConVar_LeftRight );
+	g_bAllowLeftRight = GetConVarBool( g_ConVar_LeftRight );
 	g_bAntiCheat_StrafeVel = GetConVarBool( g_ConVar_AntiCheat_StrafeVel );
 #if defined RECORD
 	g_bSmoothPlayback = GetConVarBool( g_ConVar_SmoothPlayback );
@@ -777,7 +849,20 @@ public void OnMapStart()
 
 public void OnClientDisconnect( int client )
 {
-	// Release client's vote or bot's record.
+	//SDKUnhook( client, SDKHook_OnTakeDamage, Event_ClientHurt );
+	//SDKUnhook( client, SDKHook_SetTransmit, Event_ClientTransmit );
+	//SDKUnhook( client, SDKHook_WeaponDropPost, Event_WeaponDropPost );
+	
+	PrintToServer( "Team num: %i", GetEntProp( client, Prop_Send, "m_iTeamNum" ) );
+	// Changing player's team with m_iTeamNum apparently causes crashes. (Something to do with player counts?)
+	// This will prevent it.
+	if ( GetEntProp( client, Prop_Send, "m_iTeamNum" ) == 0 )
+	{
+		SetEntProp( client, Prop_Send, "m_iTeamNum", CS_TEAM_CT );
+		SetEntProp( client, Prop_Send, "m_lifeState", 0 );
+		SetEntityMoveType( client, MOVETYPE_ISOMETRIC );
+	}
+		
 	
 #if defined RECORD
 	if ( IsFakeClient( client ) )
@@ -797,7 +882,10 @@ public void OnClientDisconnect( int client )
 		PrintToServer( CONSOLE_PREFIX ... "No players, disabling playback." );
 	}
 #endif
-
+	
+	//SDKUnhook( client, SDKHook_PostThinkPost, Event_PostThinkPost );
+	//SDKUnhook( client, SDKHook_WeaponSwitchPost, Event_WeaponSwitchPost );
+	
 #if defined VOTING
 	g_iClientVote[client] = -1;
 	CalcVotes();
@@ -814,7 +902,7 @@ public void OnClientPutInServer( int client )
 	
 	SDKHook( client, SDKHook_OnTakeDamage, Event_OnTakeDamage );
 	SDKHook( client, SDKHook_WeaponDropPost, Event_WeaponDropPost ); // No more weapon dropping.
-	
+	SDKHook( client, SDKHook_SetTransmit, Event_ClientTransmit ); // Has to be hooked to everybody(?)
 	
 #if defined RECORD
 	// Recording
@@ -837,9 +925,9 @@ public void OnClientPutInServer( int client )
 				// Does the playback even exist?
 				if ( g_hRec[run][style] == null || g_iRecTickMax[run][style] < 1 ) continue;
 				
-				AssignRecordToBot( client, run, style );
+				CS_SetClientClanTag( client, "REC*" );
 				
-				//if ( !IsPlayerAlive( client ) ) CS_RespawnPlayer( client );
+				AssignRecordToBot( client, run, style );
 				
 				SetEntProp( client, Prop_Data, "m_iFrags", 1337 );
 				SetEntProp( client, Prop_Data, "m_iDeaths", 1337 );
@@ -849,10 +937,10 @@ public void OnClientPutInServer( int client )
 		
 		return;
 	}
-#endif
 	
 	// Allow playback if there are players.
 	g_bPlayback = true;
+#endif
 	
 	// States
 	g_iClientState[client] = STATE_RUNNING;
@@ -874,7 +962,7 @@ public void OnClientPutInServer( int client )
 	g_flClientSync[client][STRAFE_LEFT] = 1.0;
 	g_flClientSync[client][STRAFE_RIGHT] = 1.0;
 	
-
+	
 	// Practicing
 	g_bIsClientPractising[client] = false;
 	
@@ -886,7 +974,7 @@ public void OnClientPutInServer( int client )
 	
 	g_iClientCurSave[client] = INVALID_CP;
 	
-
+	
 	// Misc.
 	g_iClientFOV[client] = 90;
 	g_fClientHideFlags[client] = 0;
@@ -898,7 +986,7 @@ public void OnClientPutInServer( int client )
 	CreateTimer( 5.0, Timer_Connected, GetClientUserId( client ), TIMER_FLAG_NO_MAPCHANGE );
 	
 	SDKHook( client, SDKHook_WeaponSwitchPost, Event_WeaponSwitchPost ); // FOV reset.
-	SDKHook( client, SDKHook_PreThinkPost, Event_PreThinkPost );
+	SDKHook( client, SDKHook_PostThinkPost, Event_PostThinkPost );
 	
 	// Get their desired FOV and other settings from DB.
 	DB_RetrieveClientData( client );
@@ -907,7 +995,7 @@ public void OnClientPutInServer( int client )
 // Used just here.
 enum { INSIDE_START = 0, INSIDE_END, NUM_INSIDE };
 
-public void Event_PreThinkPost( int client )
+public void Event_PostThinkPost( int client )
 {
 	// ---------------------------------------------------------
 	// Main component of the timer. Does everything, basically.
@@ -950,17 +1038,15 @@ public void Event_PreThinkPost( int client )
 		// This is basically just to remind admins that you can accidentally get a record.
 		if ( !g_bIsClientPractising[client] && GetEntityMoveType( client ) == MOVETYPE_NOCLIP )
 		{
-			PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03practice"...CLR_TEXT..." mode! Type \x03!prac"...CLR_TEXT..." again to toggle." );
+			PRINTCHAT( client, client, CHAT_PREFIX ... "You are now in \x03practice"...CLR_TEXT..." mode! Type \x03!prac"...CLR_TEXT..." again to toggle." );
 			g_bIsClientPractising[client] = true;
 		}
 		// No prespeeding.
 		else if ( !g_bPreSpeed && GetClientSpeed( client ) > MAX_PRESPEED && GetEntityMoveType( client ) != MOVETYPE_NOCLIP )
 		{
-			if ( g_flClientWarning[client] < GetEngineTime() )
+			if ( !IsSpamming( client ) )
 			{
-				PrintColorChat( client, client, CHAT_PREFIX ... "No prespeeding allowed! (\x03300spd"...CLR_TEXT...")" );
-				
-				g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
+				PRINTCHATV( client, client, CHAT_PREFIX ... "No prespeeding allowed! (\x03%.0fspd"...CLR_TEXT...")", MAX_PRESPEED );
 			}
 			
 			
@@ -977,9 +1063,12 @@ public void Event_PreThinkPost( int client )
 		
 		
 #if defined RECORD
-		// Start to record if we're not practising...
-		if ( !g_bIsClientPractising[client] )
+		// Start to record!
+		if ( !g_bIsClientPractising[client] &&
+			!( g_iClientRun[client] != RUN_MAIN && g_iClientStyle[client] != STYLE_NORMAL && GetConVarBool( g_ConVar_Bonus_NormalOnlyRec ) ) )
 		{
+			PrintToServer( "Started to record!" );
+			
 			g_nClientTick[client] = 0;
 			g_bClientRecording[client] = true;
 			
@@ -987,6 +1076,14 @@ public void Event_PreThinkPost( int client )
 			
 			GetClientEyeAngles( client, g_vecInitAng[client] );
 			GetClientAbsOrigin( client, g_vecInitPos[client] );
+		}
+		else
+		{
+			// Reset just in case.
+			g_bClientRecording[client] = false;
+			
+			delete g_hClientRecording[client];
+			g_hClientRecording[client] = null;
 		}
 #endif
 		g_iClientState[client] = STATE_RUNNING;
@@ -1000,6 +1097,7 @@ public void Event_PreThinkPost( int client )
 		if ( g_flClientStartTime[client] == TIME_INVALID ) return;
 		
 		if ( GetEntityMoveType( client ) == MOVETYPE_NOCLIP ) return;
+		
 		
 		g_iClientState[client] = STATE_END;
 		
@@ -1016,7 +1114,7 @@ public void Event_PreThinkPost( int client )
 			
 			if ( !DB_SaveClientRecord( client, flNewTime ) )
 			{
-				PrintColorChat( client, client, CHAT_PREFIX ... "Couldn't save your record and/or recording!" );
+				PRINTCHAT( client, client, CHAT_PREFIX ... "Couldn't save your record and/or recording!" );
 			}
 			
 #if defined RECORD
@@ -1024,6 +1122,9 @@ public void Event_PreThinkPost( int client )
 			{
 				g_nClientTick[client] = 0;
 				g_bClientRecording[client] = false;
+				
+				delete g_hClientRecording[client];
+				g_hClientRecording[client] = null;
 			}
 #endif
 		}
@@ -1069,7 +1170,7 @@ public void Event_PreThinkPost( int client )
 			
 			if ( g_nClientTick[client] >= RECORDING_MAX_LENGTH )
 			{
-				PrintColorChat( client, client, CHAT_PREFIX ... "Your time was too long to be recorded!" );
+				PRINTCHAT( client, client, CHAT_PREFIX ... "Your time was too long to be recorded!" );
 			}
 		}
 	}
@@ -1089,11 +1190,9 @@ stock void CheckFreestyle( int client )
 		return;
 	
 	
-	if ( g_flClientWarning[client] < GetEngineTime() )
+	if ( !IsSpamming( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "That key (combo) is not allowed in \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][ g_iClientStyle[client] ] );
-		
-		g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
+		PRINTCHATV( client, client, CHAT_PREFIX ... "That key (combo) is not allowed in \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][ g_iClientStyle[client] ] );
 	}
 	
 	
@@ -1251,6 +1350,7 @@ stock void DoMapStuff()
 		if ( FindEntityByClassname( -1, "info_player_counterterrorist" ) != -1 )
 		{
 			g_iPreferredTeam = CS_TEAM_CT;
+			ServerCommand( "mp_humanteam ct" );
 			
 #if defined RECORD
 			ServerCommand( "bot_join_team t" );
@@ -1259,6 +1359,7 @@ stock void DoMapStuff()
 		else
 		{
 			g_iPreferredTeam = CS_TEAM_T;
+			ServerCommand( "mp_humanteam t" );
 			
 #if defined RECORD
 			ServerCommand( "bot_join_team ct" );
@@ -1386,6 +1487,98 @@ stock bool CreateBlockZoneEntity( int zone )
 	return true;
 }
 
+stock void SetPlayerStyle( int client, int style )
+{
+	if ( !IsPlayerAlive( client ) )
+	{
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You must be alive to change your style!" );
+		return;
+	}
+	
+	if ( !IsStyleAllowed( style ) )
+	{
+		PRINTCHAT( client, client, CHAT_PREFIX ... "That style is not allowed!" );
+		return;
+	}
+
+	if ( IsSpamming( client ) )
+	{
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		return;
+	}
+	
+	
+	if ( g_bIsLoaded[ g_iClientRun[client] ] )
+	{
+		TeleportPlayerToStart( client );
+	}
+	
+	g_iClientStyle[client] = style;
+	
+	if ( style == STYLE_VEL )
+	{
+		PRINTCHATV( client, client, CHAT_PREFIX ... "Your style is now \x03%.0fvel"...CLR_TEXT..."!", g_flVelCap );
+	}
+	else
+	{
+		PRINTCHATV( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][style] );
+	}
+	
+	UpdateScoreboard( client );
+}
+
+stock void SetPlayerRun( int client, int run )
+{
+	if ( !IsPlayerAlive( client ) )
+	{
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You must be alive to change your run!" );
+		return;
+	}
+	
+	if ( !g_bIsLoaded[run] )
+	{
+		PRINTCHAT( client, client, CHAT_PREFIX ... "That run is not available!" );
+		return;
+	}
+	
+	if ( IsSpamming( client ) )
+	{
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		return;
+	}
+	
+	
+	g_iClientRun[client] = run;
+	
+	TeleportPlayerToStart( client );
+}
+
+stock bool IsSpamming( int client )
+{
+	if ( g_flClientWarning[client] > GetEngineTime() )
+	{
+		return true;
+	}
+	
+	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
+	
+	return false;
+}
+
+stock bool IsStyleAllowed( int style )
+{
+	switch( style )
+	{
+		case STYLE_HSW : if ( !GetConVarBool( g_ConVar_Allow_HSW ) ) return false;
+		case STYLE_REAL_HSW : if ( !GetConVarBool( g_ConVar_Allow_RHSW ) ) return false;
+		case STYLE_SIDEWAYS : if ( !GetConVarBool( g_ConVar_Allow_SW ) ) return false;
+		case STYLE_W : if ( !GetConVarBool( g_ConVar_Allow_W ) ) return false;
+		case STYLE_VEL : if ( !GetConVarBool( g_ConVar_Allow_Vel ) ) return false;
+	}
+	
+	return true;
+}
+
 // Used for players and other entities.
 stock bool IsInsideZone( int ent, int zone )
 {
@@ -1429,7 +1622,6 @@ stock void CopyRecordToPlayback( int client )
 	ArrayCopy( g_vecInitPos[client], g_vecInitRecPos[run][style], 3 );
 	ArrayCopy( g_vecInitAng[client], g_vecInitRecAng[run][style], 2 );
 	
-	
 	if ( g_iRec[run][style] != INVALID_INDEX )
 	{
 		// We already have a bot? Let's use it instead.
@@ -1462,9 +1654,6 @@ stock void AssignRecordToBot( int mimic, int run, int style )
 	char szFullName[MAX_NAME_LENGTH];
 	FormatEx( szFullName, sizeof( szFullName ), "%s [%s|%s] %s", szName, g_szRunName[NAME_SHORT][run], g_szStyleName[NAME_SHORT][style], szTime );
 	SetClientInfo( mimic, "name", szFullName );
-	
-	CS_SetClientClanTag( mimic, "REC*" );
-	
 	
 	// Teleport 'em to the starting position and start the countdown!
 	g_bClientMimicing[mimic] = false;

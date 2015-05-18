@@ -1,11 +1,31 @@
 // Hide other players (doesn't work with bots?)
-/*public Action Event_ClientTransmit( int ent, int client )
+public Action Event_ClientTransmit( int ent, int client )
 {
-	return ( IsPlayerAlive( client )
-		&& g_fClientHideFlags[client] & HIDEHUD_PLAYERS
-		&& client != ent
-		) ? Plugin_Handled : Plugin_Continue;
-}*/
+	if ( ( 1 > ent > MaxClients ) || client == ent ) return Plugin_Continue;
+	
+	
+	if ( !IsPlayerAlive( client ) )
+	{
+		if ( GetEntPropEnt( client, Prop_Data, "m_hObserverTarget" ) == ent )
+			return Plugin_Continue;
+	}
+	
+	
+	if ( !IsFakeClient( ent ) )
+	{
+		if ( g_fClientHideFlags[client] & HIDEHUD_PLAYERS )
+			return Plugin_Handled;
+		
+		return Plugin_Continue;
+	}
+	else
+	{
+		if ( g_fClientHideFlags[client] & HIDEHUD_BOTS )
+			return Plugin_Handled;
+		
+		return Plugin_Continue;
+	}
+}
 
 // Tell the client to respawn!
 public Action Event_ClientDeath( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
@@ -15,7 +35,7 @@ public Action Event_ClientDeath( Handle hEvent, const char[] szEvent, bool bDont
 	if ( ( client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) ) ) < 1 ) return;
 	
 	
-	PrintColorChat( client, client, CHAT_PREFIX ... "Type \x03!respawn"...CLR_TEXT..." to spawn again." );
+	PRINTCHAT( client, client, CHAT_PREFIX ... "Type \x03!respawn"...CLR_TEXT..." to spawn again." );
 }
 
 // Hide player name changes. Doesn't work.
@@ -47,6 +67,14 @@ public void Event_WeaponDropPost( int client, int weapon )
 	return Plugin_Continue;
 }*/
 
+public Action Event_ClientTeam( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
+{
+	if ( GetEventInt( hEvent, "team" ) > CS_TEAM_SPECTATOR )
+	{
+		CreateTimer( 2.0, Timer_ClientJoinTeam, GetEventInt( hEvent, "userid" ), TIMER_FLAG_NO_MAPCHANGE );
+	}
+}
+
 // Set client ready for the map. Collision groups, bots, transparency, etc.
 public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
 {
@@ -75,7 +103,10 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 	// I can't. I've lost the ability to can.
 	// BUT YOU LEARN SOMETHING EVERY DAY! :^)
 	// -----------------------------------------------------------------------------------------------
+#if !defined CSGO
 	SetEntityRenderMode( client, RENDER_TRANSALPHA );
+	SetEntityRenderColor( client, _, _, _, 128 );
+#endif
 	
 	if ( !IsFakeClient( client ) )
 	{
@@ -83,23 +114,13 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 		SetEntProp( client, Prop_Send, "m_iTeamNum", g_iPreferredTeam );
 		
 		SetEntProp( client, Prop_Data, "m_CollisionGroup", 2 ); // Disable player collisions.
-		SetEntityRenderColor( client, _, _, _, 128 );
 	}
 	else
 	{
 		SetEntProp( client, Prop_Data, "m_CollisionGroup", 1 ); // Same + no trigger collision for bots.
-		SetEntityRenderColor( client, _, _, _, 0 ); // The bot is still technically there, but you cannot see it.
 	}
 	
 	CreateTimer( 0.1, Timer_ClientSpawn, GetClientUserId( client ), TIMER_FLAG_NO_MAPCHANGE );
-}
-
-public Action Event_ClientTeam( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
-{
-	if ( GetEventInt( hEvent, "team" ) > CS_TEAM_SPECTATOR )
-	{
-		CreateTimer( 2.0, Timer_ClientJoinTeam, GetEventInt( hEvent, "userid" ), TIMER_FLAG_NO_MAPCHANGE );
-	}
 }
 
 // Continued from above event.
@@ -111,21 +132,51 @@ public Action Timer_ClientSpawn( Handle hTimer, any client )
 	// Hides deathnotices, health and weapon.
 	// Radar and crosshair stuff can be disabled client side. Disabling those server-side won't allow you to switch between weapons.
 	if ( g_fClientHideFlags[client] & HIDEHUD_HUD )
-		SetEntProp( client, Prop_Data, "m_iHideHUD", HIDE_FLAGS );
+		SetEntProp( client, Prop_Send, "m_iHideHUD", HIDE_FLAGS );
 	
 	if ( g_fClientHideFlags[client] & HIDEHUD_VM )
-		SetEntProp( client, Prop_Data, "m_bDrawViewmodel", 0 );
+		SetEntProp( client, Prop_Send, "m_bDrawViewmodel", 0 );
 	
 	SetEntProp( client, Prop_Data, "m_nHitboxSet", 2 ); // Don't get damaged from weapons.
 	
 	// Hide guns so they are not just floating around
 	int wep;
-	for ( int i; i < 5; i++ ) // Slot count (5)
+	for ( int i; i < NUM_SLOTS; i++ )
+	{
 		if ( ( wep = GetPlayerWeaponSlot( client, i ) ) > 0 )
+			HideEntity( wep );
+		
+		switch ( i )
 		{
-			SetEntityRenderMode( wep, RENDER_TRANSALPHA );
-			SetEntityRenderColor( wep, _, _, _, 0 );
+			case SLOT_BOMB :
+			{
+				if ( wep > 0 && IsValidEntity( wep ) )
+					RemoveEdict( wep );
+			}
+			case SLOT_SECONDARY :
+			{
+				if ( wep < 1 )
+				{
+					wep = GivePlayerItem( client, PREF_SECONDARY );
+					
+					if ( wep > 0 ) HideEntity( wep );
+					
+					continue;
+				}
+			}
+			case SLOT_MELEE :
+			{
+				if ( wep < 1 )
+				{
+					wep = GivePlayerItem( client, "weapon_knife" );
+					
+					if ( wep > 0 ) HideEntity( wep );
+					
+					continue;
+				}
+			}
 		}
+	}
 	
 	if ( IsFakeClient( client ) )
 	{
@@ -137,23 +188,24 @@ public Action Timer_ClientSpawn( Handle hTimer, any client )
 		return Plugin_Handled;
 	}
 	
-	
 	SetClientFOV( client, g_iClientFOV[client] );
 	
 	return Plugin_Handled;
 }
 
-
 ///////////
 // EZHOP //
 ///////////
-public Action Event_ClientJump( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
-{
-	if ( !g_bEZHop ) return;
-	
-	
-	SetEntPropFloat( GetClientOfUserId( GetEventInt( hEvent, "userid" ) ), Prop_Send, "m_flStamina", 0.0 );
-}
+#if !defined CSGO
+	// We assume that CS:GO servers will handle the stamina themselves.
+	public Action Event_ClientJump( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
+	{
+		if ( !g_bEZHop ) return;
+		
+		
+		SetEntPropFloat( GetClientOfUserId( GetEventInt( hEvent, "userid" ) ), Prop_Send, "m_flStamina", 0.0 );
+	}
+#endif
 
 /*public Action Event_ClientHurt( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
 {
@@ -171,7 +223,7 @@ public Action Event_ClientJump( Handle hEvent, const char[] szEvent, bool bDontB
 public Action Event_OnTakeDamage( int victim, int &attacker, int &inflictor, float &flDamage, int &fDamage)
 {
 	if ( g_bEZHop ) return Plugin_Handled;
-	
+
 	flDamage = 0.0;
 	return Plugin_Changed;
 }
@@ -207,7 +259,7 @@ public Action Listener_Say( int client, const char[] szCommand, int argc )
 	
 	if ( !IsPlayerAlive( client ) )
 	{
-		PrintColorChatAll( client, true, CLR_TEXT ... "["...CLR_PURPLE..."SPEC"...CLR_TEXT..."] \x03%N\x01: "...CLR_TEXT..."%s", client, szArg );
+		PrintColorChatAll( client, true, CLR_TEXT ... "["...CLR_SPEC..."SPEC"...CLR_TEXT..."] \x03%N\x01: "...CLR_TEXT..."%s", client, szArg );
 	}
 	else
 	{
@@ -245,11 +297,9 @@ public void Event_TouchBlock( int trigger, int activator )
 	
 	if ( IsClientInGame( activator ) )
 	{
-		if ( g_flClientWarning[activator] < GetEngineTime() )
+		if ( IsSpamming( activator ) )
 		{
-			PrintColorChat( activator, activator, CHAT_PREFIX ... "You are not allowed to go there!" );
-			
-			g_flClientWarning[activator] = GetEngineTime() + WARNING_INTERVAL;
+			PRINTCHAT( activator, activator, CHAT_PREFIX ... "You are not allowed to go there!" );
 		}
 		
 		TeleportPlayerToStart( activator );

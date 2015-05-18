@@ -2,7 +2,7 @@ public Action Command_Version( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	PrintColorChat( client, client, CHAT_PREFIX ... "Running version \x03" ... PLUGIN_VERSION...CLR_TEXT..." made by \x03" ... PLUGIN_AUTHOR...CLR_TEXT..."." );
+	PRINTCHAT( client, client, CHAT_PREFIX ... "Running version \x03" ... PLUGIN_VERSION...CLR_TEXT..." made by \x03" ... PLUGIN_AUTHOR...CLR_TEXT..."." );
 	
 	return Plugin_Handled;
 }
@@ -11,13 +11,11 @@ public Action Command_Help( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
+	if ( IsSpamming( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 		return Plugin_Handled;
 	}
-	
-	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
 	
 	
 	PrintToConsole( client, "--------------------" );
@@ -65,7 +63,7 @@ public Action Command_Help( int client, int args )
 	PrintToConsole( client, "!deletezone - Delete a specific zone." );
 	PrintToConsole( client, "--------------------" );
 	
-	PrintColorChat( client, client, CHAT_PREFIX ... "Printed all used commands to your console!" );
+	PRINTCHAT( client, client, CHAT_PREFIX ... "Printed all used commands to your console!" );
 	
 	return Plugin_Handled;
 }
@@ -75,13 +73,11 @@ public Action Command_Help( int client, int args )
 	{
 		if ( client == INVALID_INDEX ) return Plugin_Handled;
 		
-		if ( g_flClientWarning[client] > GetEngineTime() )
+		if ( IsSpamming( client ) )
 		{
-			PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+			PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 			return Plugin_Handled;
 		}
-		
-		g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
 		
 		
 		ShowMOTDPanel( client, "Doublestep Info", "For players that use client-side autobhop and suffer from doublestepping (non-perfect jumps):\n\nBind your hold key to \'+ds\' to disable doublestepping completely.", MOTDPANEL_TYPE_TEXT );
@@ -94,13 +90,11 @@ public Action Command_Spawn( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
+	if ( IsSpamming( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 		return Plugin_Handled;
 	}
-	
-	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
 	
 	
 	if ( GetClientTeam( client ) == CS_TEAM_SPECTATOR )
@@ -139,7 +133,7 @@ public Action Command_Spectate( int client, int args )
 		if ( target < 1 || target > MaxClients || !IsClientInGame( target ) || !IsPlayerAlive( client ) )
 		{
 			ChangeClientTeam( client, CS_TEAM_SPECTATOR );
-			PrintColorChat( client, client, CHAT_PREFIX ... "Couldn't find the player you were looking for." );
+			PRINTCHAT( client, client, CHAT_PREFIX ... "Couldn't find the player you were looking for." );
 			
 			return Plugin_Handled;
 		}
@@ -169,27 +163,27 @@ public Action Command_FieldOfView( int client, int args )
 		
 		if ( fov > 150 )
 		{
-			PrintColorChat( client, client, CHAT_PREFIX ... "Your desired field of view is too damn high! Max. 150" );	
+			PRINTCHAT( client, client, CHAT_PREFIX ... "Your desired field of view is too damn high! Max. 150" );	
 			return Plugin_Handled;
 		}
 		else if ( fov < 70 )
 		{
-			PrintColorChat( client, client, CHAT_PREFIX ... "Your desired field of view is too low! Min. 70" );
+			PRINTCHAT( client, client, CHAT_PREFIX ... "Your desired field of view is too low! Min. 70" );
 			return Plugin_Handled;
 		}
 		
 		
-		PrintColorChat( client, client, CHAT_PREFIX ... "Your field of view is now \x03%i"...CLR_TEXT..."!", fov );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Your field of view is now \x03%i"...CLR_TEXT..."!", fov );
 	
 		SetClientFOV( client, fov );
 		g_iClientFOV[client] = fov;
 		
 		
 		if ( !DB_SaveClientData( client ) )
-			PrintColorChat( client, client, CHAT_PREFIX ... "Couldn't save your option to database!" );
+			PRINTCHAT( client, client, CHAT_PREFIX ... "Couldn't save your option to database!" );
 	}
 	else
-		PrintColorChat( client, client, CHAT_PREFIX ... "Usage: sm_fov <number> (value between 70 and 150)" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Usage: sm_fov <number> (value between 70 and 150)" );
 	
 	return Plugin_Handled;
 }
@@ -198,17 +192,15 @@ public Action Command_RecordsMenu( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
+	if ( IsSpamming( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 		return Plugin_Handled;
 	}
 	
-	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
-	
 	if ( !g_bIsLoaded[RUN_MAIN] )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "This map doesn't have zones! No records can be found." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "This map doesn't have zones! No records can be found." );
 		return Plugin_Handled;
 	}
 	
@@ -224,7 +216,7 @@ public Action Command_RecordsPrint( int client, int args )
 	
 	if ( !g_bIsLoaded[RUN_MAIN] )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "This map doesn't have zones! No records can be found." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "This map doesn't have zones! No records can be found." );
 		return Plugin_Handled;
 	}
 	
@@ -242,7 +234,7 @@ public Action Command_RecordsPrint( int client, int args )
 		{
 			if ( !g_bZoneExists[RUN_BONUS_1] )
 			{
-				PrintColorChat( client, client, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." records do not exist!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
+				PRINTCHATV( client, client, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." records do not exist!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
 				return Plugin_Handled;
 			}
 			
@@ -252,7 +244,7 @@ public Action Command_RecordsPrint( int client, int args )
 		{
 			if ( !g_bZoneExists[RUN_BONUS_2] )
 			{
-				PrintColorChat( client, client, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." records do not exist!", g_szRunName[NAME_LONG][RUN_BONUS_2] );
+				PRINTCHATV( client, client, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." records do not exist!", g_szRunName[NAME_LONG][RUN_BONUS_2] );
 				return Plugin_Handled;
 			}
 			
@@ -283,32 +275,9 @@ public Action Command_Style_Normal( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Unable to comply." );
-		return Plugin_Handled;
-	}
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
-		return Plugin_Handled;
-	}
+	SetPlayerStyle( client, STYLE_NORMAL );
 	
-	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
-	
-	
-	if ( IsPlayerAlive( client ) )
-	{
-		TeleportPlayerToStart( client );
-		g_iClientStyle[client] = STYLE_NORMAL;
-		
-		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][STYLE_NORMAL] );
-		
-		UpdateScoreboard( client );
-	}
-	else PrintColorChat( client, client, CHAT_PREFIX ... "You must be alive to change your style!" );
-		
 	return Plugin_Handled;
 }
 
@@ -316,36 +285,9 @@ public Action Command_Style_Sideways( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Unable to comply." );
-		return Plugin_Handled;
-	}
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
-		return Plugin_Handled;
-	}
+	SetPlayerStyle( client, STYLE_SIDEWAYS );
 	
-	if ( !GetConVarBool( g_ConVar_Allow_SW ) )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "That mode is not allowed!" );
-		return Plugin_Handled;
-	}
-	
-	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
-	
-	
-	if ( IsPlayerAlive( client ) )
-	{
-		TeleportPlayerToStart( client );
-		g_iClientStyle[client] = STYLE_SIDEWAYS;
-		
-		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][STYLE_SIDEWAYS] );
-	}
-	else PrintColorChat( client, client, CHAT_PREFIX ... "You must be alive to change your style!" );
-		
 	return Plugin_Handled;
 }
 
@@ -353,37 +295,8 @@ public Action Command_Style_W( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Unable to comply." );
-		return Plugin_Handled;
-	}
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
-		return Plugin_Handled;
-	}
-	
-	if ( !GetConVarBool( g_ConVar_Allow_W ) )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "That mode is not allowed!" );
-		return Plugin_Handled;
-	}
-	
-	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
-	
-	
-	if ( IsPlayerAlive( client ) )
-	{
-		TeleportPlayerToStart( client );
-		g_iClientStyle[client] = STYLE_W;
-		
-		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][STYLE_W] );
-		
-		UpdateScoreboard( client );
-	}
-	else PrintColorChat( client, client, CHAT_PREFIX ... "You must be alive to change your style!" );
+	SetPlayerStyle( client, STYLE_W );
 
 	return Plugin_Handled;
 }
@@ -392,37 +305,8 @@ public Action Command_Style_HSW( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Unable to comply." );
-		return Plugin_Handled;
-	}
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
-		return Plugin_Handled;
-	}
-	
-	if ( !GetConVarBool( g_ConVar_Allow_HSW ) )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "That mode is not allowed!" );
-		return Plugin_Handled;
-	}
-	
-	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
-	
-	
-	if ( IsPlayerAlive( client ) )
-	{
-		TeleportPlayerToStart( client );
-		g_iClientStyle[client] = STYLE_HSW;
-		
-		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][STYLE_HSW] );
-		
-		UpdateScoreboard( client );
-	}
-	else PrintColorChat( client, client, CHAT_PREFIX ... "You must be alive to change your style!" );
+	SetPlayerStyle( client, STYLE_HSW );
 
 	return Plugin_Handled;
 }
@@ -431,37 +315,8 @@ public Action Command_Style_RealHSW( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Unable to comply." );
-		return Plugin_Handled;
-	}
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
-		return Plugin_Handled;
-	}
-	
-	if ( !GetConVarBool( g_ConVar_Allow_RHSW ) )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "That mode is not allowed!" );
-		return Plugin_Handled;
-	}
-	
-	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
-	
-	
-	if ( IsPlayerAlive( client ) )
-	{
-		TeleportPlayerToStart( client );
-		g_iClientStyle[client] = STYLE_REAL_HSW;
-		
-		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][STYLE_REAL_HSW] );
-		
-		UpdateScoreboard( client );
-	}
-	else PrintColorChat( client, client, CHAT_PREFIX ... "You must be alive to change your style!" );
+	SetPlayerStyle( client, STYLE_REAL_HSW );
 
 	return Plugin_Handled;
 }
@@ -470,38 +325,9 @@ public Action Command_Style_VelCap( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Unable to comply." );
-		return Plugin_Handled;
-	}
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
-		return Plugin_Handled;
-	}
+	SetPlayerStyle( client, STYLE_VEL );
 	
-	if ( !GetConVarBool( g_ConVar_Allow_Vel ) )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "That mode is not allowed!" );
-		return Plugin_Handled;
-	}
-	
-	g_flClientWarning[client] = GetEngineTime() + WARNING_INTERVAL;
-	
-	
-	if ( IsPlayerAlive( client ) )
-	{
-		TeleportPlayerToStart( client );
-		g_iClientStyle[client] = STYLE_VEL;
-		
-		PrintColorChat( client, client, CHAT_PREFIX ... "Your style is now \x03%.0fvel"...CLR_TEXT..."!", g_flVelCap );
-		
-		UpdateScoreboard( client );
-	}
-	else PrintColorChat( client, client, CHAT_PREFIX ... "You must be alive to change your style!" );
-
 	return Plugin_Handled;
 }
 
@@ -511,19 +337,13 @@ public Action Command_Practise( int client, int args )
 	
 	if ( !IsPlayerAlive( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "You must be alive to use this command!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You must be alive to use this command!" );
 		return Plugin_Handled;
 	}
 	
-	if ( !g_bIsLoaded[RUN_MAIN] )
+	if ( IsSpamming( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "This map doesn't have records enabled!" );
-		return Plugin_Handled;
-	}
-	
-	if ( g_flClientWarning[client] > GetEngineTime() )
-	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 		return Plugin_Handled;
 	}
 	
@@ -532,11 +352,17 @@ public Action Command_Practise( int client, int args )
 	
 	if ( g_bIsClientPractising[client] )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "You're now in \x03practice"...CLR_TEXT..." mode! Type \x03!prac"...CLR_TEXT..." to toggle." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You're now in \x03practice"...CLR_TEXT..." mode! Type \x03!prac"...CLR_TEXT..." to toggle." );
 	}
 	else
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "You're now in \x03normal"...CLR_TEXT..." running mode!" );
+		if ( !g_bIsLoaded[ g_iClientRun[client] ] )
+		{
+			PRINTCHAT( client, client, CHAT_PREFIX ... "Cannot set your mode back to practice!" );
+			return Plugin_Handled;
+		}
+		
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You're now in \x03normal"...CLR_TEXT..." running mode!" );
 		
 		TeleportPlayerToStart( client );
 		
@@ -562,13 +388,13 @@ public Action Command_Practise_SavePoint( int client, int args )
 	
 	if ( !g_bIsClientPractising[client] )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "You have to be in \x03practice"...CLR_TEXT..." mode! (\x03!prac"...CLR_TEXT...")" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You have to be in \x03practice"...CLR_TEXT..." mode! (\x03!prac"...CLR_TEXT...")" );
 		return Plugin_Handled;
 	}
 	
 	if ( !IsPlayerAlive( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "You must be alive to use this command!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You must be alive to use this command!" );
 		return Plugin_Handled;
 	}
 	
@@ -587,7 +413,7 @@ public Action Command_Practise_SavePoint( int client, int args )
 	GetClientAbsOrigin( client, g_vecClientSavePos[client][ g_iClientCurSave[client] ] );
 	GetEntPropVector( client, Prop_Data, "m_vecAbsVelocity", g_vecClientSaveVel[client][ g_iClientCurSave[client] ] );
 	
-	PrintColorChat( client, client, CHAT_PREFIX ... "Saved location!" );
+	PRINTCHAT( client, client, CHAT_PREFIX ... "Saved location!" );
 	
 	return Plugin_Handled;
 }
@@ -598,19 +424,19 @@ public Action Command_Practise_GotoLastPoint( int client, int args )
 	
 	if ( !g_bIsClientPractising[client] )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "You have to be in \x03practice"...CLR_TEXT..." mode! (\x03!prac"...CLR_TEXT...")" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You have to be in \x03practice"...CLR_TEXT..." mode! (\x03!prac"...CLR_TEXT...")" );
 		return Plugin_Handled;
 	}
 	
 	if ( !IsPlayerAlive( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "You must be alive to use this command!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You must be alive to use this command!" );
 		return Plugin_Handled;
 	}
 	
 	if ( g_iClientCurSave[client] == -1 || g_flClientSaveDif[client][ g_iClientCurSave[client] ] == TIME_INVALID )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "You must save a location first! (\x03!save"...CLR_TEXT...")" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You must save a location first! (\x03!save"...CLR_TEXT...")" );
 		return Plugin_Handled;
 	}
 	
@@ -629,13 +455,13 @@ public Action Command_Practise_Noclip( int client, int args )
 	
 	if ( !IsPlayerAlive( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "You must be alive to use this command!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "You must be alive to use this command!" );
 		return Plugin_Handled;
 	}
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
+	if ( IsSpamming( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 		return Plugin_Handled;
 	}
 	
@@ -646,7 +472,7 @@ public Action Command_Practise_Noclip( int client, int args )
 		{
 			g_bIsClientPractising[client] = true;
 			
-			PrintColorChat( client, client, CHAT_PREFIX ... "You're now in \x03practice"...CLR_TEXT..." mode! Type \x03!prac"...CLR_TEXT..." to toggle." );
+			PRINTCHAT( client, client, CHAT_PREFIX ... "You're now in \x03practice"...CLR_TEXT..." mode! Type \x03!prac"...CLR_TEXT..." to toggle." );
 		}
 		
 		SetEntityMoveType( client, MOVETYPE_NOCLIP );
@@ -660,9 +486,9 @@ public Action Command_Run_Bonus( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
+	if ( IsSpamming( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 		return Plugin_Handled;
 	}
 	
@@ -671,7 +497,7 @@ public Action Command_Run_Bonus( int client, int args )
 	{
 		if ( !g_bIsLoaded[RUN_BONUS_1] )
 		{
-			PrintColorChat( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
+			PRINTCHATV( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
 			return Plugin_Handled;
 		}
 	
@@ -681,7 +507,7 @@ public Action Command_Run_Bonus( int client, int args )
 		TeleportPlayerToStart( client );
 		UpdateScoreboard( client );
 		
-		PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."! Use \x03!main"...CLR_TEXT..." to go back.", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
+		PRINTCHATV( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."! Use \x03!main"...CLR_TEXT..." to go back.", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
 		return Plugin_Handled;
 	}
 	
@@ -692,7 +518,7 @@ public Action Command_Run_Bonus( int client, int args )
 	{
 		if ( !g_bIsLoaded[RUN_BONUS_1] )
 		{
-			PrintColorChat( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
+			PRINTCHATV( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
 			return Plugin_Handled;
 		}
 		
@@ -702,13 +528,13 @@ public Action Command_Run_Bonus( int client, int args )
 		TeleportPlayerToStart( client );
 		UpdateScoreboard( client );
 		
-		PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."! Use \x03!main"...CLR_TEXT..." to go back.", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
+		PRINTCHATV( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."! Use \x03!main"...CLR_TEXT..." to go back.", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
 	}
 	else if ( szArg[0] == '2' )
 	{
 		if ( !g_bIsLoaded[RUN_BONUS_2] )
 		{
-			PrintColorChat( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ RUN_BONUS_2 ] );
+			PRINTCHATV( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ RUN_BONUS_2 ] );
 			return Plugin_Handled;
 		}
 		
@@ -718,7 +544,7 @@ public Action Command_Run_Bonus( int client, int args )
 		TeleportPlayerToStart( client );
 		UpdateScoreboard( client );
 		
-		PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."! Use \x03!main"...CLR_TEXT..." to go back.", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
+		PRINTCHATV( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."! Use \x03!main"...CLR_TEXT..." to go back.", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
 	}
 	
 	return Plugin_Handled;
@@ -730,13 +556,13 @@ public Action Command_Run_Main( int client, int args )
 	
 	if ( !g_bIsLoaded[RUN_MAIN] )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][RUN_MAIN] );
+		PRINTCHATV( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][RUN_MAIN] );
 		return Plugin_Handled;
 	}
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
+	if ( IsSpamming( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 		return Plugin_Handled;
 	}
 	
@@ -746,7 +572,7 @@ public Action Command_Run_Main( int client, int args )
 	TeleportPlayerToStart( client );
 	UpdateScoreboard( client );
 	
-	PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
+	PRINTCHATV( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
 	
 	return Plugin_Handled;
 }
@@ -757,13 +583,13 @@ public Action Command_Run_Bonus_1( int client, int args )
 	
 	if ( !g_bIsLoaded[RUN_BONUS_1] )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
+		PRINTCHATV( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
 		return Plugin_Handled;
 	}
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
+	if ( IsSpamming( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 		return Plugin_Handled;
 	}
 	
@@ -773,7 +599,7 @@ public Action Command_Run_Bonus_1( int client, int args )
 	TeleportPlayerToStart( client );
 	UpdateScoreboard( client );
 	
-	PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
+	PRINTCHATV( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
 	
 	return Plugin_Handled;
 }
@@ -784,13 +610,13 @@ public Action Command_Run_Bonus_2( int client, int args )
 	
 	if ( !g_bIsLoaded[RUN_BONUS_2] )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][RUN_BONUS_2] );
+		PRINTCHATV( client, client, CHAT_PREFIX ... "This map doesn't have \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][RUN_BONUS_2] );
 		return Plugin_Handled;
 	}
 	
-	if ( g_flClientWarning[client] > GetEngineTime() )
+	if ( IsSpamming( client ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 		return Plugin_Handled;
 	}
 	
@@ -800,7 +626,7 @@ public Action Command_Run_Bonus_2( int client, int args )
 	TeleportPlayerToStart( client );
 	UpdateScoreboard( client );
 	
-	PrintColorChat( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
+	PRINTCHATV( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
 	
 	return Plugin_Handled;
 }

@@ -32,14 +32,14 @@ public Action Timer_Connected( Handle hTimer, any client )
 		}
 		
 		// ", Auto, EZHop" - [14]
-		PrintColorChat( client, client, "%sServer settings: %.0ftick, %iaa%s.", CLR_TEAL, 1 / GetTickInterval(), GetConVarInt( g_ConVar_AirAccelerate ), szTxt );
+		PRINTCHATV( client, client, CLR_SETTINGS ... "Server settings: %.0ftick, %iaa%s.", 1 / GetTickInterval(), GetConVarInt( g_ConVar_AirAccelerate ), szTxt );
 	}
 	
-	PrintColorChat( client, client, CHAT_PREFIX ... "Type \x03!commands"...CLR_TEXT..." for more info." );
+	PRINTCHAT( client, client, CHAT_PREFIX ... "Type \x03!commands"...CLR_TEXT..." for more info." );
 	
 	if ( !g_bIsLoaded[RUN_MAIN] )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "No records are available for this map!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "No records are available for this map!" );
 	}
 	
 	return Plugin_Handled;
@@ -75,42 +75,58 @@ public Action Timer_HudTimer( Handle hTimer )
 		}
 		
 		// Side info
+		// Does not work in CS:GO.
+#if !defined CSGO
 		if ( !( g_fClientHideFlags[client] & HIDEHUD_SIDEINFO ) )
 		{
 			ShowKeyHintText( client, target );
 		}
+#endif
 		
 		if ( !( g_fClientHideFlags[client] & HIDEHUD_TIMER ) )
 		{
+#if defined RECORD
 			if ( IsFakeClient( target ) )
 			{
-				// Replay bot
-				
+#if defined CSGO
+				PrintHintText( client, "Record Bot [%s|%s]\nName: %s\nSpeed: %4.0f",
+					g_szRunName[NAME_LONG][ g_iClientRun[target] ],
+					g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
+					g_szRecName[ g_iClientRun[target] ][ g_iClientStyle[target] ],
+					GetClientSpeed( target ) );
+#else // CSGO
 				PrintHintText( client, "Record Bot\n[%s|%s]\n \nSpeed\n%.0f",
 					g_szRunName[NAME_LONG][ g_iClientRun[target] ],
 					g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
-					/*g_nClientTick[target] / float( g_iRecTickMax[ g_iClientRun[target] ][ g_iClientStyle[target] ] ) * 100.0*/
 					GetClientSpeed( target ) );
-					
+#endif // CSGO
 				continue;
 			}
-			
+#endif // RECORD
+
 			if ( !g_bIsLoaded[ g_iClientRun[client] ] )
 			{
 				// No zones were found.
+#if defined CSGO
+				PrintHintText( client, "Speed: %4.0f", GetClientSpeed( target ) );
+#else
 				PrintHintText( client, "Speed\n%.0f", GetClientSpeed( target ) );
+#endif
 				continue;
 			}
 			
 			if ( g_iClientState[target] == STATE_START )
 			{
 				// We are in the start zone.
+#if defined CSGO
+				PrintHintText( client, "Starting Zone\tSpeed: %4.0f", GetClientSpeed( target ) );
+#else
 				PrintHintText( client, "Starting Zone\n \nSpeed\n%.0f", GetClientSpeed( target ) );
+#endif
 				continue;
 			}
 			
 			static float flSeconds;
-			static float flBestSeconds;
 			
 			if ( g_iClientState[target] == STATE_END && g_flClientFinishTime[target] != TIME_INVALID ) 
 			{
@@ -126,6 +142,17 @@ public Action Timer_HudTimer( Handle hTimer )
 			static char szMyTime[SIZE_TIME_HINT];
 			FormatSeconds( flSeconds, szMyTime, sizeof( szMyTime ), FORMAT_DESISECONDS );
 			
+#if defined CSGO
+			// "Bonus #2 (P)	"
+			PrintHintText( client, "%s\t\tSpeed: %4.0f\n%s\t\tL Sync: %.1f%s\nJumps: %04i\tR Sync: %.1f",
+				szMyTime,
+				GetClientSpeed( target ),
+				g_szRunName[NAME_LONG][ g_iClientRun[ target ] ],
+				g_flClientSync[target][STRAFE_LEFT] * 100.0,
+				( g_bIsClientPractising[target] ) ? " (P)" : "", // Practice mode warning
+				g_nClientJumpCount[target],
+				g_flClientSync[target][STRAFE_RIGHT] * 100.0 );
+#else
 			// We don't have a map best time! We don't need to show anything else.
 			if ( g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ] <= TIME_INVALID )
 			{
@@ -138,6 +165,7 @@ public Action Timer_HudTimer( Handle hTimer )
 			
 			
 			int prefix = '-';
+			static float flBestSeconds;
 			
 			if ( g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ] > flSeconds )
 			{
@@ -161,6 +189,7 @@ public Action Timer_HudTimer( Handle hTimer )
 				prefix,
 				szBestTime,
 				GetClientSpeed( target ) );
+#endif
 		}
 	}
 	
@@ -210,7 +239,8 @@ public Action Timer_DoMapStuff( Handle hTimer )
 #endif
 }
 
-static const int BeamColor[NUM_ZONES][4] = {
+static const int BeamColor[NUM_ZONES][4] =
+{
 	{ 0, 255, 0, 255 },
 	{ 255, 0, 0, 255 },
 	{ 255, 0, 255, 255 },
@@ -225,63 +255,92 @@ static const int BeamColor[NUM_ZONES][4] = {
 	{ 0, 255, 255, 255 }
 };
 
+enum { POINT_BOTTOM, POINT_TOP, NUM_POINTS };
+static float g_vecZonePoints[NUM_ZONES][NUM_POINTS][4][3];
+
+stock void SetupZonePoints( int zone )
+{
+	// Called after zone mins and maxs are fixed.
+	// Clock-wise
+	
+	// Bottom
+	g_vecZonePoints[zone][POINT_BOTTOM][0][0] = g_vecZoneMins[zone][0] + ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_BOTTOM][0][1] = g_vecZoneMins[zone][1] + ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_BOTTOM][0][2] = g_vecZoneMins[zone][2] + ZONE_WIDTH;
+	
+	g_vecZonePoints[zone][POINT_BOTTOM][1][0] = g_vecZoneMaxs[zone][0] - ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_BOTTOM][1][1] = g_vecZoneMins[zone][1] + ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_BOTTOM][1][2] = g_vecZoneMins[zone][2] + ZONE_WIDTH;
+	
+	g_vecZonePoints[zone][POINT_BOTTOM][2][0] = g_vecZoneMaxs[zone][0] - ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_BOTTOM][2][1] = g_vecZoneMaxs[zone][1] - ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_BOTTOM][2][2] = g_vecZoneMins[zone][2] + ZONE_WIDTH;
+	
+	g_vecZonePoints[zone][POINT_BOTTOM][3][0] = g_vecZoneMins[zone][0] + ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_BOTTOM][3][1] = g_vecZoneMaxs[zone][1] - ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_BOTTOM][3][2] = g_vecZoneMins[zone][2] + ZONE_WIDTH;
+	
+	// Top
+	g_vecZonePoints[zone][POINT_TOP][0][0] = g_vecZoneMins[zone][0] + ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_TOP][0][1] = g_vecZoneMins[zone][1] + ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_TOP][0][2] = g_vecZoneMaxs[zone][2] - ZONE_WIDTH;
+	
+	g_vecZonePoints[zone][POINT_TOP][1][0] = g_vecZoneMaxs[zone][0] - ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_TOP][1][1] = g_vecZoneMins[zone][1] + ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_TOP][1][2] = g_vecZoneMaxs[zone][2] - ZONE_WIDTH;
+	
+	g_vecZonePoints[zone][POINT_TOP][2][0] = g_vecZoneMaxs[zone][0] - ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_TOP][2][1] = g_vecZoneMaxs[zone][1] - ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_TOP][2][2] = g_vecZoneMaxs[zone][2] - ZONE_WIDTH;
+	
+	g_vecZonePoints[zone][POINT_TOP][3][0] = g_vecZoneMins[zone][0] + ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_TOP][3][1] = g_vecZoneMaxs[zone][1] - ZONE_WIDTH;
+	g_vecZonePoints[zone][POINT_TOP][3][2] = g_vecZoneMaxs[zone][2] - ZONE_WIDTH;
+}
+
 public Action Timer_DrawZoneBeams( Handle hTimer )
 {
-	static float flPoint4Min[3], flPoint4Max[3];
-	static float flPoint3Min[3];
-	static float flPoint2Min[3], flPoint2Max[3];
-	static float flPoint1Max[3];
-	
 	for ( int i; i < NUM_ZONES; i++ )
 	{
 		if ( !g_bZoneExists[i] ) continue;
 		
-		
-		flPoint4Min[0] = g_vecZoneMins[i][0]; flPoint4Min[1] = g_vecZoneMaxs[i][1]; flPoint4Min[2] = g_vecZoneMins[i][2] + ZONE_WIDTH;
-		flPoint4Max[0] = g_vecZoneMins[i][0]; flPoint4Max[1] = g_vecZoneMaxs[i][1]; flPoint4Max[2] = g_vecZoneMaxs[i][2] - ZONE_WIDTH;
-		
-		flPoint3Min[0] = g_vecZoneMaxs[i][0]; flPoint3Min[1] = g_vecZoneMaxs[i][1]; flPoint3Min[2] = g_vecZoneMins[i][2] + ZONE_WIDTH;
-		
-		flPoint2Min[0] = g_vecZoneMaxs[i][0]; flPoint2Min[1] = g_vecZoneMins[i][1]; flPoint2Min[2] = g_vecZoneMins[i][2] + ZONE_WIDTH;
-		flPoint2Max[0] = g_vecZoneMaxs[i][0]; flPoint2Max[1] = g_vecZoneMins[i][1]; flPoint2Max[2] = g_vecZoneMaxs[i][2] - ZONE_WIDTH;
-		
-		flPoint1Max[0] = g_vecZoneMins[i][0]; flPoint1Max[1] = g_vecZoneMins[i][1]; flPoint1Max[2] = g_vecZoneMaxs[i][2] - ZONE_WIDTH;
-		
-		
-		TE_SetupBeamPoints( g_vecZoneMins[i], flPoint1Max, g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		// Bottom
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_BOTTOM][0], g_vecZonePoints[i][POINT_BOTTOM][1], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( g_vecZoneMins[i], flPoint4Min, g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_BOTTOM][1], g_vecZonePoints[i][POINT_BOTTOM][2], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( g_vecZoneMins[i], flPoint2Min, g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_BOTTOM][2], g_vecZonePoints[i][POINT_BOTTOM][3], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint3Min, g_vecZoneMaxs[i], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_BOTTOM][3], g_vecZonePoints[i][POINT_BOTTOM][0], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint3Min, flPoint4Min, g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		// Top
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_TOP][0], g_vecZonePoints[i][POINT_TOP][1], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint3Min, flPoint2Min, g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_TOP][1], g_vecZonePoints[i][POINT_TOP][2], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint2Max, flPoint2Min, g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_TOP][2], g_vecZonePoints[i][POINT_TOP][3], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint2Max, flPoint1Max, g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_TOP][3], g_vecZonePoints[i][POINT_TOP][0], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint2Max, g_vecZoneMaxs[i], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		// From bottom to top.
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_BOTTOM][0], g_vecZonePoints[i][POINT_TOP][0], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint4Max, flPoint4Min, g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_BOTTOM][1], g_vecZonePoints[i][POINT_TOP][1], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint4Max, flPoint1Max, g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_BOTTOM][2], g_vecZonePoints[i][POINT_TOP][2], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 		
-		TE_SetupBeamPoints( flPoint4Max, g_vecZoneMaxs[i], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
+		TE_SetupBeamPoints( g_vecZonePoints[i][POINT_BOTTOM][3], g_vecZonePoints[i][POINT_TOP][3], g_iBeam, 0, 0, 0, ZONE_UPDATE_INTERVAL, ZONE_WIDTH, ZONE_WIDTH, 0, 0.0, BeamColor[i], 0 );
 		TE_SendToAll( 0.0 );
 	}
 	
@@ -388,7 +447,6 @@ public Action Timer_Rec_Restart( Handle hTimer, any mimic )
 	
 	g_nClientTick[mimic] = TICK_PRE_PLAYBLACK;
 	TeleportEntity( mimic, g_vecInitRecPos[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ], g_vecInitRecAng[ g_iClientRun[mimic] ][ g_iClientStyle[mimic] ], g_vecNull );
-	SetEntProp( mimic, Prop_Data, "m_nButtons", 0 );
 	
 	CreateTimer( 2.0, Timer_Rec_Start, mimic, TIMER_FLAG_NO_MAPCHANGE );
 	

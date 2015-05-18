@@ -41,8 +41,6 @@ stock void FormatSeconds( float flSeconds, char[] szTarget, int iLength, int fFl
 {
 	static int		iHours;
 	int				iMins;
-	static char		szHours[3];
-	static char		szMins[3];
 	static char		szSec[6];
 	
 	if ( !( fFlags & FORMAT_NOHOURS ) )
@@ -54,8 +52,6 @@ stock void FormatSeconds( float flSeconds, char[] szTarget, int iLength, int fFl
 			iHours++;
 			flSeconds -= 3600.0;
 		}
-		
-		FormatEx( szHours, sizeof( szHours ), ( iHours < 10 ) ? "0%i" : "%i", iHours );
 	}
 	
 	while ( flSeconds >= 60.0 )
@@ -64,30 +60,22 @@ stock void FormatSeconds( float flSeconds, char[] szTarget, int iLength, int fFl
 		flSeconds -= 60.0;
 	}
 	
+	// XX.XX
+	FormatEx( szSec, sizeof( szSec ), ( fFlags & FORMAT_DESISECONDS ) ? "%04.1f" : "%05.2f", flSeconds );
 	
-	FormatEx( szMins, sizeof( szMins ), ( iMins < 10 ) ? "0%i" : "%i", iMins );
-	
-	if ( flSeconds < 10.0 )
-	{
-		FormatEx( szSec, sizeof( szSec ), ( fFlags & FORMAT_DESISECONDS ) ? "0%.1f" : "0%.2f", flSeconds );
-	}
-	else
-	{
-		FormatEx( szSec, sizeof( szSec ), ( fFlags & FORMAT_DESISECONDS ) ? "%.1f" : "%.2f", flSeconds );
-	}
 	// "XX:XX.X" - [8] (SCOREBOARD)
 	// "XX:XX:XX.X" - [11] (HINT)
 	// "XX:XX:XX.XX" - [12] (RECORDS)
 	// "CXXC:CXXC:CXX.XX" - [17] (CHAT)
 	if ( fFlags & FORMAT_COLORED )
 	{
-		FormatEx( szTarget, iLength, "\x03%s\x06:\x03%s\x06:\x03%s", szHours, szMins, szSec );
+		FormatEx( szTarget, iLength, "\x03%02i\x06:\x03%02i\x06:\x03%s", iHours, iMins, szSec );
 	}
 	else if ( fFlags & FORMAT_NOHOURS )
 	{
-		FormatEx( szTarget, iLength, "%s:%s", szMins, szSec );
+		FormatEx( szTarget, iLength, "%02i:%s", iMins, szSec );
 	}
-	else FormatEx( szTarget, iLength, "%s:%s:%s", szHours, szMins, szSec );
+	else FormatEx( szTarget, iLength, "%02i:%02i:%s", iHours, iMins, szSec );
 }
 
 // "Real" velocity
@@ -97,6 +85,12 @@ stock float GetClientSpeed( int client )
 	GetEntPropVector( client, Prop_Data, "m_vecVelocity", vecVel );
 	
 	return SquareRoot( vecVel[0] * vecVel[0] + vecVel[1] * vecVel[1] );
+}
+
+stock void HideEntity( int ent )
+{
+	SetEntityRenderMode( ent, RENDER_TRANSALPHA );
+	SetEntityRenderColor( ent, _, _, _, 0 );
 }
 
 // Tell people what our time is in the clan section of scoreboard.
@@ -170,7 +164,7 @@ stock int GetActivePlayers( int ignore = 0 )
 				strcopy( g_szNextMap, sizeof( g_szNextMap ), iMap[MAP_NAME] );
 				
 				CreateTimer( 3.0, Timer_ChangeMap, TIMER_FLAG_NO_MAPCHANGE );
-				PrintColorChatAll( 0, false, CHAT_PREFIX ... "Enough people voted for \x03%s"...CLR_TEXT..."! Changing map...", g_szNextMap );
+				PRINTCHATALLV( 0, false, CHAT_PREFIX ... "Enough people voted for \x03%s"...CLR_TEXT..."! Changing map...", g_szNextMap );
 				
 				return;
 			}

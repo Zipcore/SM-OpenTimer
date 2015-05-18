@@ -91,7 +91,7 @@ stock bool DB_SaveClientRecord( int client, float flNewTime )
 	{
 		if ( flNewTime > g_flMapBestTime[run][style] )
 		{
-			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." for the first time ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06)", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime );
+			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." for the first time ["...CLR_STYLE..."%s"...CLR_TEXT..."]!\n\x06(%s\x06)", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime );
 			
 			if ( g_flMapBestTime[run][style] <= TIME_INVALID )
 			{
@@ -100,7 +100,7 @@ stock bool DB_SaveClientRecord( int client, float flNewTime )
 		}
 		else
 		{
-			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." broke \x03%s"...CLR_TEXT..." record ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime, flLeftSeconds );
+			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." broke \x03%s"...CLR_TEXT..." record ["...CLR_STYLE..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime, flLeftSeconds );
 			bIsBest = true;
 		}
 	}
@@ -110,21 +110,21 @@ stock bool DB_SaveClientRecord( int client, float flNewTime )
 		{
 			if ( flNewTime > g_flClientBestTime[client][run][style] )
 			{
-				FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06)", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime );
+				FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." ["...CLR_STYLE..."%s"...CLR_TEXT..."]!\n\x06(%s\x06)", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime );
 			}
 			else
 			{
-				FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime, g_flClientBestTime[client][run][style] - flNewTime );
+				FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." finished \x03%s"...CLR_TEXT..." ["...CLR_STYLE..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime, g_flClientBestTime[client][run][style] - flNewTime );
 			}
 		}
 		else
 		{
-			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." broke \x03%s"...CLR_TEXT..." record ["...CLR_GRAY..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime, flLeftSeconds );
+			FormatEx( szTxt, sizeof( szTxt ), CHAT_PREFIX ... "\x03%N"...CLR_TEXT..." broke \x03%s"...CLR_TEXT..." record ["...CLR_STYLE..."%s"...CLR_TEXT..."]!\n\x06(%s\x06) Improving \x03%.2f\x06sec!", client, g_szRunName[NAME_LONG][run], g_szStyleName[NAME_SHORT][style], szFormTime, flLeftSeconds );
 			bIsBest = true;
 		}
 	}
 	
-	PrintColorChatAll( client, false, szTxt );
+	PRINTCHATALL( client, false, szTxt );
 	
 	
 	// Play sound.
@@ -345,8 +345,6 @@ stock void DB_InitializeMapZones()
 				SQL_FieldNameToNum( hQuery, "smax2", field );
 				g_vecZoneMaxs[ZONE_START][2] = SQL_FetchFloat( hQuery, field );
 				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_START], g_vecZoneMaxs[ZONE_START] );
-				
 				g_bZoneExists[ZONE_START] = true;
 			}
 			else g_bZoneExists[ZONE_START] = false;
@@ -372,8 +370,6 @@ stock void DB_InitializeMapZones()
 			
 				SQL_FieldNameToNum( hQuery, "emax2", field );
 				g_vecZoneMaxs[ZONE_END][2] = SQL_FetchFloat( hQuery, field );
-				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_END], g_vecZoneMaxs[ZONE_END] );
 				
 				g_bZoneExists[ZONE_END] = true;
 			}
@@ -402,8 +398,6 @@ stock void DB_InitializeMapZones()
 				SQL_FieldNameToNum( hQuery, "bl1max2", field );
 				g_vecZoneMaxs[ZONE_BLOCK_1][2] = SQL_FetchFloat( hQuery, field );
 				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_BLOCK_1], g_vecZoneMaxs[ZONE_BLOCK_1] );
-				
 				g_bZoneExists[ZONE_BLOCK_1] = true;
 			}
 			else g_bZoneExists[ZONE_BLOCK_1] = false;
@@ -429,8 +423,6 @@ stock void DB_InitializeMapZones()
 				
 				SQL_FieldNameToNum( hQuery, "bl2max2", field );
 				g_vecZoneMaxs[ZONE_BLOCK_2][2] = SQL_FetchFloat( hQuery, field );
-				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_BLOCK_2], g_vecZoneMaxs[ZONE_BLOCK_2] );
 				
 				g_bZoneExists[ZONE_BLOCK_2] = true;
 			}
@@ -459,8 +451,6 @@ stock void DB_InitializeMapZones()
 				SQL_FieldNameToNum( hQuery, "bl3max2", field );
 				g_vecZoneMaxs[ZONE_BLOCK_3][2] = SQL_FetchFloat( hQuery, field );
 				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_BLOCK_3], g_vecZoneMaxs[ZONE_BLOCK_3] );
-				
 				g_bZoneExists[ZONE_BLOCK_3] = true;
 			}
 			else g_bZoneExists[ZONE_BLOCK_3] = false;
@@ -488,8 +478,6 @@ stock void DB_InitializeMapZones()
 				SQL_FieldNameToNum( hQuery, "b1_smax2", field );
 				g_vecZoneMaxs[ZONE_BONUS_1_START][2] = SQL_FetchFloat( hQuery, field );
 				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_BONUS_1_START], g_vecZoneMaxs[ZONE_BONUS_1_START] );
-				
 				g_bZoneExists[ZONE_BONUS_1_START] = true;
 			}
 			else g_bZoneExists[ZONE_BONUS_1_START] = false;
@@ -515,8 +503,6 @@ stock void DB_InitializeMapZones()
 			
 				SQL_FieldNameToNum( hQuery, "b1_emax2", field );
 				g_vecZoneMaxs[ZONE_BONUS_1_END][2] = SQL_FetchFloat( hQuery, field );
-				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_BONUS_1_END], g_vecZoneMaxs[ZONE_BONUS_1_END] );
 				
 				g_bZoneExists[ZONE_BONUS_1_END] = true;
 			}
@@ -544,8 +530,6 @@ stock void DB_InitializeMapZones()
 				SQL_FieldNameToNum( hQuery, "b2_smax2", field );
 				g_vecZoneMaxs[ZONE_BONUS_2_START][2] = SQL_FetchFloat( hQuery, field );
 
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_BONUS_2_START], g_vecZoneMaxs[ZONE_BONUS_2_START] );
-				
 				g_bZoneExists[ZONE_BONUS_2_START] = true;
 			}
 			else g_bZoneExists[ZONE_BONUS_2_START] = false;
@@ -571,8 +555,6 @@ stock void DB_InitializeMapZones()
 			
 				SQL_FieldNameToNum( hQuery, "b2_emax2", field );
 				g_vecZoneMaxs[ZONE_BONUS_2_END][2] = SQL_FetchFloat( hQuery, field );
-				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_BONUS_2_END], g_vecZoneMaxs[ZONE_BONUS_2_END] );
 				
 				g_bZoneExists[ZONE_BONUS_2_END] = true;
 			}
@@ -602,8 +584,6 @@ stock void DB_InitializeMapZones()
 				SQL_FieldNameToNum( hQuery, "fs1max2", field );
 				g_vecZoneMaxs[ZONE_FREESTYLE_1][2] = SQL_FetchFloat( hQuery, field );
 				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_FREESTYLE_1], g_vecZoneMaxs[ZONE_FREESTYLE_1] );
-				
 				g_bZoneExists[ZONE_FREESTYLE_1] = true;
 			}
 			else g_bZoneExists[ZONE_FREESTYLE_1] = false;
@@ -629,8 +609,6 @@ stock void DB_InitializeMapZones()
 				
 				SQL_FieldNameToNum( hQuery, "fs2max2", field );
 				g_vecZoneMaxs[ZONE_FREESTYLE_2][2] = SQL_FetchFloat( hQuery, field );
-				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_FREESTYLE_2], g_vecZoneMaxs[ZONE_FREESTYLE_2] );
 				
 				g_bZoneExists[ZONE_FREESTYLE_2] = true;
 			}
@@ -658,12 +636,18 @@ stock void DB_InitializeMapZones()
 				SQL_FieldNameToNum( hQuery, "fs3max2", field );
 				g_vecZoneMaxs[ZONE_FREESTYLE_3][2] = SQL_FetchFloat( hQuery, field );
 				
-				CorrectMinsMaxs( g_vecZoneMins[ZONE_FREESTYLE_3], g_vecZoneMaxs[ZONE_FREESTYLE_3] );
-				
 				g_bZoneExists[ZONE_FREESTYLE_3] = true;
 			}
 			else g_bZoneExists[ZONE_FREESTYLE_3] = false;
 		}
+	}
+	
+	for ( int i; i < NUM_ZONES; i++ )
+	{
+		if ( !g_bZoneExists[i] ) continue;
+		
+		CorrectMinsMaxs( g_vecZoneMins[i], g_vecZoneMaxs[i] );
+		SetupZonePoints( i );
 	}
 
 	if ( !g_bZoneExists[ZONE_START] || !g_bZoneExists[ZONE_END] )
@@ -702,6 +686,8 @@ stock void DB_InitializeMapZones()
 #if defined RECORD
 	char	szSteamID[STEAMID_MAXLENGTH];
 	char	szName[MAX_NAME_LENGTH];
+	
+	bool	bNormalOnly = GetConVarBool( g_ConVar_Bonus_NormalOnlyRec );
 #endif
 
 	while ( SQL_FetchRow( hQuery ) )
@@ -718,6 +704,8 @@ stock void DB_InitializeMapZones()
 		// Load records from disk.
 		// Assigning the records to bots are done in OnClientPutInServer()
 		if ( !g_bIsLoaded[iRun] ) continue;
+		
+		if ( iRun != RUN_MAIN && iStyle != STYLE_NORMAL && bNormalOnly ) continue;
 		
 		
 		SQL_FetchString( hQuery, 3, szSteamID, sizeof( szSteamID ) );

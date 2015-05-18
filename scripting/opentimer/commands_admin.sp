@@ -6,7 +6,7 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 	{
 		if ( g_iBuilderIndex == INVALID_INDEX )
 		{
-			PrintColorChat( client, client, CHAT_PREFIX ... "You haven't even started a zone! (\x03!startzone"...CLR_TEXT...")" );
+			PRINTCHAT( client, client, CHAT_PREFIX ... "You haven't even started a zone! (\x03!startzone"...CLR_TEXT...")" );
 			return Plugin_Handled;
 		}
 		
@@ -14,19 +14,19 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 		{
 			g_iBuilderIndex = INVALID_INDEX;
 			
-			PrintColorChat( client, client, CHAT_PREFIX ... "You haven't even started a zone! (\x03!startzone"...CLR_TEXT...")" );
+			PRINTCHAT( client, client, CHAT_PREFIX ... "You haven't even started a zone! (\x03!startzone"...CLR_TEXT...")" );
 			
 			return Plugin_Handled;
 		}
 		
 		
-		PrintColorChat( client, client, CHAT_PREFIX ... "Somebody else is building the zone!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Somebody else is building the zone!" );
 		return Plugin_Handled;
 	}
 	
 	if ( g_iBuilderZone == INVALID_ZONE_INDEX )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Invalid zone index!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Invalid zone index!" );
 		return Plugin_Handled;
 	}
 	
@@ -45,6 +45,7 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 	
 	
 	CorrectMinsMaxs( g_vecZoneMins[g_iBuilderZone], g_vecZoneMaxs[g_iBuilderZone] );
+	SetupZonePoints( g_iBuilderZone );
 	
 	// This was used for precise mins for zones that would always be on the ground, so our origin cannot be under the mins.
 	// E.g player is standing on ground but our mins are higher than player's origin meaning that the player is outside of the zone.
@@ -64,11 +65,11 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 	// Save to database.
 	if ( DB_SaveMapZone( g_iBuilderZone ) )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." was successfully saved!", g_szZoneNames[g_iBuilderZone] );
+		PRINTCHATV( client, client, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." was successfully saved!", g_szZoneNames[g_iBuilderZone] );
 	}
 	else
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Plugin was unable to save \x03%s"...CLR_TEXT..." to database!!!", g_szZoneNames[g_iBuilderZone] );
+		PRINTCHATV( client, client, CHAT_PREFIX ... "Plugin was unable to save \x03%s"...CLR_TEXT..." to database!!!", g_szZoneNames[g_iBuilderZone] );
 		return Plugin_Handled;
 	}
 	
@@ -79,21 +80,21 @@ public Action Command_Admin_ZoneEnd( int client, int args )
 		DoMapStuff();
 		
 		g_bIsLoaded[RUN_MAIN] = true;
-		PrintColorChatAll( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is now available!", g_szRunName[NAME_LONG][RUN_MAIN] );
+		PRINTCHATALLV( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is now available!", g_szRunName[NAME_LONG][RUN_MAIN] );
 	}
 	else if ( ( g_iBuilderZone == ZONE_BONUS_1_START || g_iBuilderZone == ZONE_BONUS_1_END ) && ( g_bZoneExists[ZONE_BONUS_1_START] && g_bZoneExists[ZONE_BONUS_1_END] ) )
 	{
 		DoMapStuff();
 		
 		g_bIsLoaded[RUN_BONUS_1] = true;
-		PrintColorChatAll( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is now available!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
+		PRINTCHATALLV( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is now available!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
 	}
 	else if ( ( g_iBuilderZone == ZONE_BONUS_2_START || g_iBuilderZone == ZONE_BONUS_2_END ) && ( g_bZoneExists[ZONE_BONUS_2_START] && g_bZoneExists[ZONE_BONUS_2_END] ) )
 	{
 		DoMapStuff();
 		
 		g_bIsLoaded[RUN_BONUS_2] = true;
-		PrintColorChatAll( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is now available!", g_szRunName[NAME_LONG][RUN_BONUS_2] );
+		PRINTCHATALLV( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is now available!", g_szRunName[NAME_LONG][RUN_BONUS_2] );
 	}
 	// Block zones must be spawned!
 	else if ( g_iBuilderZone >= ZONE_BLOCK_1 && g_iBuilderZone <= ZONE_BLOCK_3 )

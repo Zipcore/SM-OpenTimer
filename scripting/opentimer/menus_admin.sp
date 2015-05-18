@@ -20,7 +20,7 @@ public Action Command_Admin_ZoneMenu( int client, int args )
 	else if ( g_iBuilderIndex != client )
 	{
 		// Some other player is building a zone.
-		PrintColorChat( client, client, CHAT_PREFIX ... "Somebody is already building!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Somebody is already building!" );
 		
 		delete mMenu;
 		return Plugin_Handled;
@@ -89,7 +89,7 @@ public Action Command_Admin_ZoneStart( int client, int args )
 	
 	if ( g_iBuilderIndex != INVALID_INDEX && g_iBuilderIndex != client )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "Somebody is already building!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Somebody is already building!" );
 		return Plugin_Handled;
 	}
 	
@@ -110,7 +110,7 @@ public Action Command_Admin_ZoneStart( int client, int args )
 	
 	if ( !bFound )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "All zones already exist!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "All zones already exist!" );
 		
 		delete mMenu;
 		return Plugin_Handled;
@@ -141,7 +141,7 @@ public int Handler_ZoneCreate( Menu mMenu, MenuAction action, int client, int zo
 			
 			if ( g_iBuilderIndex != 0 && g_iBuilderIndex != client )
 			{
-				PrintColorChat( client, client, CHAT_PREFIX ... "Somebody is already building!" );
+				PRINTCHAT( client, client, CHAT_PREFIX ... "Somebody is already building!" );
 				return 0;
 			}
 			
@@ -157,7 +157,7 @@ public int Handler_ZoneCreate( Menu mMenu, MenuAction action, int client, int zo
 			
 			CreateTimer( 0.1, Timer_DrawBuildZoneBeams, client, TIMER_REPEAT );
 			
-			PrintColorChat( client, client, CHAT_PREFIX ... "You started %s! Go to the other side of the room.", g_szZoneNames[zone] );
+			PRINTCHATV( client, client, CHAT_PREFIX ... "You started %s! Go to the other side of the room.", g_szZoneNames[zone] );
 			
 			
 			ClientCommand( client, "sm_zone" );
@@ -191,7 +191,7 @@ public Action Command_Admin_ZoneDelete( int client, int args )
 	
 	if ( !bFound )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "There are no zones to delete!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "There are no zones to delete!" );
 		
 		delete mMenu;
 		return Plugin_Handled;
@@ -223,17 +223,17 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 			if ( zone == ZONE_START || zone == ZONE_END )
 			{
 				g_bIsLoaded[RUN_MAIN] = false;
-				PrintColorChatAll( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is no longer available for running!", g_szRunName[NAME_LONG][RUN_MAIN] );
+				PRINTCHATALLV( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is no longer available for running!", g_szRunName[NAME_LONG][RUN_MAIN] );
 			}
 			else if ( zone == ZONE_BONUS_1_START || zone == ZONE_BONUS_1_END )
 			{
 				g_bIsLoaded[RUN_BONUS_1] = false;
-				PrintColorChatAll( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is no longer available for running!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
+				PRINTCHATALLV( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is no longer available for running!", g_szRunName[NAME_LONG][RUN_BONUS_1] );
 			}
 			else if ( zone == ZONE_BONUS_2_START || zone == ZONE_BONUS_2_END )
 			{
 				g_bIsLoaded[RUN_BONUS_2] = false;
-				PrintColorChatAll( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is no longer available for running!", g_szRunName[NAME_LONG][RUN_BONUS_2] );
+				PRINTCHATALLV( client, false, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." is no longer available for running!", g_szRunName[NAME_LONG][RUN_BONUS_2] );
 			}
 			// Delete the actual block zone entities!
 			// The hook should be deleted with it automatically.
@@ -241,7 +241,7 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 			{
 				if ( g_iBlockZoneIndex[0] == 0 || !IsValidEntity( g_iBlockZoneIndex[0] ) )
 				{
-					PrintColorChat( client, client, CHAT_PREFIX ... "Couldn't remove \x03%s"...CLR_TEXT..."!", g_szZoneNames[zone] );
+					PRINTCHATV( client, client, CHAT_PREFIX ... "Couldn't remove \x03%s"...CLR_TEXT..."!", g_szZoneNames[zone] );
 					return 0;
 				}
 				
@@ -253,7 +253,7 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 			{
 				if ( g_iBlockZoneIndex[1] == 0 || !IsValidEntity( g_iBlockZoneIndex[1] ) )
 				{
-					PrintColorChat( client, client, CHAT_PREFIX ... "Couldn't remove \x03%s"...CLR_TEXT..."!", g_szZoneNames[zone] );
+					PRINTCHATV( client, client, CHAT_PREFIX ... "Couldn't remove \x03%s"...CLR_TEXT..."!", g_szZoneNames[zone] );
 					return 0;
 				}
 				
@@ -265,7 +265,7 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 			{
 				if ( g_iBlockZoneIndex[2] == 0 || !IsValidEntity( g_iBlockZoneIndex[2] ) )
 				{
-					PrintColorChat( client, client, CHAT_PREFIX ... "Couldn't remove \x03%s"...CLR_TEXT..."!", g_szZoneNames[zone] );
+					PRINTCHATV( client, client, CHAT_PREFIX ... "Couldn't remove \x03%s"...CLR_TEXT..."!", g_szZoneNames[zone] );
 					return 0;
 				}
 				
@@ -275,7 +275,7 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 			}
 			
 			g_bZoneExists[zone] = false;
-			PrintColorChat( client, client, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." deleted.", g_szZoneNames[zone] );
+			PRINTCHATV( client, client, CHAT_PREFIX ... "\x03%s"...CLR_TEXT..." deleted.", g_szZoneNames[zone] );
 			
 			// Erase them from the database.
 			DB_EraseCurMapZone( zone );
@@ -312,7 +312,7 @@ public int Handler_ZoneDelete( Menu mMenu, MenuAction action, int client, int zo
 	
 	if ( !bFound )
 	{
-		PrintColorChat( client, client, CHAT_PREFIX ... "There are no zones!" );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "There are no zones!" );
 		
 		delete mMenu;
 		return Plugin_Handled;

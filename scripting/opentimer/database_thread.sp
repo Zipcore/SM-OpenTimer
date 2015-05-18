@@ -10,7 +10,7 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 		SQL_GetError( g_Database, g_szError, sizeof( g_szError ) );
 		LogError( CONSOLE_PREFIX ... "An error occured when trying to print times to client. Error: %s", g_szError );
 	
-		PrintColorChat( client, client, CHAT_PREFIX ... "Sorry, something went wrong." );
+		PRINTCHAT( client, client, CHAT_PREFIX ... "Sorry, something went wrong." );
 		return;
 	}
 	
@@ -95,11 +95,11 @@ public void Threaded_PrintRecords( Handle hOwner, Handle hQuery, const char[] sz
 		
 		PrintToConsole( client, "--------------------" );
 		
-		PrintColorChat( client, client, CHAT_PREFIX ... "Printed (\x03%i"...CLR_TEXT...") records in your console.", ply );
+		PRINTCHATV( client, client, CHAT_PREFIX ... "Printed (\x03%i"...CLR_TEXT...") records in your console.", ply );
 	}
 }
 
-public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const char[] szError, any data )
+public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const char[] szError, any client )
 {
 	if ( hQuery == null )
 	{
@@ -109,10 +109,7 @@ public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const cha
 		return;
 	}
 	
-	
-	int client;
-	
-	if ( ( client = GetClientOfUserId( data ) ) == 0 ) return;
+	if ( ( client = GetClientOfUserId( client ) ) == 0 ) return;
 	
 	char szSteamId[STEAMID_MAXLENGTH];
 	
@@ -155,16 +152,12 @@ public void Threaded_RetrieveClientData( Handle hOwner, Handle hQuery, const cha
 		g_fClientHideFlags[client] = SQL_FetchInt( hQuery, field );
 	}
 	
-	/*if ( g_fClientHideFlags[client] & HIDEHUD_PLAYERS )
-		SDKHook( client, SDKHook_SetTransmit, Event_ClientTransmit );*/
-	
-	
 	// Then we get the times.
 	FormatEx( szQuery, sizeof( szQuery ), "SELECT time, style, run FROM '%s' WHERE steamid = '%s' ORDER BY run", g_szCurrentMap, szSteamId );
 	SQL_TQuery( g_Database, Threaded_RetrieveClientTimes, szQuery, GetClientUserId( client ), DBPrio_Normal );
 }
 
-public void Threaded_RetrieveClientTimes( Handle hOwner, Handle hQuery, const char[] szError, any data )
+public void Threaded_RetrieveClientTimes( Handle hOwner, Handle hQuery, const char[] szError, any client )
 {
 	if ( hQuery == null )
 	{
@@ -174,9 +167,8 @@ public void Threaded_RetrieveClientTimes( Handle hOwner, Handle hQuery, const ch
 		return;
 	}
 	
+	if ( ( client = GetClientOfUserId( client ) ) == 0 ) return;
 	
-	int client;
-	if ( ( client = GetClientOfUserId( data ) ) == 0 ) return;
 	
 	int field, iStyle, iRun;
 	while ( SQL_FetchRow( hQuery ) )
