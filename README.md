@@ -12,6 +12,16 @@ The plugin is written in new syntax which requires **SourceMod version 1.7**!
 - For 260vel weapons: https://forums.alliedmods.net/showthread.php?t=166468
 - For multihop (Maps with func_door platforms.): https://forums.alliedmods.net/showthread.php?t=90467
 
+**Download links:**
+
+https://dl.dropboxusercontent.com/u/142067828/download/opentimer.zip - CSS
+https://dl.dropboxusercontent.com/u/142067828/download/opentimer_csgo.zip - CS:GO
+
+**How to install:**
+
+    1. You can download the sourcecode and the plugin by pressing the 'Download ZIP'-button on the right-side. If you do not wish to do that, you can use the links above to only download the plugin.
+    2. Unzip files opentimer_csgo.smx OR opentimer.smx (Depending which game you're hosting) and place it in your <gamefolder>/addons/sourcemod/plugins directory. You're done!
+
 **Things to remember:**
 
     - Make sure your admin status is root to create/delete zones. (configs/admins.cfg)
