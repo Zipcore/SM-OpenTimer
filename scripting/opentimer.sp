@@ -13,7 +13,7 @@
 
 //	OPTIONS: Uncomment/comment things to change the plugin to your liking! Simply adding '//' (without quotation marks) in front of the line.
 // ------------------------------------------------------------------------------------------------------------------------------------------
-#define CSGO // Comment out for CSS.
+//#define CSGO // Comment out for CSS.
 
 #define	RECORD // Comment out for no recording and record playback.
 
@@ -418,7 +418,7 @@ char g_szStyleName[NUM_NAMES][NUM_STYLES][14] =
 };
 // First one is always the normal ending sound!
 #if defined CSGO
-	char g_szWinningSounds[][38] =
+	char g_szWinningSounds[][39] =
 	{
 		"buttons/button16.wav",
 		"player/vo/sas/onarollbrag13.wav",
@@ -853,7 +853,6 @@ public void OnClientDisconnect( int client )
 	//SDKUnhook( client, SDKHook_SetTransmit, Event_ClientTransmit );
 	//SDKUnhook( client, SDKHook_WeaponDropPost, Event_WeaponDropPost );
 	
-	PrintToServer( "Team num: %i", GetEntProp( client, Prop_Send, "m_iTeamNum" ) );
 	// Changing player's team with m_iTeamNum apparently causes crashes. (Something to do with player counts?)
 	// This will prevent it.
 	if ( GetEntProp( client, Prop_Send, "m_iTeamNum" ) == 0 )
@@ -1067,8 +1066,6 @@ public void Event_PostThinkPost( int client )
 		if ( !g_bIsClientPractising[client] &&
 			!( g_iClientRun[client] != RUN_MAIN && g_iClientStyle[client] != STYLE_NORMAL && GetConVarBool( g_ConVar_Bonus_NormalOnlyRec ) ) )
 		{
-			PrintToServer( "Started to record!" );
-			
 			g_nClientTick[client] = 0;
 			g_bClientRecording[client] = true;
 			
