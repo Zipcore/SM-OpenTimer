@@ -108,17 +108,9 @@ public Action Event_ClientSpawn( Handle hEvent, const char[] szEvent, bool bDont
 	SetEntityRenderColor( client, _, _, _, 128 );
 #endif
 	
-	if ( !IsFakeClient( client ) )
-	{
-		// Make sure they didn't join the mimic team.
-		SetEntProp( client, Prop_Send, "m_iTeamNum", g_iPreferredTeam );
-		
-		SetEntProp( client, Prop_Data, "m_CollisionGroup", 2 ); // Disable player collisions.
-	}
-	else
-	{
-		SetEntProp( client, Prop_Data, "m_CollisionGroup", 1 ); // Same + no trigger collision for bots.
-	}
+	// 2 = Disable player collisions.
+	// 1 = Same + no trigger collision for bots.
+	SetEntProp( client, Prop_Data, "m_CollisionGroup", IsFakeClient( client ) ? 1 : 2 );
 	
 	CreateTimer( 0.1, Timer_ClientSpawn, GetClientUserId( client ), TIMER_FLAG_NO_MAPCHANGE );
 }
@@ -131,8 +123,10 @@ public Action Timer_ClientSpawn( Handle hTimer, any client )
 	
 	// Hides deathnotices, health and weapon.
 	// Radar and crosshair stuff can be disabled client side. Disabling those server-side won't allow you to switch between weapons.
+#if !defined CSGO
 	if ( g_fClientHideFlags[client] & HIDEHUD_HUD )
 		SetEntProp( client, Prop_Send, "m_iHideHUD", HIDE_FLAGS );
+#endif
 	
 	if ( g_fClientHideFlags[client] & HIDEHUD_VM )
 		SetEntProp( client, Prop_Send, "m_bDrawViewmodel", 0 );
@@ -228,7 +222,7 @@ public Action Event_ClientJump( Handle hEvent, const char[] szEvent, bool bDontB
 	SetEntProp( client, Prop_Data, "m_iHealth", 100 );
 }*/
 
-public Action Event_OnTakeDamage( int victim, int &attacker, int &inflictor, float &flDamage, int &fDamage)
+public Action Event_OnTakeDamage( int victim, int &attacker, int &inflictor, float &flDamage, int &fDamage )
 {
 	if ( g_bEZHop ) return Plugin_Handled;
 

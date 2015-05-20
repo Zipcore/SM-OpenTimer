@@ -17,6 +17,7 @@ Update log:
 		* Changed bot naming and hud since you cannot change the name too many times. (CS:GO)
 		* Changed how we count jumps.
 		* Failing in style will now only stop player instead of sending them back to start.
+		* Finally fixed disconnect crash...
 	
 -------------
 	v1.4.5

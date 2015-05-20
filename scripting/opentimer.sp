@@ -13,7 +13,7 @@
 
 //	OPTIONS: Uncomment/comment things to change the plugin to your liking! Simply adding '//' (without quotation marks) in front of the line.
 // ------------------------------------------------------------------------------------------------------------------------------------------
-#define CSGO // Comment out for CSS.
+//#define CSGO // Comment out for CSS.
 
 #define	RECORD // Comment out for no recording and record playback.
 
@@ -647,6 +647,10 @@ public void OnPluginStart()
 	
 	RegConsoleCmd( "sm_credits", Command_Credits );
 	
+	// Blocked commands.
+	RegConsoleCmd( "joinclass", Command_JoinClass );
+	RegConsoleCmd( "jointeam", Command_JoinTeam );
+	
 #if defined ANTI_DOUBLESTEP
 	RegConsoleCmd( "sm_ds", Command_Doublestep );
 	RegConsoleCmd( "sm_doublestep", Command_Doublestep );
@@ -856,19 +860,9 @@ public void OnMapStart()
 
 public void OnClientDisconnect( int client )
 {
-	//SDKUnhook( client, SDKHook_OnTakeDamage, Event_ClientHurt );
+	//SDKUnhook( client, SDKHook_OnTakeDamage, Event_OnTakeDamage );
 	//SDKUnhook( client, SDKHook_SetTransmit, Event_ClientTransmit );
 	//SDKUnhook( client, SDKHook_WeaponDropPost, Event_WeaponDropPost );
-	
-	// Changing player's team with m_iTeamNum apparently causes crashes. (Something to do with player counts?)
-	// This will prevent it.
-	if ( GetEntProp( client, Prop_Send, "m_iTeamNum" ) == 0 )
-	{
-		SetEntProp( client, Prop_Send, "m_iTeamNum", g_iPreferredTeam );
-		SetEntProp( client, Prop_Send, "m_lifeState", 0 );
-		SetEntityMoveType( client, MOVETYPE_ISOMETRIC );
-	}
-		
 	
 #if defined RECORD
 	if ( IsFakeClient( client ) )

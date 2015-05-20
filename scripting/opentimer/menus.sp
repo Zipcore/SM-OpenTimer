@@ -554,7 +554,6 @@ public Action Command_Credits( int client, int args )
 	
 	AddMenuItem( mMenu, "_", "Thanks to: ", ITEMDRAW_DISABLED );
 	AddMenuItem( mMenu, "_", "Peace-Maker - For making botmimic. Learned a lot.", ITEMDRAW_DISABLED );
-	AddMenuItem( mMenu, "_", "necavi - For finding m_iTeamNum crash fix.", ITEMDRAW_DISABLED );
 	AddMenuItem( mMenu, "_", "george. - For the recording tip.", ITEMDRAW_DISABLED );
 	
 	DisplayMenu( mMenu, client, MENU_TIME_FOREVER );

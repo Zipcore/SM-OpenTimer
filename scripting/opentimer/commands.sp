@@ -99,7 +99,7 @@ public Action Command_Spawn( int client, int args )
 	
 	if ( GetClientTeam( client ) == CS_TEAM_SPECTATOR )
 	{
-		SetEntProp( client, Prop_Send, "m_iTeamNum", g_iPreferredTeam );
+		ChangeClientTeam( client, g_iPreferredTeam );
 		CS_RespawnPlayer( client );
 	}
 	else if ( !IsPlayerAlive( client ) || !g_bIsLoaded[ g_iClientRun[client] ] )
@@ -632,5 +632,14 @@ public Action Command_Run_Bonus_2( int client, int args )
 	
 	PRINTCHATV( client, client, CHAT_PREFIX ... "You are now in \x03%s"...CLR_TEXT..."!", g_szRunName[NAME_LONG][ g_iClientRun[client] ] );
 	
+	return Plugin_Handled;
+}
+
+public Action Command_JoinTeam( int client, int args )
+{
+	return ( IsPlayerAlive( client ) ) ? Plugin_Handled : Plugin_Continue;
+}
+public Action Command_JoinClass( int client, int args )
+{
 	return Plugin_Handled;
 }
