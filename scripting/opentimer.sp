@@ -459,6 +459,7 @@ ConVar g_ConVar_Allow_W;
 ConVar g_ConVar_Allow_HSW;
 ConVar g_ConVar_Allow_RHSW;
 ConVar g_ConVar_Allow_Vel;
+ConVar g_ConVar_Allow_AD;
 
 ConVar g_ConVar_VelCap;
 
@@ -698,6 +699,7 @@ public void OnPluginStart()
 	g_ConVar_Allow_HSW = CreateConVar( "sm_allow_hsw", "1", "Is Half-Sideways-style allowed?", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	g_ConVar_Allow_RHSW = CreateConVar( "sm_allow_rhsw", "1", "Is Real Half-Sideways-style allowed?", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	g_ConVar_Allow_Vel = CreateConVar( "sm_allow_vel", "1", "Is XXXvel-style allowed?", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
+	g_ConVar_Allow_AD = CreateConVar( "sm_allow_ad", "1", "Is A/D-style allowed?", FCVAR_NOTIFY, true, 0.0, true, 1.0 );
 	
 	g_ConVar_VelCap = CreateConVar( "sm_vel_limit", "400", "What is the cap for XXXvel-style?", FCVAR_NOTIFY, true, 250.0, true, 3500.0 );
 	
@@ -1589,6 +1591,7 @@ stock bool IsStyleAllowed( int style )
 		case STYLE_SIDEWAYS : if ( !GetConVarBool( g_ConVar_Allow_SW ) ) return false;
 		case STYLE_W : if ( !GetConVarBool( g_ConVar_Allow_W ) ) return false;
 		case STYLE_VEL : if ( !GetConVarBool( g_ConVar_Allow_Vel ) ) return false;
+		case STYLE_A_D : if ( !GetConVarBool( g_ConVar_Allow_AD ) ) return false;
 	}
 	
 	return true;

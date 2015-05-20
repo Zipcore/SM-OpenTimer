@@ -9,6 +9,7 @@ Update log:
 	- Added A/D-Only style.
 		* The first key player presses (A or D) will be the only key player can press.
 		* Commands !a/!a-only/!d/!d-only
+		* Added 'sm_allow_ad'-cvar.
 	
 	- Fixes and improvements
 		* Fixed HSW. :|
