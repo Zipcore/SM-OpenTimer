@@ -66,29 +66,37 @@ public Action OnPlayerRunCmd(
 				// Not holding all keys.
 				if ( !( buttons & IN_BACK && buttons & IN_FORWARD && buttons & IN_MOVELEFT && buttons & IN_MOVERIGHT ) )
 				{
+					// Let players fail.
 					if ( buttons & IN_BACK && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
-						CheckFreestyle( client );
+						CheckStyleFails( client );
 					else if ( buttons & IN_FORWARD && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
-						CheckFreestyle( client );
+						CheckStyleFails( client );
 					else if ( buttons & IN_MOVELEFT && !( buttons & IN_FORWARD || buttons & IN_BACK ) )
-						CheckFreestyle( client );
+						CheckStyleFails( client );
 					else if ( buttons & IN_MOVERIGHT && !( buttons & IN_FORWARD || buttons & IN_BACK ) )
-						CheckFreestyle( client );
-					
+						CheckStyleFails( client );
 					// Holding opposite keys.
 					else if ( buttons & IN_BACK && buttons & IN_FORWARD )
-						CheckFreestyle( client );
+						CheckStyleFails( client );
 					else if ( buttons & IN_MOVELEFT && buttons & IN_MOVERIGHT )
-						CheckFreestyle( client );
+						CheckStyleFails( client );
+					// Reset fails if nothing else happened.
+					else if ( g_nClientStyleFail[client] > 0 )
+						g_nClientStyleFail[client]--;
 				}
 			}
 			case STYLE_HSW :
 			{
 				if ( buttons & IN_BACK )
 					CheckFreestyle( client );
-				
-				else if ( buttons & IN_FORWARD && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
+				else if ( !( buttons & IN_FORWARD ) && ( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
 					CheckFreestyle( client );
+				// Let players fail.
+				else if ( buttons & IN_FORWARD && !( buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT ) )
+					CheckStyleFails( client );
+				// Reset fails if nothing else happened.
+				else if ( g_nClientStyleFail[client] > 0 )
+					g_nClientStyleFail[client]--;
 			}
 			case STYLE_VEL :
 			{
@@ -110,6 +118,22 @@ public Action OnPlayerRunCmd(
 						TeleportEntity( client, NULL_VECTOR, NULL_VECTOR, vecVel );
 					}
 				}
+			}
+			case STYLE_A_D :
+			{
+				if ( buttons & IN_FORWARD || buttons & IN_BACK )
+					CheckFreestyle( client );
+				// Determine which button player wants to hold.
+				else if ( !g_iClientPrefButton[client] )
+				{
+					if ( buttons & IN_MOVELEFT ) g_iClientPrefButton[client] = IN_MOVELEFT;
+					else if ( buttons & IN_MOVERIGHT ) g_iClientPrefButton[client] = IN_MOVERIGHT;
+				}
+				// Else, check if they are holding the opposite key!
+				else if ( g_iClientPrefButton[client] == IN_MOVELEFT && buttons & IN_MOVERIGHT )
+					CheckFreestyle( client );
+				else if ( g_iClientPrefButton[client] == IN_MOVERIGHT && buttons & IN_MOVELEFT )
+					CheckFreestyle( client );
 			}
 		}
 		
@@ -153,11 +177,6 @@ public Action OnPlayerRunCmd(
 			if ( g_bClientHoldingJump[client] && fFlags & FL_ONGROUND ) buttons |= IN_JUMP;
 #endif
 		}
-		
-		// Jump count stat
-		if ( fFlags & FL_ONGROUND && buttons & IN_JUMP && g_iClientState[client] != STATE_END )
-			g_nClientJumpCount[client]++;
-		
 		
 		// Rest what we do is done in running only.
 		if ( g_iClientState[client] != STATE_RUNNING ) return Plugin_Continue;

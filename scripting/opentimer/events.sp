@@ -196,16 +196,24 @@ public Action Timer_ClientSpawn( Handle hTimer, any client )
 ///////////
 // EZHOP //
 ///////////
+// We assume that CS:GO servers will handle the stamina themselves.
+public Action Event_ClientJump( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
+{
+	static int client;
+	if ( ( client = GetClientOfUserId( GetEventInt( hEvent, "userid" ) ) ) < 1 )
+		return;
+	
+	
+	if ( g_iClientState[client] != STATE_END )
+		g_nClientJumpCount[client]++;
+	
 #if !defined CSGO
-	// We assume that CS:GO servers will handle the stamina themselves.
-	public Action Event_ClientJump( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
+	if ( g_bEZHop )
 	{
-		if ( !g_bEZHop ) return;
-		
-		
-		SetEntPropFloat( GetClientOfUserId( GetEventInt( hEvent, "userid" ) ), Prop_Send, "m_flStamina", 0.0 );
+		SetEntPropFloat( client, Prop_Send, "m_flStamina", 0.0 );
 	}
 #endif
+}
 
 /*public Action Event_ClientHurt( Handle hEvent, const char[] szEvent, bool bDontBroadcast )
 {
@@ -290,7 +298,7 @@ public Action Listener_Say( int client, const char[] szCommand, int argc )
 // For block zones.
 public void Event_TouchBlock( int trigger, int activator )
 {
-	if ( activator < 1 || activator > MaxClients ) return;
+	if ( 1 > activator > MaxClients ) return;
 	
 	if ( g_bIsClientPractising[activator] ) return;
 	

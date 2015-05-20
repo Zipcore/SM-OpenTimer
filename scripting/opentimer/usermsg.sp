@@ -84,7 +84,7 @@ stock void ShowKeyHintText( int client, int target )
 			
 			FormatEx( szText, sizeof( szText ), "Name: %s\nTime: %s", g_szRecName[ g_iClientRun[target] ][ g_iClientStyle[target] ], szTime );
 #else
-			FormatEx( szText, sizeof( szText ), "I am a bot! :)", g_szRecName[ g_iClientRun[target] ][ g_iClientStyle[target] ], szTime );
+			FormatEx( szText, sizeof( szText ), "I am a bot! :)" );
 #endif
 		}
 		else
@@ -98,28 +98,25 @@ stock void ShowKeyHintText( int client, int target )
 			
 			if ( g_iClientState[target] != STATE_START )
 			{
-				switch ( g_iClientStyle[target] )
+				if ( g_iClientStyle[client] == STYLE_W || g_iClientStyle[client] == STYLE_A_D )
 				{
-					case STYLE_W :
-					{
-						FormatEx( szText, sizeof( szText ), "Jumps: %i\n \nStyle: %s\nPB: %s\n%s",
-							g_nClientJumpCount[target],
-							g_szStyleName[NAME_LONG][ g_iClientStyle[target] ], // Show our style.
-							szTime,
-							( g_bIsClientPractising[target] ? "(Practice Mode)" : "" ) ); // Have a practice mode warning for players!
-					}
-					default :
-					{
-						// "Strafes: XXXXXCL Sync: 100.0CL Sync: 100.0CR Sync: 100.0CJumps: XXXXC CStyle: Real HSWCPB: 00:00:00.00C(Practice Mode)"
-						FormatEx( szText, sizeof( szText ), "Strafes: %i\nL Sync: %.1f\nR Sync: %.1f\nJumps: %i\n \nStyle: %s\nPB: %s\n%s",
-							g_nClientStrafeCount[target],
-							g_flClientSync[target][STRAFE_LEFT] * 100.0, // Left Sync
-							g_flClientSync[target][STRAFE_RIGHT] * 100.0, // Right Sync
-							g_nClientJumpCount[target],
-							g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
-							szTime,
-							( g_bIsClientPractising[target] ? "(Practice Mode)" : "" ) );
-					}
+					FormatEx( szText, sizeof( szText ), "Jumps: %i\n \nStyle: %s\nPB: %s\n%s",
+						g_nClientJumpCount[target],
+						g_szStyleName[NAME_LONG][ g_iClientStyle[target] ], // Show our style.
+						szTime,
+						( g_bIsClientPractising[target] ? "(Practice Mode)" : "" ) ); // Have a practice mode warning for players!
+				}
+				else
+				{
+					// "Strafes: XXXXXCL Sync: 100.0CL Sync: 100.0CR Sync: 100.0CJumps: XXXXC CStyle: Real HSWCPB: 00:00:00.00C(Practice Mode)"
+					FormatEx( szText, sizeof( szText ), "Strafes: %i\nL Sync: %.1f\nR Sync: %.1f\nJumps: %i\n \nStyle: %s\nPB: %s\n%s",
+						g_nClientStrafeCount[target],
+						g_flClientSync[target][STRAFE_LEFT] * 100.0, // Left Sync
+						g_flClientSync[target][STRAFE_RIGHT] * 100.0, // Right Sync
+						g_nClientJumpCount[target],
+						g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
+						szTime,
+						( g_bIsClientPractising[target] ? "(Practice Mode)" : "" ) );
 				}
 			}
 			else

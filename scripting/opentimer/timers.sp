@@ -89,12 +89,18 @@ public Action Timer_HudTimer( Handle hTimer )
 			if ( IsFakeClient( target ) )
 			{
 #if defined CSGO
-				PrintHintText( client, "Record Bot [%s|%s]\nName: %s\nSpeed: %4.0f",
+				// For CS:GO.
+				static char szTime[9];
+				FormatSeconds( g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ], szTime, sizeof( szTime ), FORMAT_NOHOURS );
+				
+				PrintHintText( client, "Record Bot [%s|%s]\n%s Name: %s\nSpeed: %4.0f",
 					g_szRunName[NAME_LONG][ g_iClientRun[target] ],
 					g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
+					szTime,
 					g_szRecName[ g_iClientRun[target] ][ g_iClientStyle[target] ],
 					GetClientSpeed( target ) );
 #else // CSGO
+				// For CSS.
 				PrintHintText( client, "Record Bot\n[%s|%s]\n \nSpeed\n%.0f",
 					g_szRunName[NAME_LONG][ g_iClientRun[target] ],
 					g_szStyleName[NAME_LONG][ g_iClientStyle[target] ],
@@ -143,15 +149,26 @@ public Action Timer_HudTimer( Handle hTimer )
 			FormatSeconds( flSeconds, szMyTime, sizeof( szMyTime ), FORMAT_DESISECONDS );
 			
 #if defined CSGO
-			// "Bonus #2 (P)	"
-			PrintHintText( client, "%s\t\tSpeed: %4.0f\n%s\t\tL Sync: %.1f%s\nJumps: %04i\tR Sync: %.1f",
-				szMyTime,
-				GetClientSpeed( target ),
-				g_szRunName[NAME_LONG][ g_iClientRun[ target ] ],
-				g_flClientSync[target][STRAFE_LEFT] * 100.0,
-				( g_bIsClientPractising[target] ) ? " (P)" : "", // Practice mode warning
-				g_nClientJumpCount[target],
-				g_flClientSync[target][STRAFE_RIGHT] * 100.0 );
+			if ( g_iClientStyle[client] == STYLE_W || g_iClientStyle[client] == STYLE_A_D )
+			{
+				PrintHintText( client, "%s\t\tSpeed: %4.0f\n%s%s\nJumps: %04i",
+					szMyTime,
+					GetClientSpeed( target ),
+					g_szRunName[NAME_LONG][ g_iClientRun[ target ] ],
+					( g_bIsClientPractising[target] ) ? " (P)" : "", // Practice mode warning
+					g_nClientJumpCount[target] );
+			}
+			else
+			{
+				PrintHintText( client, "%s\t\tSpeed: %4.0f\n%s\t\tL Sync: %.1f%s\nJumps: %04i\tR Sync: %.1f",
+					szMyTime,
+					GetClientSpeed( target ),
+					g_szRunName[NAME_LONG][ g_iClientRun[ target ] ],
+					g_flClientSync[target][STRAFE_LEFT] * 100.0,
+					( g_bIsClientPractising[target] ) ? " (P)" : "", // Practice mode warning
+					g_nClientJumpCount[target],
+					g_flClientSync[target][STRAFE_RIGHT] * 100.0 );
+			}
 #else
 			// We don't have a map best time! We don't need to show anything else.
 			if ( g_flMapBestTime[ g_iClientRun[target] ][ g_iClientStyle[target] ] <= TIME_INVALID )

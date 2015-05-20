@@ -4,6 +4,20 @@ Ignore me!
 Update log:
 ------------
 -------------
+	v1.4.6
+-------------
+	- Added A/D-Only style.
+		* The first key player presses (A or D) will be the only key player can press.
+		* Commands !a/!a-only/!d/!d-only
+	
+	- Fixes and improvements
+		* Fixed HSW. :|
+		* Players can now fail a certain amount of time in RHSW and HSW.
+		* Changed bot naming and hud since you cannot change the name too many times. (CS:GO)
+		* Changed how we count jumps.
+		* Failing in style will now only stop player instead of sending them back to start.
+	
+-------------
 	v1.4.5
 -------------
 	- CS:GO is now supported, kind of!

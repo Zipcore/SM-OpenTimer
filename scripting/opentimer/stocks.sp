@@ -64,6 +64,7 @@ stock void FormatSeconds( float flSeconds, char[] szTarget, int iLength, int fFl
 	FormatEx( szSec, sizeof( szSec ), ( fFlags & FORMAT_DESISECONDS ) ? "%04.1f" : "%05.2f", flSeconds );
 	
 	// "XX:XX.X" - [8] (SCOREBOARD)
+	// "XX:XX.XX" - [9] (CSGO)
 	// "XX:XX:XX.X" - [11] (HINT)
 	// "XX:XX:XX.XX" - [12] (RECORDS)
 	// "CXXC:CXXC:CXX.XX" - [17] (CHAT)

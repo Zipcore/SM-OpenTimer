@@ -331,6 +331,16 @@ public Action Command_Style_VelCap( int client, int args )
 	return Plugin_Handled;
 }
 
+public Action Command_Style_AD( int client, int args )
+{
+	if ( client == INVALID_INDEX ) return Plugin_Handled;
+	
+	
+	SetPlayerStyle( client, STYLE_A_D );
+	
+	return Plugin_Handled;
+}
+
 public Action Command_Practise( int client, int args )
 {
 	if ( client == INVALID_INDEX ) return Plugin_Handled;
@@ -456,12 +466,6 @@ public Action Command_Practise_Noclip( int client, int args )
 	if ( !IsPlayerAlive( client ) )
 	{
 		PRINTCHAT( client, client, CHAT_PREFIX ... "You must be alive to use this command!" );
-		return Plugin_Handled;
-	}
-	
-	if ( IsSpamming( client ) )
-	{
-		PRINTCHAT( client, client, CHAT_PREFIX ... "Please wait before using this command again, thanks." );
 		return Plugin_Handled;
 	}
 	

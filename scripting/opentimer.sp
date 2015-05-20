@@ -5,7 +5,7 @@
 #include <basecomm> // To check if client is gagged.
 
 
-#define PLUGIN_VERSION	"1.4.5"
+#define PLUGIN_VERSION	"1.4.6"
 #define PLUGIN_AUTHOR	"Mehis"
 #define PLUGIN_NAME		"OpenTimer"
 #define PLUGIN_URL		"https://github.com/TotallyMehis/SM-OpenTimer"
@@ -191,6 +191,8 @@
 
 #define TIME_INVALID			0.0
 
+#define MAX_STYLE_FAILS			18
+
 #define TIMER_UPDATE_INTERVAL	0.1 // HUD Timer.
 #define ZONE_UPDATE_INTERVAL	0.5
 #define ZONE_BUILD_INTERVAL		0.1
@@ -273,6 +275,7 @@ enum
 	STYLE_REAL_HSW,
 	STYLE_HSW,
 	STYLE_VEL,
+	STYLE_A_D,
 	
 	NUM_STYLES
 };
@@ -296,8 +299,6 @@ enum
 	
 	NUM_SLOTS // 6
 };
-
-//#define NUM_SLOTS_SAVED 3
 
 
 // Zones
@@ -328,8 +329,9 @@ int g_nClientJumpCount[MAXPLAYERS_BHOP];
 int g_nClientStrafeCount[MAXPLAYERS_BHOP];
 float g_flClientSync[MAXPLAYERS_BHOP][NUM_STRAFES];
 
-
 // Misc player stuff.
+int g_nClientStyleFail[MAXPLAYERS_BHOP];
+int g_iClientPrefButton[MAXPLAYERS_BHOP]; // For A/D-Only.
 float g_flClientWarning[MAXPLAYERS_BHOP]; // Used for anti-spam.
 #if defined ANTI_DOUBLESTEP
 	bool g_bClientHoldingJump[MAXPLAYERS_BHOP]; // Used for anti-doublestep.
@@ -413,8 +415,8 @@ char g_szRunName[NUM_NAMES][NUM_RUNS][9] =
 };
 char g_szStyleName[NUM_NAMES][NUM_STYLES][14] =
 {
-	{ "Normal", "Sideways", "W-Only", "Real HSW", "Half-Sideways", "Vel-Cap" }, // "A/D-Only"
-	{ "N", "SW", "W", "RHSW", "HSW", "VEL" } // "A_D"
+	{ "Normal", "Sideways", "W-Only", "Real HSW", "Half-Sideways", "Vel-Cap", "A/D-Only" },
+	{ "N", "SW", "W", "RHSW", "HSW", "VEL", "A_D" }
 };
 // First one is always the normal ending sound!
 #if defined CSGO
@@ -502,9 +504,7 @@ public void OnPluginStart()
 {
 	// HOOKS
 	HookEvent( "player_spawn", Event_ClientSpawn );
-#if !defined CSGO
 	HookEvent( "player_jump", Event_ClientJump );
-#endif
 	HookEvent( "player_team", Event_ClientTeam );
 	//HookEvent( "player_hurt", Event_ClientHurt );
 	HookEvent( "player_death", Event_ClientDeath );
@@ -598,6 +598,11 @@ public void OnPluginStart()
 	RegConsoleCmd( "sm_velcap", Command_Style_VelCap );
 	RegConsoleCmd( "sm_vel-cap", Command_Style_VelCap );
 	RegConsoleCmd( "sm_v", Command_Style_VelCap );
+	
+	RegConsoleCmd( "sm_a", Command_Style_AD );
+	RegConsoleCmd( "sm_a-only", Command_Style_AD );
+	RegConsoleCmd( "sm_d", Command_Style_AD );
+	RegConsoleCmd( "sm_d-only", Command_Style_AD );
 	
 	
 	// RUNS
@@ -857,7 +862,7 @@ public void OnClientDisconnect( int client )
 	// This will prevent it.
 	if ( GetEntProp( client, Prop_Send, "m_iTeamNum" ) == 0 )
 	{
-		SetEntProp( client, Prop_Send, "m_iTeamNum", CS_TEAM_CT );
+		SetEntProp( client, Prop_Send, "m_iTeamNum", g_iPreferredTeam );
 		SetEntProp( client, Prop_Send, "m_lifeState", 0 );
 		SetEntityMoveType( client, MOVETYPE_ISOMETRIC );
 	}
@@ -1048,7 +1053,6 @@ public void Event_PostThinkPost( int client )
 				PRINTCHATV( client, client, CHAT_PREFIX ... "No prespeeding allowed! (\x03%.0fspd"...CLR_TEXT...")", MAX_PRESPEED );
 			}
 			
-			
 			TeleportEntity( client, NULL_VECTOR, NULL_VECTOR, g_vecNull );
 			
 			return;
@@ -1060,6 +1064,9 @@ public void Event_PostThinkPost( int client )
 		g_flClientSync[client][STRAFE_LEFT] = 1.0;
 		g_flClientSync[client][STRAFE_RIGHT] = 1.0;
 		
+		// Style stuff.
+		g_nClientStyleFail[client] = 0;
+		g_iClientPrefButton[client] = 0;
 		
 #if defined RECORD
 		// Start to record!
@@ -1174,17 +1181,21 @@ public void Event_PostThinkPost( int client )
 #endif
 }
 
-
-stock void CheckFreestyle( int client )
+stock bool IsInFreestyle( int client )
 {
-	// Player pressed a forbidden key.
 	// Check whether we're in freestyle zone or not.
-	
 	if ( g_iClientState[client] != STATE_RUNNING
 		|| IsInsideZone( client, ZONE_FREESTYLE_1 )
 		|| IsInsideZone( client, ZONE_FREESTYLE_2 )
 		|| IsInsideZone( client, ZONE_FREESTYLE_3 ) )
-		return;
+		return true;
+	
+	return false;
+}
+
+stock void CheckFreestyle( int client )
+{
+	if ( IsInFreestyle( client ) ) return;
 	
 	
 	if ( !IsSpamming( client ) )
@@ -1192,15 +1203,22 @@ stock void CheckFreestyle( int client )
 		PRINTCHATV( client, client, CHAT_PREFIX ... "That key (combo) is not allowed in \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][ g_iClientStyle[client] ] );
 	}
 	
+	TeleportEntity( client, NULL_VECTOR, NULL_VECTOR, g_vecNull );
+}
+
+stock void CheckStyleFails( int client )
+{
+	if ( IsInFreestyle( client ) ) return;
 	
-	// We can't go back? Just kill them.
-	if ( !g_bIsLoaded[ g_iClientRun[client] ] )
+	if ( ++g_nClientStyleFail[client] < MAX_STYLE_FAILS ) return;
+	
+	
+	if ( !IsSpamming( client ) )
 	{
-		ForcePlayerSuicide( client );
-		return;
+		PRINTCHATV( client, client, CHAT_PREFIX ... "That key (combo) is not allowed in \x03%s"...CLR_TEXT..."!", g_szStyleName[NAME_LONG][ g_iClientStyle[client] ] );
 	}
 	
-	TeleportPlayerToStart( client );
+	TeleportEntity( client, NULL_VECTOR, NULL_VECTOR, g_vecNull );
 }
 
 stock void TeleportPlayerToStart( int client )
@@ -1347,18 +1365,18 @@ stock void DoMapStuff()
 		if ( FindEntityByClassname( -1, "info_player_counterterrorist" ) != -1 )
 		{
 			g_iPreferredTeam = CS_TEAM_CT;
-			ServerCommand( "mp_humanteam ct" );
 			
 #if defined RECORD
+			ServerCommand( "mp_humanteam ct" );
 			ServerCommand( "bot_join_team t" );
 #endif
 		}
 		else
 		{
 			g_iPreferredTeam = CS_TEAM_T;
-			ServerCommand( "mp_humanteam t" );
 			
 #if defined RECORD
+			ServerCommand( "mp_humanteam t" );
 			ServerCommand( "bot_join_team ct" );
 #endif
 		}
@@ -1640,6 +1658,12 @@ stock void AssignRecordToBot( int mimic, int run, int style )
 	
 	g_iRec[run][style] = mimic;
 	
+	char szFullName[MAX_NAME_LENGTH];
+#if defined CSGO
+	// GO only lets us change the name once a round?
+	FormatEx( szFullName, sizeof( szFullName ), "%s - %s", g_szRunName[NAME_LONG][run], g_szStyleName[NAME_LONG][style] );
+	SetClientInfo( mimic, "name", szFullName );
+#else
 	// We'll have to limit the player's name in order to show everything.
 	char szName[MAX_RECNAME_LENGTH];
 	strcopy( szName, sizeof( szName ), g_szRecName[run][style] );
@@ -1648,9 +1672,9 @@ stock void AssignRecordToBot( int mimic, int run, int style )
 	FormatSeconds( g_flMapBestTime[run][style], szTime, sizeof( szTime ), FORMAT_NOHOURS );
 	
 	// "XXXXXXXXXXXX [B1|RHSW] 00:00.00"
-	char szFullName[MAX_NAME_LENGTH];
 	FormatEx( szFullName, sizeof( szFullName ), "%s [%s|%s] %s", szName, g_szRunName[NAME_SHORT][run], g_szStyleName[NAME_SHORT][style], szTime );
 	SetClientInfo( mimic, "name", szFullName );
+#endif
 	
 	// Teleport 'em to the starting position and start the countdown!
 	g_bClientMimicing[mimic] = false;
