@@ -1072,7 +1072,7 @@ public void Event_PostThinkPost( int client )
 			g_nClientTick[client] = 0;
 			g_bClientRecording[client] = true;
 			
-			g_hClientRecording[client] = CreateArray( view_as<int>FrameInfo );
+			g_hClientRecording[client] = CreateArray( view_as<int>( FrameInfo ) );
 			
 			GetClientEyeAngles( client, g_vecInitAng[client] );
 			GetClientAbsOrigin( client, g_vecInitPos[client] );
