@@ -200,7 +200,7 @@ public Action OnPlayerRunCmd(
 			// This is only required to check if player's recording is too long.
 			g_nClientTick[client]++;
 			
-			PushArrayArray( g_hClientRecording[client], iFrame, view_as<int>FrameInfo );
+			PushArrayArray( g_hClientRecording[client], iFrame, view_as<int>( FrameInfo ) );
 		}
 #endif
 		
@@ -296,7 +296,7 @@ public Action OnPlayerRunCmd(
 	
 	if ( g_bClientMimicing[client] )
 	{
-		GetArrayArray( g_hRec[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_nClientTick[client], iFrame, view_as<int>FrameInfo );
+		GetArrayArray( g_hRec[ g_iClientRun[client] ][ g_iClientStyle[client] ], g_nClientTick[client], iFrame, view_as<int>( FrameInfo ) );
 		
 		// Do buttons.
 		buttons = ( iFrame[FRAME_FLAGS] & FRAMEFLAG_CROUCH ) ? IN_DUCK : 0;

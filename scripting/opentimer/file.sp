@@ -73,24 +73,24 @@ stock bool SaveRecording( int client, float flTime )
 	//iHeader[HEADER_TIME] = flTime;
 	
 	WriteFileCell( hFile, MAGIC_NUMBER, 4 );
-	WriteFileCell( hFile, iHeader[ view_as<int>HEADER_BINARYFORMAT ], 1 );
+	WriteFileCell( hFile, iHeader[ view_as<int>( HEADER_BINARYFORMAT ) ], 1 );
 	
 	
-	WriteFileCell( hFile, iHeader[ view_as<int>HEADER_TICKCOUNT ], 4 );
+	WriteFileCell( hFile, iHeader[ view_as<int>( HEADER_TICKCOUNT ) ], 4 );
 	
-	WriteFileCell( hFile, view_as<int>flTime, 4 );
+	WriteFileCell( hFile, view_as<int>( flTime ), 4 );
 	
-	WriteFile( hFile, view_as<int>iHeader[ view_as<int>HEADER_INITPOS ], 3, 4 );
-	WriteFile( hFile, view_as<int>iHeader[ view_as<int>HEADER_INITANGLES ], 2, 4 );
+	WriteFile( hFile, view_as<int>( iHeader[ view_as<int>( HEADER_INITPOS ) ] ), 3, 4 );
+	WriteFile( hFile, view_as<int>( iHeader[ view_as<int>( HEADER_INITANGLES ) ] ), 2, 4 );
 	
 	// Save frames on to the file.
 	int iFrame[FRAME_SIZE];
 	
 	for ( int i; i < len; i++ )
 	{
-		GetArrayArray( g_hClientRecording[client], i, iFrame, view_as<int>FrameInfo );
+		GetArrayArray( g_hClientRecording[client], i, iFrame, view_as<int>( FrameInfo ) );
 		
-		if ( !WriteFile( hFile, iFrame, view_as<int>FrameInfo, 4 ) )
+		if ( !WriteFile( hFile, iFrame, view_as<int>( FrameInfo ), 4 ) )
 		{
 			LogError( CONSOLE_PREFIX ... "An error occured while trying to write on to a record file!" );
 			
@@ -160,27 +160,27 @@ stock bool LoadRecording( char szSteamID[STEAMID_MAXLENGTH], int iRun, int iStyl
 	
 	int iHeader[HEADER_SIZE];
 	
-	if ( ReadFileCell( hFile, view_as<int>iHeader[ view_as<int>HEADER_TIME ], 4 ) == -1 )
+	if ( ReadFileCell( hFile, view_as<int>( iHeader[ view_as<int>( HEADER_TIME ) ] ), 4 ) == -1 )
 	{
 		LogError( CONSOLE_PREFIX ... "Tried to read from file with no time specified in the header(?)" );
 		return false;
 	}
 	
 	
-	ReadFile( hFile, view_as<int>iHeader[ view_as<int>HEADER_INITPOS ], 3, 4 );
-	ReadFile( hFile, view_as<int>iHeader[ view_as<int>HEADER_INITANGLES ], 2, 4 );
+	ReadFile( hFile, view_as<int>( iHeader[ view_as<int>( HEADER_INITPOS ) ] ), 3, 4 );
+	ReadFile( hFile, view_as<int>( iHeader[ view_as<int>( HEADER_INITANGLES ) ] ), 2, 4 );
 	
 	//iHeader[ view_as<int>HEADER_INITANGLES ];
-	ArrayCopy( iHeader[ view_as<int>HEADER_INITPOS ], g_vecInitRecPos[iRun][iStyle], 3 );
-	ArrayCopy( iHeader[ view_as<int>HEADER_INITANGLES ], g_vecInitRecAng[iRun][iStyle], 2 );
+	ArrayCopy( iHeader[ view_as<int>( HEADER_INITPOS ) ], g_vecInitRecPos[iRun][iStyle], 3 );
+	ArrayCopy( iHeader[ view_as<int>( HEADER_INITANGLES ) ], g_vecInitRecAng[iRun][iStyle], 2 );
 	
 	// GET FRAMES
 	int iFrame[FRAME_SIZE];
-	g_hRec[iRun][iStyle] = CreateArray( view_as<int>FrameInfo );
+	g_hRec[iRun][iStyle] = CreateArray( view_as<int>( FrameInfo ) );
 	
 	for ( int i; i < g_iRecTickMax[iRun][iStyle]; i++ )
 	{
-		if ( ReadFile( hFile, iFrame, view_as<int>FrameInfo, 4 ) == -1 )
+		if ( ReadFile( hFile, iFrame, view_as<int>( FrameInfo ), 4 ) == -1 )
 		{
 			LogError( CONSOLE_PREFIX ... "An unexpected end of file while reading from frame data!" );
 			
@@ -188,7 +188,7 @@ stock bool LoadRecording( char szSteamID[STEAMID_MAXLENGTH], int iRun, int iStyl
 			return false;
 		}
 		
-		PushArrayArray( g_hRec[iRun][iStyle], iFrame, view_as<int>FrameInfo );
+		PushArrayArray( g_hRec[iRun][iStyle], iFrame, view_as<int>( FrameInfo ) );
 	}
 	
 	delete hFile;
